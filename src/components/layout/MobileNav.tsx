@@ -1,0 +1,94 @@
+import styled from 'styled-components';
+import { NavLink } from 'react-router-dom';
+import { LanguageSwitcher } from '../ui/LanguageSwitcher';
+import { Button } from '../ui/Button';
+import { useLang, useTranslation } from '../../i18n/LanguageContext';
+import { localizePath, routePaths } from '../../i18n/paths';
+
+const Overlay = styled.div<{ $open: boolean }>`
+  position: fixed;
+  inset: 0;
+  z-index: ${({ theme }) => theme.zIndices.mobileNav};
+  background: ${({ theme }) => theme.colors.background.primary};
+  display: flex;
+  flex-direction: column;
+  padding: 24px 20px 32px;
+  transform: translateX(${({ $open }) => ($open ? '0' : '100%')});
+  transition: transform 0.25s ease;
+  visibility: ${({ $open }) => ($open ? 'visible' : 'hidden')};
+`;
+
+const TopRow = styled.div`
+  display: flex;
+  justify-content: flex-end;
+`;
+
+const CloseButton = styled.button`
+  width: 40px;
+  height: 40px;
+  border-radius: ${({ theme }) => theme.radii.md};
+  background: ${({ theme }) => theme.colors.neutral[100]};
+  font-size: 1.25rem;
+`;
+
+const LinkList = styled.nav`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 32px;
+`;
+
+const LinkItem = styled(NavLink)`
+  padding: 14px 4px;
+  font-family: ${({ theme }) => theme.fonts.heading};
+  font-size: 1.25rem;
+  font-weight: ${({ theme }) => theme.fontWeights.bold};
+  color: ${({ theme }) => theme.colors.indigo[900]};
+  border-bottom: 1px solid ${({ theme }) => theme.colors.neutral[200]};
+
+  &.active {
+    color: ${({ theme }) => theme.colors.accent[500]};
+  }
+`;
+
+const Bottom = styled.div`
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
+interface MobileNavProps {
+  open: boolean;
+  onClose: () => void;
+  links: { to: string; label: string }[];
+}
+
+export function MobileNav({ open, onClose, links }: MobileNavProps) {
+  const t = useTranslation('common');
+  const { lang } = useLang();
+  const homePath = localizePath(lang, routePaths.home);
+
+  return (
+    <Overlay $open={open} aria-hidden={!open}>
+      <TopRow>
+        <CloseButton aria-label="Close menu" onClick={onClose}>
+          ✕
+        </CloseButton>
+      </TopRow>
+      <LinkList>
+        {links.map((link) => (
+          <LinkItem key={link.to} to={link.to} end={link.to === homePath} onClick={onClose}>
+            {link.label}
+          </LinkItem>
+        ))}
+      </LinkList>
+      <Bottom>
+        <LanguageSwitcher />
+        <Button as="a" href="#order" $fullWidth onClick={onClose}>
+          {t.buttons.order}
+        </Button>
+      </Bottom>
+    </Overlay>
+  );
+}
