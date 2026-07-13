@@ -1,9 +1,9 @@
 import styled from 'styled-components';
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { LanguageSwitcher } from '../ui/LanguageSwitcher';
 import { Button } from '../ui/Button';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
-import { localizePath, routePaths } from '../../i18n/paths';
+import { localizePath, orderPath, routePaths } from '../../i18n/paths';
 
 const Overlay = styled.div<{ $open: boolean }>`
   position: fixed;
@@ -85,7 +85,7 @@ export function MobileNav({ open, onClose, links }: MobileNavProps) {
       </LinkList>
       <Bottom>
         <LanguageSwitcher />
-        <Button as="a" href="#order" $fullWidth onClick={onClose}>
+        <Button as={Link} to={orderPath(lang)} $fullWidth onClick={onClose}>
           {t.buttons.order}
         </Button>
       </Bottom>

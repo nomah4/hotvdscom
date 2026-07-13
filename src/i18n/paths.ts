@@ -19,3 +19,8 @@ export function localizePath(lang: Lang, path: string) {
   const clean = path.replace(/^\//, '');
   return clean ? `/${lang}/${clean}` : `/${lang}`;
 }
+
+// Every "Order" CTA leads here: the configurator section on the pricing page.
+export function orderPath(lang: Lang) {
+  return `${localizePath(lang, routePaths.pricing)}#configurator`;
+}

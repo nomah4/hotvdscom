@@ -2,6 +2,11 @@ import type { pricing as ruPricing } from '../ru/pricing';
 import type { DeepWiden } from '../../deepWiden';
 
 export const pricing = {
+  meta: {
+    title: 'VDS Pricing from $10/mo & Configurator — hotvds',
+    description:
+      'Build a custom VDS or pick a ready-made plan. NVMe storage, DDoS protection, IPv6. Save 15% with yearly billing.',
+  },
   hero: {
     title: 'Pricing & configurator',
     subtitle: 'Build a server for your task or pick a ready-made plan',

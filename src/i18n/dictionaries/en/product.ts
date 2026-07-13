@@ -2,6 +2,11 @@ import type { product as ruProduct } from '../ru/product';
 import type { DeepWiden } from '../../deepWiden';
 
 export const product = {
+  meta: {
+    title: 'NVIDIA GPU Servers, No Waitlists — hotvds',
+    description:
+      'Rent NVIDIA A100 GPU servers for ML, rendering, and HPC. Hourly billing, pre-installed CUDA and PyTorch, live in 5 minutes.',
+  },
   hero: {
     eyebrow: 'GPU Servers',
     title: 'GPU compute without queues or markups',

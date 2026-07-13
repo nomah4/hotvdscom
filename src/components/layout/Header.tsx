@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import styled from 'styled-components';
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { PageContainer } from './PageContainer';
 import { Logo } from '../ui/Logo';
 import { LanguageSwitcher } from '../ui/LanguageSwitcher';
 import { Button } from '../ui/Button';
 import { MobileNav } from './MobileNav';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
-import { localizePath, routePaths } from '../../i18n/paths';
+import { localizePath, orderPath, routePaths } from '../../i18n/paths';
 import { media } from '../../theme/breakpoints';
 
 const Bar = styled.header`
@@ -110,7 +110,7 @@ export function Header() {
                 <LanguageSwitcher />
               </DesktopOnly>
               <DesktopOnly>
-                <Button as="a" href="#order" $size="sm">
+                <Button as={Link} to={orderPath(lang)} $size="sm">
                   {t.buttons.order}
                 </Button>
               </DesktopOnly>

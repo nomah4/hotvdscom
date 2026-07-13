@@ -9,6 +9,11 @@ export const GlobalStyle = createGlobalStyle`
     -webkit-text-size-adjust: 100%;
   }
 
+  /* Anchor targets (e.g. #configurator) must clear the 72px sticky header. */
+  section[id] {
+    scroll-margin-top: 88px;
+  }
+
   body {
     margin: 0;
     font-family: ${({ theme }) => theme.fonts.body};

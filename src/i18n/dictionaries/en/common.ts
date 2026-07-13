@@ -39,7 +39,7 @@ export const common = {
     en: 'EN',
   },
   datacenterStatus: {
-    live: 'Primary',
+    live: 'Live',
     comingSoon: 'Launching soon',
   },
 } as const satisfies DeepWiden<typeof ruCommon>;

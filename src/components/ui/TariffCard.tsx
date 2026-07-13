@@ -1,8 +1,10 @@
 import styled from 'styled-components';
+import { Link } from 'react-router-dom';
 import type { Tariff } from '../../data/tariffs';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
+import { orderPath } from '../../i18n/paths';
 
 const Card = styled.div<{ $highlighted?: boolean }>`
   display: flex;
@@ -95,7 +97,7 @@ export function TariffCard({ tariff }: TariffCardProps) {
         <SpecItem $highlighted={tariff.highlighted}>{tariff.ssd} {lang === 'ru' ? 'ГБ NVMe' : 'GB NVMe'}</SpecItem>
         <SpecItem $highlighted={tariff.highlighted}>{tariff.traffic} {lang === 'ru' ? 'трафика' : 'traffic'}</SpecItem>
       </SpecList>
-      <Button $variant={tariff.highlighted ? 'primary' : 'secondary'} $fullWidth>
+      <Button as={Link} to={orderPath(lang)} $variant={tariff.highlighted ? 'primary' : 'secondary'} $fullWidth>
         {t.configurator.cta}
       </Button>
     </Card>

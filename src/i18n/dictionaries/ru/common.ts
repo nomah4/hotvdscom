@@ -36,7 +36,7 @@ export const common = {
     en: 'EN',
   },
   datacenterStatus: {
-    live: 'Основной',
-    comingSoon: 'В процессе запуска',
+    live: 'Работает',
+    comingSoon: 'Скоро открытие',
   },
 } as const;

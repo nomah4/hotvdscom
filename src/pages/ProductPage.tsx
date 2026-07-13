@@ -1,4 +1,5 @@
 import styled from 'styled-components';
+import { Link } from 'react-router-dom';
 import { Section } from '../components/layout/Section';
 import { PageContainer } from '../components/layout/PageContainer';
 import { SectionHeading } from '../components/ui/SectionHeading';
@@ -6,7 +7,9 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { SpecBadge } from '../components/ui/SpecBadge';
 import { DatacenterBadge } from '../components/ui/DatacenterBadge';
-import { useTranslation } from '../i18n/LanguageContext';
+import { useLang, useTranslation } from '../i18n/LanguageContext';
+import { orderPath } from '../i18n/paths';
+import { usePageMeta } from '../i18n/usePageMeta';
 import { gpuTiers } from '../data/productSpecs';
 import { datacenters } from '../data/datacenters';
 import { media } from '../theme/breakpoints';
@@ -156,6 +159,9 @@ const whyIcons = ['⏱️', '💳', '📦'];
 
 export function ProductPage() {
   const t = useTranslation('product');
+  const { lang } = useLang();
+
+  usePageMeta(t.meta.title, t.meta.description);
 
   return (
     <>
@@ -171,7 +177,7 @@ export function ProductPage() {
               <SpecBadge label="CPU" value="16 vCPU" />
               <SpecBadge label="RAM" value="64 GB" />
             </SpecsRow>
-            <Button as="a" href="#order" $size="lg">
+            <Button as={Link} to={orderPath(lang)} $size="lg">
               {t.hero.cta}
             </Button>
           </Hero>
@@ -254,7 +260,7 @@ export function ProductPage() {
           <CtaBanner>
             <CtaTitle>{t.cta.title}</CtaTitle>
             <CtaSubtitle>{t.cta.subtitle}</CtaSubtitle>
-            <Button as="a" href="#order" $variant="secondary" $size="lg" style={{ background: '#fff' }}>
+            <Button as={Link} to={orderPath(lang)} $variant="secondary" $size="lg" style={{ background: '#fff' }}>
               {t.cta.button}
             </Button>
           </CtaBanner>

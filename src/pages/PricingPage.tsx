@@ -8,6 +8,7 @@ import { FaqAccordionItem } from '../components/ui/FaqAccordionItem';
 import { PricingSlider } from '../components/pricing/PricingSlider';
 import { TariffComparisonTable } from '../components/pricing/TariffComparisonTable';
 import { useTranslation } from '../i18n/LanguageContext';
+import { usePageMeta } from '../i18n/usePageMeta';
 import { tariffs } from '../data/tariffs';
 import { media } from '../theme/breakpoints';
 
@@ -76,6 +77,8 @@ export function PricingPage() {
   const t = useTranslation('pricing');
   const [yearly, setYearly] = useState(false);
 
+  usePageMeta(t.meta.title, t.meta.description);
+
   return (
     <>
       <Section $background="tertiary">
@@ -87,7 +90,7 @@ export function PricingPage() {
         </PageContainer>
       </Section>
 
-      <Section $background="primary">
+      <Section id="configurator" $background="primary">
         <PageContainer>
           <SectionHeading title={t.configurator.title} />
           <div style={{ marginTop: 32 }}>

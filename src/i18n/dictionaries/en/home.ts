@@ -2,6 +2,11 @@ import type { home as ruHome } from '../ru/home';
 import type { DeepWiden } from '../../deepWiden';
 
 export const home = {
+  meta: {
+    title: 'hotvds — NVMe VDS Hosting, Live in 5 Minutes',
+    description:
+      'Powerful NVMe VDS from $10/mo: 99.98% uptime, DDoS protection, and 24/7 support. Your server deploys within 5 minutes of payment.',
+  },
   hero: {
     eyebrow: 'A new generation of VDS',
     title: 'VDS hosting that launches in 5 minutes',
@@ -11,6 +16,7 @@ export const home = {
     ctaSecondary: 'View pricing',
     trustBadge: '99.98% uptime',
     trustNote: '5-minute setup',
+    trustPrice: 'from $10/mo',
   },
   valueProps: {
     title: 'Why hotvds',
@@ -47,6 +53,7 @@ export const home = {
       { question: 'Can I change my plan later?', answer: 'Yes, upgrades and downgrades are available anytime from the dashboard.' },
       { question: 'Do you offer backups?', answer: 'Daily backups are included in every plan except the base tier.' },
       { question: 'What payment methods do you accept?', answer: 'Bank cards, instant bank transfer, and cryptocurrency.' },
+      { question: 'Is there a free trial?', answer: "Yes — your first 7 days are free, no card required. If it isn't a fit, simply don't renew." },
     ],
   },
   finalCta: {

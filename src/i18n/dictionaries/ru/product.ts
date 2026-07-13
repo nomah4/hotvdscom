@@ -1,4 +1,9 @@
 export const product = {
+  meta: {
+    title: 'GPU-серверы NVIDIA без очередей — hotvds',
+    description:
+      'Аренда GPU-серверов NVIDIA A100 для ML, рендеринга и HPC. Почасовая оплата, готовые образы CUDA и PyTorch, запуск за 5 минут.',
+  },
   hero: {
     eyebrow: 'GPU-серверы',
     title: 'Вычисления на GPU без очередей и переплат',

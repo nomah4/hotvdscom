@@ -11,7 +11,8 @@ import { TestimonialCard } from '../components/ui/TestimonialCard';
 import { LogoStrip } from '../components/ui/LogoStrip';
 import { FaqAccordionItem } from '../components/ui/FaqAccordionItem';
 import { useLang, useTranslation } from '../i18n/LanguageContext';
-import { localizePath, routePaths } from '../i18n/paths';
+import { localizePath, orderPath, routePaths } from '../i18n/paths';
+import { usePageMeta } from '../i18n/usePageMeta';
 import { tariffs } from '../data/tariffs';
 import { datacenters } from '../data/datacenters';
 import { media } from '../theme/breakpoints';
@@ -201,6 +202,8 @@ export function HomePage() {
   const { lang } = useLang();
   const pricingPath = localizePath(lang, routePaths.pricing);
 
+  usePageMeta(t.meta.title, t.meta.description);
+
   const teaserTariffs = tariffs.filter((tariff) => ['start', 'pro', 'business'].includes(tariff.id));
 
   return (
@@ -214,7 +217,7 @@ export function HomePage() {
               <HeroTitle>{t.hero.title}</HeroTitle>
               <HeroSubtitle>{t.hero.subtitle}</HeroSubtitle>
               <HeroActions>
-                <Button as="a" href="#order" $size="lg" $fullWidth>
+                <Button as={Link} to={orderPath(lang)} $size="lg" $fullWidth>
                   {t.hero.ctaPrimary}
                 </Button>
                 <Button as={Link} to={pricingPath} $variant="secondary" $size="lg" $fullWidth>
@@ -224,6 +227,7 @@ export function HomePage() {
               <HeroTrust>
                 <Badge $tone="mint">{t.hero.trustBadge}</Badge>
                 <Badge $tone="indigo">{t.hero.trustNote}</Badge>
+                <Badge $tone="accent">{t.hero.trustPrice}</Badge>
               </HeroTrust>
             </HeroInner>
           </Hero>
@@ -302,7 +306,7 @@ export function HomePage() {
           <CtaBanner>
             <CtaTitle>{t.finalCta.title}</CtaTitle>
             <CtaSubtitle>{t.finalCta.subtitle}</CtaSubtitle>
-            <Button as="a" href="#order" $variant="secondary" $size="lg" style={{ background: '#fff' }}>
+            <Button as={Link} to={orderPath(lang)} $variant="secondary" $size="lg" style={{ background: '#fff' }}>
               {t.finalCta.cta}
             </Button>
           </CtaBanner>
