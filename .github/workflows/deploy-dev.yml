@@ -1,0 +1,32 @@
+name: Deploy dev.hotvds.com
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx tsc --noEmit -p tsconfig.app.json
+      - run: npm run build
+
+      - name: Deploy over rsync
+        env:
+          SSH_KEY: ${{ secrets.DEV_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.DEV_DEPLOY_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          rsync -avz --delete -e "ssh -i ~/.ssh/deploy_key" dist/ "root@$SSH_HOST:/var/www/dev.hotvds.com/dist"
