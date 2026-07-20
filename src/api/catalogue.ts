@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Tariff } from '../data/tariffs';
+import type { BillingPeriod, Tariff } from '../data/tariffs';
 import { BILLING_API_BASE, DEFAULT_CURRENCY, PROJECT_CODE, TENANT_ID, toApiError } from './config';
 
 interface ApiPrice {
@@ -103,6 +103,26 @@ export function groupIntoTariffs(packages: ApiPackage[]): Tariff[] {
     });
   }
   return tariffs;
+}
+
+/**
+ * Resolves a catalogue package_code back to the plan it belongs to and the term
+ * it represents. Lives here next to groupIntoTariffs, which is what put the two
+ * codes on the Tariff in the first place.
+ *
+ * Returns null for a code this catalogue does not offer, so a hand-edited or
+ * stale link renders "plan not found" rather than a confirm button with no plan
+ * behind it.
+ */
+export function findByPackageCode(
+  tariffs: Tariff[],
+  packageCode: string,
+): { tariff: Tariff; period: BillingPeriod } | null {
+  for (const tariff of tariffs) {
+    if (tariff.packageCode.monthly === packageCode) return { tariff, period: 'monthly' };
+    if (tariff.packageCode.annual === packageCode) return { tariff, period: 'annual' };
+  }
+  return null;
 }
 
 interface UseTariffsResult {

@@ -25,7 +25,7 @@ export const common = {
       },
       company: {
         title: 'Company',
-        links: ['About', 'Blog', 'Partners', 'Contact'],
+        links: ['About', 'Blog', 'Partners', 'Contact', 'Terms of Service'],
       },
       support: {
         title: 'Support',

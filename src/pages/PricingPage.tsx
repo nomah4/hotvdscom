@@ -11,7 +11,7 @@ import { useTranslation } from '../i18n/LanguageContext';
 import { usePageMeta } from '../i18n/usePageMeta';
 import type { BillingPeriod } from '../data/tariffs';
 import { useTariffs } from '../api/catalogue';
-import { useCheckout } from '../api/useCheckout';
+import { useOrderIntent } from '../api/useCheckout';
 import { media } from '../theme/breakpoints';
 
 const Hero = styled.div`
@@ -86,7 +86,9 @@ export function PricingPage() {
   const t = useTranslation('pricing');
   const [yearly, setYearly] = useState(false);
   const { tariffs, isLoading, error } = useTariffs();
-  const { buy, pendingPackageCode, error: checkoutError } = useCheckout();
+  // Order now navigates to the confirmation page; nothing is charged from here,
+  // so there is no in-flight state or failure for this page to render.
+  const order = useOrderIntent();
   const period: BillingPeriod = yearly ? 'annual' : 'monthly';
 
   usePageMeta(t.meta.title, t.meta.description);
@@ -126,7 +128,6 @@ export function PricingPage() {
           </ToggleRow>
           {isLoading && <StatusMessage>{t.comparison.loading}</StatusMessage>}
           {error && <StatusMessage $tone="error">{t.comparison.error}</StatusMessage>}
-          {checkoutError && <StatusMessage $tone="error">{t.checkout.failed}</StatusMessage>}
           {!isLoading && !error && (
             <>
               <TariffGrid>
@@ -137,8 +138,7 @@ export function PricingPage() {
                     // package bought differs, which `period` carries.
                     tariff={yearly ? { ...tariff, priceMonthly: tariff.priceYearly / 12 } : tariff}
                     period={period}
-                    onOrder={buy}
-                    isPending={pendingPackageCode === tariff.packageCode[period]}
+                    onOrder={order}
                   />
                 ))}
               </TariffGrid>

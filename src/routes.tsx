@@ -6,7 +6,9 @@ import { PricingPage } from './pages/PricingPage';
 import { ProductPage } from './pages/ProductPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CallbackPage } from './pages/CallbackPage';
+import { CheckoutPage } from './pages/CheckoutPage';
 import { CheckoutReturnPage } from './pages/CheckoutReturnPage';
+import { TermsPage } from './pages/TermsPage';
 import { RequireAuth } from './auth/RequireAuth';
 import { DEFAULT_LANG, routePaths } from './i18n/paths';
 
@@ -25,7 +27,13 @@ export function AppRoutes() {
           <Route index element={<HomePage />} />
           <Route path={routePaths.pricing} element={<PricingPage />} />
           <Route path={routePaths.gpuServers} element={<ProductPage />} />
+          <Route path={routePaths.terms} element={<TermsPage />} />
         </Route>
+        {/* Order confirmation. Deliberately NOT behind RequireAuth: a visitor
+            should see what they are about to buy, and at what price, before
+            being asked to sign in — the sign-in step sits on the confirm button
+            instead. */}
+        <Route path={routePaths.checkout} element={<CheckoutPage />} />
         {/* Personal data (a customer's own instances/billing) — unlike the
             marketing routes above, this requires a signed-in ZITADEL session. */}
         <Route
