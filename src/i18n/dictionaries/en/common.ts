@@ -34,6 +34,11 @@ export const common = {
     },
     copyright: '© {year} hotvds.com — design prototype.',
   },
+  auth: {
+    signInRequired: 'Sign in required',
+    signInHint: 'Sign in with webtalk.one to open your dashboard.',
+    signingIn: 'Signing you in…',
+  },
   langSwitcher: {
     ru: 'RU',
     en: 'EN',

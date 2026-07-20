@@ -7,6 +7,7 @@ import { LanguageSwitcher } from '../ui/LanguageSwitcher';
 import { Button } from '../ui/Button';
 import { MobileNav } from './MobileNav';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
+import { useAuth } from '../../auth/AuthContext';
 import { localizePath, orderPath, routePaths } from '../../i18n/paths';
 import { media } from '../../theme/breakpoints';
 
@@ -84,13 +85,25 @@ export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const t = useTranslation('common');
   const { lang } = useLang();
+  const { isAuthenticated, login, logout, openAuthPrompt } = useAuth();
 
+  const dashboardPath = localizePath(lang, routePaths.dashboard);
   const links = [
     { to: localizePath(lang, routePaths.home), label: t.nav.home },
     { to: localizePath(lang, routePaths.pricing), label: t.nav.pricing },
     { to: localizePath(lang, routePaths.gpuServers), label: t.nav.product },
-    { to: localizePath(lang, routePaths.dashboard), label: t.nav.dashboard },
+    { to: dashboardPath, label: t.nav.dashboard },
   ];
+
+  // Keeps the visitor on the page they're already on (dimmed behind the modal)
+  // instead of navigating to /dashboard just to immediately swap it for a
+  // full-page "sign in required" screen.
+  const handleNavClick = (to: string) => (e: React.MouseEvent) => {
+    if (to === dashboardPath && !isAuthenticated) {
+      e.preventDefault();
+      openAuthPrompt(dashboardPath);
+    }
+  };
 
   return (
     <>
@@ -100,7 +113,12 @@ export function Header() {
             <Logo />
             <Nav>
               {links.map((link) => (
-                <NavItem key={link.to} to={link.to} end={link.to === localizePath(lang, routePaths.home)}>
+                <NavItem
+                  key={link.to}
+                  to={link.to}
+                  end={link.to === localizePath(lang, routePaths.home)}
+                  onClick={handleNavClick(link.to)}
+                >
                   {link.label}
                 </NavItem>
               ))}
@@ -108,6 +126,16 @@ export function Header() {
             <Actions>
               <DesktopOnly>
                 <LanguageSwitcher />
+              </DesktopOnly>
+              <DesktopOnly>
+                <Button
+                  type="button"
+                  $variant="ghost"
+                  $size="sm"
+                  onClick={() => void (isAuthenticated ? logout() : login())}
+                >
+                  {isAuthenticated ? t.buttons.logout : t.buttons.login}
+                </Button>
               </DesktopOnly>
               <DesktopOnly>
                 <Button as={Link} to={orderPath(lang)} $size="sm">

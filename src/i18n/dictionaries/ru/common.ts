@@ -31,6 +31,13 @@ export const common = {
     },
     copyright: '© {year} hotvds.com — дизайн-прототип.',
   },
+  auth: {
+    signInRequired: 'Требуется вход',
+    // Names the identity provider on purpose: the sign-in page lives on
+    // webtalk.one, and an unannounced jump to another domain looks like phishing.
+    signInHint: 'Войдите через webtalk.one, чтобы открыть личный кабинет.',
+    signingIn: 'Входим…',
+  },
   langSwitcher: {
     ru: 'RU',
     en: 'EN',

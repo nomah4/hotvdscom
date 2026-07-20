@@ -1,6 +1,7 @@
 export const dashboard = {
   topbar: {
     welcome: 'С возвращением',
+    admin: 'Админ',
   },
   sidebar: {
     instances: 'Инстансы',
