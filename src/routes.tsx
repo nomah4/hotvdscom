@@ -6,6 +6,7 @@ import { PricingPage } from './pages/PricingPage';
 import { ProductPage } from './pages/ProductPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CallbackPage } from './pages/CallbackPage';
+import { CheckoutReturnPage } from './pages/CheckoutReturnPage';
 import { RequireAuth } from './auth/RequireAuth';
 import { DEFAULT_LANG, routePaths } from './i18n/paths';
 
@@ -32,6 +33,18 @@ export function AppRoutes() {
           element={
             <RequireAuth>
               <DashboardPage />
+            </RequireAuth>
+          }
+        />
+        {/* Payment gateway return. Behind RequireAuth because reading the
+            invoice needs the customer's own token — a session that lapsed while
+            they were on the gateway gets sent to sign in rather than shown a
+            bare error. */}
+        <Route
+          path={routePaths.checkoutReturn}
+          element={
+            <RequireAuth>
+              <CheckoutReturnPage />
             </RequireAuth>
           }
         />

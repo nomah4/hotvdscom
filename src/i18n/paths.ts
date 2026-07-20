@@ -13,6 +13,9 @@ export const routePaths = {
   pricing: 'pricing',
   gpuServers: 'products/gpu-servers',
   dashboard: 'dashboard',
+  // Where the payment gateway returns the customer. Localized (unlike /callback)
+  // because we build this URL ourselves and know which language they left from.
+  checkoutReturn: 'checkout/return',
 };
 
 export function localizePath(lang: Lang, path: string) {

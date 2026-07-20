@@ -1,6 +1,6 @@
 import styled from 'styled-components';
 import { Link } from 'react-router-dom';
-import type { Tariff } from '../../data/tariffs';
+import type { BillingPeriod, Tariff } from '../../data/tariffs';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
@@ -73,9 +73,28 @@ const SpecItem = styled.li<{ $highlighted?: boolean }>`
 
 interface TariffCardProps {
   tariff: Tariff;
+  /** Which term the displayed price is for, and therefore which package Order
+   * buys. Defaults to monthly for surfaces without a term toggle (the homepage
+   * teaser). */
+  period?: BillingPeriod;
+  /** Omit to render Order as a link to the pricing page instead of a purchase
+   * button — used where checkout has no business starting (the teaser). */
+  onOrder?: (tariff: Tariff, period: BillingPeriod) => void;
+  isPending?: boolean;
 }
 
-export function TariffCard({ tariff }: TariffCardProps) {
+// Locale-aware, currency-driven from the tariff itself — never hardcode a
+// symbol, since the catalogue is not limited to one currency (see
+// src/api/catalogue.ts).
+function formatPrice(amount: number, currency: string, lang: string): string {
+  return new Intl.NumberFormat(lang === 'ru' ? 'ru-RU' : 'en-US', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+export function TariffCard({ tariff, period = 'monthly', onOrder, isPending = false }: TariffCardProps) {
   const t = useTranslation('pricing');
   const { lang } = useLang();
 
@@ -88,7 +107,7 @@ export function TariffCard({ tariff }: TariffCardProps) {
       )}
       <Name>{tariff.name}</Name>
       <PriceRow>
-        <Price>${tariff.priceMonthly.toFixed(2)}</Price>
+        <Price>{formatPrice(tariff.priceMonthly, tariff.currency, lang)}</Price>
         <Period $highlighted={tariff.highlighted}>{lang === 'ru' ? '/мес' : '/mo'}</Period>
       </PriceRow>
       <SpecList>
@@ -97,9 +116,21 @@ export function TariffCard({ tariff }: TariffCardProps) {
         <SpecItem $highlighted={tariff.highlighted}>{tariff.ssd} {lang === 'ru' ? 'ГБ NVMe' : 'GB NVMe'}</SpecItem>
         <SpecItem $highlighted={tariff.highlighted}>{tariff.traffic} {lang === 'ru' ? 'трафика' : 'traffic'}</SpecItem>
       </SpecList>
-      <Button as={Link} to={orderPath(lang)} $variant={tariff.highlighted ? 'primary' : 'secondary'} $fullWidth>
-        {t.configurator.cta}
-      </Button>
+      {onOrder ? (
+        <Button
+          type="button"
+          $variant={tariff.highlighted ? 'primary' : 'secondary'}
+          $fullWidth
+          disabled={isPending}
+          onClick={() => onOrder(tariff, period)}
+        >
+          {isPending ? t.checkout.starting : t.configurator.cta}
+        </Button>
+      ) : (
+        <Button as={Link} to={orderPath(lang)} $variant={tariff.highlighted ? 'primary' : 'secondary'} $fullWidth>
+          {t.configurator.cta}
+        </Button>
+      )}
     </Card>
   );
 }

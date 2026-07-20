@@ -9,7 +9,9 @@ import { PricingSlider } from '../components/pricing/PricingSlider';
 import { TariffComparisonTable } from '../components/pricing/TariffComparisonTable';
 import { useTranslation } from '../i18n/LanguageContext';
 import { usePageMeta } from '../i18n/usePageMeta';
-import { tariffs } from '../data/tariffs';
+import type { BillingPeriod } from '../data/tariffs';
+import { useTariffs } from '../api/catalogue';
+import { useCheckout } from '../api/useCheckout';
 import { media } from '../theme/breakpoints';
 
 const Hero = styled.div`
@@ -73,9 +75,19 @@ const FaqList = styled.div`
   margin: 40px auto 0;
 `;
 
+const StatusMessage = styled.p<{ $tone?: 'error' }>`
+  margin-top: 40px;
+  text-align: center;
+  font-size: ${({ theme }) => theme.fontSizes.body};
+  color: ${({ theme, $tone }) => ($tone === 'error' ? theme.colors.semantic.error : theme.colors.neutral[600])};
+`;
+
 export function PricingPage() {
   const t = useTranslation('pricing');
   const [yearly, setYearly] = useState(false);
+  const { tariffs, isLoading, error } = useTariffs();
+  const { buy, pendingPackageCode, error: checkoutError } = useCheckout();
+  const period: BillingPeriod = yearly ? 'annual' : 'monthly';
 
   usePageMeta(t.meta.title, t.meta.description);
 
@@ -112,15 +124,27 @@ export function PricingPage() {
               </ToggleOption>
             </Toggle>
           </ToggleRow>
-          <TariffGrid>
-            {tariffs.map((tariff) => (
-              <TariffCard
-                key={tariff.id}
-                tariff={yearly ? { ...tariff, priceMonthly: tariff.priceYearly / 12 } : tariff}
-              />
-            ))}
-          </TariffGrid>
-          <TariffComparisonTable />
+          {isLoading && <StatusMessage>{t.comparison.loading}</StatusMessage>}
+          {error && <StatusMessage $tone="error">{t.comparison.error}</StatusMessage>}
+          {checkoutError && <StatusMessage $tone="error">{t.checkout.failed}</StatusMessage>}
+          {!isLoading && !error && (
+            <>
+              <TariffGrid>
+                {tariffs.map((tariff) => (
+                  <TariffCard
+                    key={tariff.id}
+                    // The card shows a per-month figure either way; only the
+                    // package bought differs, which `period` carries.
+                    tariff={yearly ? { ...tariff, priceMonthly: tariff.priceYearly / 12 } : tariff}
+                    period={period}
+                    onOrder={buy}
+                    isPending={pendingPackageCode === tariff.packageCode[period]}
+                  />
+                ))}
+              </TariffGrid>
+              <TariffComparisonTable tariffs={tariffs} />
+            </>
+          )}
         </PageContainer>
       </Section>
 

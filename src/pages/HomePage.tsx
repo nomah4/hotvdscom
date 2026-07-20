@@ -13,7 +13,7 @@ import { FaqAccordionItem } from '../components/ui/FaqAccordionItem';
 import { useLang, useTranslation } from '../i18n/LanguageContext';
 import { localizePath, orderPath, routePaths } from '../i18n/paths';
 import { usePageMeta } from '../i18n/usePageMeta';
-import { tariffs } from '../data/tariffs';
+import { useTariffs } from '../api/catalogue';
 import { datacenters } from '../data/datacenters';
 import { media } from '../theme/breakpoints';
 
@@ -204,6 +204,7 @@ export function HomePage() {
 
   usePageMeta(t.meta.title, t.meta.description);
 
+  const { tariffs } = useTariffs();
   const teaserTariffs = tariffs.filter((tariff) => ['start', 'pro', 'business'].includes(tariff.id));
 
   return (
