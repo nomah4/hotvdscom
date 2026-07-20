@@ -25,7 +25,7 @@ export const common = {
       },
       company: {
         title: 'Company',
-        links: ['About', 'Blog', 'Partners', 'Contact'],
+        links: ['About', 'Blog', 'Partners', 'Contact', 'Terms of Service'],
       },
       support: {
         title: 'Support',
@@ -33,6 +33,11 @@ export const common = {
       },
     },
     copyright: '© {year} hotvds.com — design prototype.',
+  },
+  auth: {
+    signInRequired: 'Sign in required',
+    signInHint: 'Sign in with webtalk.one to open your dashboard.',
+    signingIn: 'Signing you in…',
   },
   langSwitcher: {
     ru: 'RU',

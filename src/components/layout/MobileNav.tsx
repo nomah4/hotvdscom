@@ -3,6 +3,7 @@ import { Link, NavLink } from 'react-router-dom';
 import { LanguageSwitcher } from '../ui/LanguageSwitcher';
 import { Button } from '../ui/Button';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
+import { useAuth } from '../../auth/AuthContext';
 import { localizePath, orderPath, routePaths } from '../../i18n/paths';
 
 const Overlay = styled.div<{ $open: boolean }>`
@@ -67,7 +68,23 @@ interface MobileNavProps {
 export function MobileNav({ open, onClose, links }: MobileNavProps) {
   const t = useTranslation('common');
   const { lang } = useLang();
+  const { isAuthenticated, login, logout, openAuthPrompt } = useAuth();
   const homePath = localizePath(lang, routePaths.home);
+  const dashboardPath = localizePath(lang, routePaths.dashboard);
+
+  // Same gating as the desktop header (see Header.tsx): stay on the current page,
+  // dimmed behind the modal, rather than opening the mobile menu just to redirect
+  // straight to a "sign in required" screen. Closes the slide-out menu first so
+  // the modal isn't rendered on top of it.
+  const handleNavClick = (to: string) => (e: React.MouseEvent) => {
+    if (to === dashboardPath && !isAuthenticated) {
+      e.preventDefault();
+      onClose();
+      openAuthPrompt(dashboardPath);
+      return;
+    }
+    onClose();
+  };
 
   return (
     <Overlay $open={open} aria-hidden={!open}>
@@ -78,13 +95,26 @@ export function MobileNav({ open, onClose, links }: MobileNavProps) {
       </TopRow>
       <LinkList>
         {links.map((link) => (
-          <LinkItem key={link.to} to={link.to} end={link.to === homePath} onClick={onClose}>
+          <LinkItem key={link.to} to={link.to} end={link.to === homePath} onClick={handleNavClick(link.to)}>
             {link.label}
           </LinkItem>
         ))}
       </LinkList>
       <Bottom>
         <LanguageSwitcher />
+        {/* The desktop header's sign-in control is hidden below the laptop
+            breakpoint, so without this entry there is no way to sign in on a phone. */}
+        <Button
+          type="button"
+          $variant="secondary"
+          $fullWidth
+          onClick={() => {
+            onClose();
+            void (isAuthenticated ? logout() : login());
+          }}
+        >
+          {isAuthenticated ? t.buttons.logout : t.buttons.login}
+        </Button>
         <Button as={Link} to={orderPath(lang)} $fullWidth onClick={onClose}>
           {t.buttons.order}
         </Button>

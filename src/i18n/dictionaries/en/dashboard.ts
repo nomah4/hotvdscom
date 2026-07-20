@@ -4,6 +4,7 @@ import type { DeepWiden } from '../../deepWiden';
 export const dashboard = {
   topbar: {
     welcome: 'Welcome back',
+    admin: 'Admin',
   },
   sidebar: {
     instances: 'Instances',

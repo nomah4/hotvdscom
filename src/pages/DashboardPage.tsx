@@ -5,7 +5,9 @@ import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
 import { Sidebar } from '../components/dashboard/Sidebar';
 import { InstanceListItem } from '../components/dashboard/InstanceListItem';
 import { BillingWidget } from '../components/dashboard/BillingWidget';
+import { Button } from '../components/ui/Button';
 import { useTranslation, interpolate } from '../i18n/LanguageContext';
+import { useAuth } from '../auth/AuthContext';
 import { instances } from '../data/instances';
 import { media } from '../theme/breakpoints';
 
@@ -52,6 +54,18 @@ const WelcomeText = styled.span`
   ${media.mobile`
     display: inline;
   `}
+`;
+
+const AdminBadge = styled.span`
+  font-family: ${({ theme }) => theme.fonts.heading};
+  font-size: 0.6875rem;
+  font-weight: ${({ theme }) => theme.fontWeights.bold};
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: ${({ theme }) => theme.radii.pill};
+  color: ${({ theme }) => theme.colors.accent[600]};
+  background: ${({ theme }) => theme.colors.accent[50]};
 `;
 
 const Body = styled.div`
@@ -140,6 +154,12 @@ const FooterNote = styled.div`
 
 export function DashboardPage() {
   const t = useTranslation('dashboard');
+  const tc = useTranslation('common');
+  // Reached only via RequireAuth, so `user` is always populated here — but the
+  // fallbacks keep this file safe to reuse standalone (e.g. in a future test).
+  const { displayName, isAdmin, logout } = useAuth();
+  const name = displayName || 'User';
+  const initial = name.charAt(0).toUpperCase();
 
   const avgUptime = (instances.reduce((sum, i) => sum + i.uptime, 0) / instances.length).toFixed(2);
   const activeCount = instances.filter((i) => i.status !== 'stopped').length;
@@ -151,9 +171,13 @@ export function DashboardPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Logo />
             <UserChip>
-              <WelcomeText>{t.topbar.welcome}, Алексей</WelcomeText>
+              <WelcomeText>{t.topbar.welcome}, {name}</WelcomeText>
+              {isAdmin && <AdminBadge>{t.topbar.admin}</AdminBadge>}
               <LanguageSwitcher />
-              <Avatar>А</Avatar>
+              <Avatar>{initial}</Avatar>
+              <Button type="button" $variant="ghost" $size="sm" onClick={() => void logout()}>
+                {tc.buttons.logout}
+              </Button>
             </UserChip>
           </div>
         </PageContainer>

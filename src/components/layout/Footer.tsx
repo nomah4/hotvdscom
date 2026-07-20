@@ -8,7 +8,8 @@ import { media } from '../../theme/breakpoints';
 
 const footerLinkPaths: Record<string, (string | undefined)[]> = {
   product: [routePaths.pricing, routePaths.gpuServers, undefined, undefined],
-  company: [undefined, undefined, undefined, undefined],
+  // Index 4 is Terms — the only company link that leads anywhere real today.
+  company: [undefined, undefined, undefined, undefined, routePaths.terms],
   support: [undefined, undefined, undefined],
 };
 

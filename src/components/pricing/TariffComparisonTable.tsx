@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { tariffs } from '../../data/tariffs';
+import type { Tariff } from '../../data/tariffs';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { media } from '../../theme/breakpoints';
 
@@ -57,8 +57,18 @@ const Check = styled.span<{ $on: boolean }>`
   font-weight: ${({ theme }) => theme.fontWeights.bold};
 `;
 
-export function TariffComparisonTable() {
+interface TariffComparisonTableProps {
+  tariffs: Tariff[];
+}
+
+export function TariffComparisonTable({ tariffs }: TariffComparisonTableProps) {
   const t = useTranslation('pricing');
+
+  // t.features.items[].tiers is a fixed-order array matching TIER_ORDER in
+  // src/api/catalogue.ts (Start/Basic/Pro/Business/Ultra). If the catalogue ever
+  // returns fewer plans than that (an incomplete seed), only pair up what both
+  // sides actually have rather than indexing past the end of `tariffs`.
+  const columns = Math.min(tariffs.length, 5);
 
   return (
     <Wrap>
@@ -66,7 +76,7 @@ export function TariffComparisonTable() {
         <thead>
           <tr>
             <Th>{t.features.title}</Th>
-            {tariffs.map((tariff) => (
+            {tariffs.slice(0, columns).map((tariff) => (
               <Th key={tariff.id}>
                 <TariffName>{tariff.name}</TariffName>
               </Th>
@@ -77,7 +87,7 @@ export function TariffComparisonTable() {
           {t.features.items.map((feature) => (
             <tr key={feature.name}>
               <Td>{feature.name}</Td>
-              {feature.tiers.map((on, i) => (
+              {feature.tiers.slice(0, columns).map((on, i) => (
                 <Td key={tariffs[i].id}>
                   <Check $on={on}>{on ? '✓' : '—'}</Check>
                 </Td>
