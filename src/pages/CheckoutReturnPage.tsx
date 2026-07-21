@@ -64,7 +64,15 @@ export function CheckoutReturnPage() {
   const [params] = useSearchParams();
   // Prefer the query string if a gateway ever echoes one back, but the reliable
   // source is what checkout stashed before handing the customer over.
-  const invoiceId = params.get('invoice_id') ?? params.get('invoice') ?? readPendingInvoice();
+  //
+  // Captured once via the lazy useState initializer, not read fresh on every
+  // render: readPendingInvoice() and clearPendingInvoice() share the same
+  // sessionStorage slot, and the poll below clears it the moment it resolves.
+  // Re-deriving invoiceId from sessionStorage on a later render would then see
+  // nothing, flip it to null, and re-run the effect's early-exit branch —
+  // overwriting an already-correct "paid" result with "failed" for every
+  // successful purchase. Found 2026-07-21 in a real end-to-end payment test.
+  const [invoiceId] = useState(() => params.get('invoice_id') ?? params.get('invoice') ?? readPendingInvoice());
 
   const [outcome, setOutcome] = useState<Outcome>('checking');
   const pollCount = useRef(0);
