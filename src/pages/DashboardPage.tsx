@@ -1,14 +1,16 @@
+import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Logo } from '../components/ui/Logo';
 import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
 import { Sidebar } from '../components/dashboard/Sidebar';
-import { InstanceListItem } from '../components/dashboard/InstanceListItem';
-import { BillingWidget } from '../components/dashboard/BillingWidget';
+import { SubscriptionListItem } from '../components/dashboard/SubscriptionListItem';
 import { Button } from '../components/ui/Button';
-import { useTranslation, interpolate } from '../i18n/LanguageContext';
+import { useLang, useTranslation, interpolate } from '../i18n/LanguageContext';
 import { useAuth } from '../auth/AuthContext';
-import { instances } from '../data/instances';
+import { useSubscriptions } from '../api/subscriptions';
+import { findByPackageCode, useTariffs } from '../api/catalogue';
+import { localizePath, routePaths } from '../i18n/paths';
 import { media } from '../theme/breakpoints';
 
 const Page = styled.div`
@@ -128,21 +130,30 @@ const SectionTitle = styled.h2`
   font-size: ${({ theme }) => theme.fontSizes.h4};
 `;
 
-const InstanceList = styled.div`
+const ServerList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
 `;
 
-const Aside = styled.div`
+// Shared frame for the loading / error / empty states, so the list area keeps
+// the same footprint whether or not there are servers to show.
+const Message = styled.div`
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 16px;
+  padding: 40px 24px;
+  border-radius: ${({ theme }) => theme.radii.lg};
+  background: ${({ theme }) => theme.colors.background.primary};
+  border: 1px dashed ${({ theme }) => theme.colors.neutral[300]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
+`;
 
-  ${media.laptop`
-    width: 320px;
-    flex-shrink: 0;
-  `}
+const ErrorMessage = styled(Message)`
+  border-style: solid;
+  border-color: ${({ theme }) => theme.colors.semantic.error};
+  color: ${({ theme }) => theme.colors.semantic.error};
 `;
 
 const FooterNote = styled.div`
@@ -155,14 +166,29 @@ const FooterNote = styled.div`
 export function DashboardPage() {
   const t = useTranslation('dashboard');
   const tc = useTranslation('common');
+  const { lang } = useLang();
   // Reached only via RequireAuth, so `user` is always populated here — but the
   // fallbacks keep this file safe to reuse standalone (e.g. in a future test).
   const { displayName, isAdmin, logout } = useAuth();
   const name = displayName || 'User';
   const initial = name.charAt(0).toUpperCase();
 
-  const avgUptime = (instances.reduce((sum, i) => sum + i.uptime, 0) / instances.length).toFixed(2);
-  const activeCount = instances.filter((i) => i.status !== 'stopped').length;
+  const { subscriptions, isLoading, error } = useSubscriptions();
+  // Catalogue is enrichment only: it turns a package_code into a plan name and
+  // specs. A failure here must not blank the dashboard, so its error is ignored —
+  // subscriptions still render, just with the raw code and no spec badges.
+  const { tariffs } = useTariffs();
+
+  const activeCount = subscriptions.filter((s) => s.status === 'active').length;
+  // Earliest upcoming renewal among active subscriptions — the next date the user
+  // will be charged. "—" when nothing is active.
+  const nextRenewal = subscriptions
+    .filter((s) => s.status === 'active' && s.valid_until)
+    .map((s) => s.valid_until as string)
+    .sort()[0];
+  const nextRenewalLabel = nextRenewal
+    ? new Date(nextRenewal).toLocaleDateString(lang, { year: 'numeric', month: 'short', day: 'numeric' })
+    : '—';
 
   return (
     <Page>
@@ -190,31 +216,51 @@ export function DashboardPage() {
             <Main>
               <StatRow>
                 <StatCard>
-                  <StatLabel>{t.stats.activeInstances}</StatLabel>
+                  <StatLabel>{t.stats.activeServers}</StatLabel>
                   <StatValue>{activeCount}</StatValue>
                 </StatCard>
                 <StatCard>
-                  <StatLabel>{t.stats.avgUptime}</StatLabel>
-                  <StatValue>{avgUptime}%</StatValue>
+                  <StatLabel>{t.stats.nextRenewal}</StatLabel>
+                  <StatValue>{nextRenewalLabel}</StatValue>
                 </StatCard>
                 <StatCard>
-                  <StatLabel>{t.stats.monthSpend}</StatLabel>
-                  <StatValue>$28.40</StatValue>
+                  <StatLabel>{t.stats.totalPlans}</StatLabel>
+                  <StatValue>{subscriptions.length}</StatValue>
                 </StatCard>
               </StatRow>
 
               <div>
-                <SectionTitle>{t.instances.title}</SectionTitle>
-                <InstanceList style={{ marginTop: 16 }}>
-                  {instances.map((instance) => (
-                    <InstanceListItem key={instance.id} instance={instance} />
-                  ))}
-                </InstanceList>
+                <SectionTitle>{t.subscriptions.title}</SectionTitle>
+                <ServerList style={{ marginTop: 16 }}>
+                  {isLoading ? (
+                    <Message>{t.subscriptions.loading}</Message>
+                  ) : error ? (
+                    <ErrorMessage>{t.subscriptions.error}</ErrorMessage>
+                  ) : subscriptions.length === 0 ? (
+                    <Message>
+                      {t.subscriptions.empty}
+                      <Button as={Link} to={localizePath(lang, routePaths.pricing)} $size="sm">
+                        {t.subscriptions.emptyCta}
+                      </Button>
+                    </Message>
+                  ) : (
+                    subscriptions.map((subscription) => {
+                      const match = subscription.package_code
+                        ? findByPackageCode(tariffs, subscription.package_code)
+                        : null;
+                      return (
+                        <SubscriptionListItem
+                          key={subscription.subscription_id}
+                          subscription={subscription}
+                          tariff={match?.tariff}
+                          period={match?.period}
+                        />
+                      );
+                    })
+                  )}
+                </ServerList>
               </div>
             </Main>
-            <Aside>
-              <BillingWidget />
-            </Aside>
           </Layout>
         </PageContainer>
       </Body>
