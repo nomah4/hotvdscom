@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import styled from 'styled-components';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Logo } from '../components/ui/Logo';

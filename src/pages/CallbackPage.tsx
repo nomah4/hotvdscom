@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import styled from 'styled-components';
 import { userManager, type SigninState } from '../auth/userManager';
 import { DEFAULT_LANG } from '../i18n/paths';

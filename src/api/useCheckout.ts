@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useAuth } from '../auth/AuthContext';
 import { useLang } from '../i18n/LanguageContext';
 import { checkoutPath, localizePath, routePaths } from '../i18n/paths';

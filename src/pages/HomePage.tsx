@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Section } from '../components/layout/Section';
 import { PageContainer } from '../components/layout/PageContainer';
 import { SectionHeading } from '../components/ui/SectionHeading';
