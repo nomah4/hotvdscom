@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router';
 import styled from 'styled-components';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Section } from '../components/layout/Section';
+import { TermsModal } from '../components/legal/TermsModal';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../auth/AuthContext';
 import { useLang, useTranslation } from '../i18n/LanguageContext';
@@ -78,12 +79,31 @@ const Note = styled.p`
   color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
-const TermsLabel = styled.label`
+const TermsRow = styled.div`
   display: flex;
   align-items: flex-start;
   gap: 10px;
   font-size: ${({ theme }) => theme.fontSizes.small};
   color: ${({ theme }) => theme.colors.neutral[700]};
+`;
+
+const TermsCheckbox = styled.input`
+  margin-top: 2px;
+  cursor: pointer;
+`;
+
+const TermsAcceptLabel = styled.label`
+  cursor: pointer;
+`;
+
+// A button, not a link, because it opens a dialog rather than going anywhere.
+// Styled to read as a link so it still looks like the terms are there to be read.
+const TermsTrigger = styled.button`
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: ${({ theme }) => theme.colors.indigo[900]};
+  text-decoration: underline;
   cursor: pointer;
 `;
 
@@ -134,6 +154,7 @@ export function CheckoutPage() {
   const { tariffs, isLoading, error } = useTariffs();
   const { confirm, isSubmitting, error: checkoutError } = useCheckout();
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
 
   const match = findByPackageCode(tariffs, packageCode);
   const backToPricing = (
@@ -208,19 +229,24 @@ export function CheckoutPage() {
 
           {isAuthenticated ? (
             <>
-              <TermsLabel>
-                <input
+              {/* The checkbox and the terms trigger are deliberately siblings rather
+                  than both wrapped in one <label>: a click anywhere inside a label
+                  toggles its control, so a customer opening the terms to read them
+                  would have silently accepted them at the same time. */}
+              <TermsRow>
+                <TermsCheckbox
+                  id="accept-terms"
                   type="checkbox"
                   checked={termsAccepted}
                   onChange={(event) => setTermsAccepted(event.target.checked)}
                 />
                 <span>
-                  {t.checkout.termsPrefix}{' '}
-                  <Link to={localizePath(lang, routePaths.terms)} target="_blank" rel="noreferrer">
+                  <TermsAcceptLabel htmlFor="accept-terms">{t.checkout.termsPrefix}</TermsAcceptLabel>{' '}
+                  <TermsTrigger type="button" onClick={() => setTermsOpen(true)}>
                     {t.checkout.termsLink}
-                  </Link>
+                  </TermsTrigger>
                 </span>
-              </TermsLabel>
+              </TermsRow>
               {checkoutError && <ErrorText>{t.checkout.failed}</ErrorText>}
               <Actions>
                 <Button
@@ -251,6 +277,7 @@ export function CheckoutPage() {
           )}
         </Panel>
       </PageContainer>
+      <TermsModal isOpen={termsOpen} onClose={() => setTermsOpen(false)} />
     </Section>
   );
 }

@@ -11,7 +11,7 @@ production hosting control panel.
 
 - **Vite + React 19 + TypeScript**
 - **styled-components** for styling, theme tokens in `src/theme/`
-- **react-router-dom** for routing, including `/:lang` language-prefixed URLs
+- **React Router** for routing, including `/:lang` language-prefixed URLs
 - Self-hosted fonts via `@fontsource/*` (Manrope, Inter, JetBrains Mono) — no external font CDN
 
 ## Pages

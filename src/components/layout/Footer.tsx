@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { PageContainer } from './PageContainer';
 import { Logo } from '../ui/Logo';
 import { useLang, useTranslation, interpolate } from '../../i18n/LanguageContext';

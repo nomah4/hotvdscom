@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useParams } from 'react-router-dom';
+import { Navigate, Outlet, useParams } from 'react-router';
 import { LanguageProvider } from '../../i18n/LanguageContext';
 import { AuthPromptModal } from '../../auth/AuthPromptModal';
 import { DEFAULT_LANG, isLang } from '../../i18n/paths';

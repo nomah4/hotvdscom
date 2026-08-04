@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router';
 import { LanguageSwitcher } from '../ui/LanguageSwitcher';
 import { Button } from '../ui/Button';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';

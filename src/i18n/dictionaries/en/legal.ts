@@ -15,6 +15,8 @@ export const legal = {
     title: 'Terms of Service',
     draftWarning:
       'Draft. The legal text has not been reviewed and is not in force — the sections below are Victor’s to complete.',
+    close: 'Close',
+    openFullPage: 'Open as a full page',
     sections: [
       { heading: 'Parties and offer (оферта)', placeholder: TODO },
       { heading: 'Description of the service', placeholder: TODO },

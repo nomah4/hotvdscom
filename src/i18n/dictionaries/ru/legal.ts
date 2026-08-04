@@ -12,6 +12,8 @@ export const legal = {
     title: 'Условия обслуживания',
     draftWarning:
       'Черновик. Юридический текст ещё не согласован и не имеет силы — разделы ниже заполняет Victor.',
+    close: 'Закрыть',
+    openFullPage: 'Открыть на отдельной странице',
     sections: [
       { heading: 'Стороны и оферта', placeholder: TODO },
       { heading: 'Описание услуги', placeholder: TODO },

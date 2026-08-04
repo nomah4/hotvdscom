@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 
 // SPA navigation keeps the previous scroll position; reset it on route change
 // and honor #hash targets (e.g. the pricing configurator CTAs link to it).

@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import type { BillingPeriod, Tariff } from '../../data/tariffs';
 import { Button } from './Button';
 import { Badge } from './Badge';

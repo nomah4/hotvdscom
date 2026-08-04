@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router';
 import styled from 'styled-components';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Section } from '../components/layout/Section';

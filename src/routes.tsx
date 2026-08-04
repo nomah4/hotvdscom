@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router';
 import { MarketingLayout } from './components/layout/MarketingLayout';
 import { LangGate } from './components/layout/LangGate';
 import { HomePage } from './pages/HomePage';
