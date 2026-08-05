@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import styled from 'styled-components';
 import { Section } from '../components/layout/Section';
 import { PageContainer } from '../components/layout/PageContainer';
@@ -11,6 +12,7 @@ import { useTranslation } from '../i18n/LanguageContext';
 import { usePageMeta } from '../i18n/usePageMeta';
 import type { BillingPeriod } from '../data/tariffs';
 import { useTariffs } from '../api/catalogue';
+import { normalizeCurrency, SUPPORTED_CURRENCIES } from '../api/config';
 import { useOrderIntent } from '../api/useCheckout';
 import { media } from '../theme/breakpoints';
 
@@ -32,9 +34,11 @@ const HeroSubtitle = styled.p`
   color: ${({ theme }) => theme.colors.neutral[700]};
 `;
 
-const ToggleRow = styled.div`
+const PricingControls = styled.div`
   display: flex;
   justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
   margin: 32px 0 0;
 `;
 
@@ -85,11 +89,29 @@ const StatusMessage = styled.p<{ $tone?: 'error' }>`
 export function PricingPage() {
   const t = useTranslation('pricing');
   const [yearly, setYearly] = useState(false);
-  const { tariffs, isLoading, error } = useTariffs();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const searchParams = new URLSearchParams(location.search);
+  const currency = normalizeCurrency(searchParams.get('currency'));
+  const { tariffs, isLoading, error } = useTariffs(currency);
   // Order now navigates to the confirmation page; nothing is charged from here,
   // so there is no in-flight state or failure for this page to render.
   const order = useOrderIntent();
   const period: BillingPeriod = yearly ? 'annual' : 'monthly';
+
+  const setCurrency = (nextCurrency: string) => {
+    const nextParams = new URLSearchParams(location.search);
+    nextParams.set('currency', nextCurrency);
+    const nextSearch = nextParams.toString();
+    navigate(
+      {
+        pathname: location.pathname,
+        search: nextSearch ? `?${nextSearch}` : '',
+        hash: location.hash,
+      },
+      { replace: true },
+    );
+  };
 
   usePageMeta(t.meta.title, t.meta.description);
 
@@ -108,7 +130,7 @@ export function PricingPage() {
         <PageContainer>
           <SectionHeading title={t.configurator.title} />
           <div style={{ marginTop: 32 }}>
-            <PricingSlider />
+            <PricingSlider currency={currency} />
           </div>
         </PageContainer>
       </Section>
@@ -116,7 +138,19 @@ export function PricingPage() {
       <Section $background="secondary">
         <PageContainer>
           <SectionHeading title={t.comparison.title} subtitle={t.comparison.subtitle} />
-          <ToggleRow>
+          <PricingControls>
+            <Toggle role="group" aria-label="Currency">
+              {SUPPORTED_CURRENCIES.map((item) => (
+                <ToggleOption
+                  key={item}
+                  type="button"
+                  $active={currency === item}
+                  onClick={() => setCurrency(item)}
+                >
+                  {item}
+                </ToggleOption>
+              ))}
+            </Toggle>
             <Toggle role="group">
               <ToggleOption type="button" $active={!yearly} onClick={() => setYearly(false)}>
                 {t.billingToggle.monthly}
@@ -125,7 +159,7 @@ export function PricingPage() {
                 {t.billingToggle.yearly}
               </ToggleOption>
             </Toggle>
-          </ToggleRow>
+          </PricingControls>
           {isLoading && <StatusMessage>{t.comparison.loading}</StatusMessage>}
           {error && <StatusMessage $tone="error">{t.comparison.error}</StatusMessage>}
           {!isLoading && !error && (

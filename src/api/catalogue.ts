@@ -203,7 +203,7 @@ interface UseConfigurableVdsResult {
  * Live plan list for the storefront. No cache/dedup layer — each caller fetches
  * independently; add one only if duplicate requests turn out to matter.
  */
-export function useTariffs(currency = DEFAULT_CURRENCY): UseTariffsResult {
+export function useTariffs(currency: string = DEFAULT_CURRENCY): UseTariffsResult {
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -232,7 +232,7 @@ export function useTariffs(currency = DEFAULT_CURRENCY): UseTariffsResult {
   return { tariffs, isLoading, error };
 }
 
-export function useConfigurableVds(currency = DEFAULT_CURRENCY): UseConfigurableVdsResult {
+export function useConfigurableVds(currency: string = DEFAULT_CURRENCY): UseConfigurableVdsResult {
   const [customPackage, setCustomPackage] = useState<ConfigurableVdsPackage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

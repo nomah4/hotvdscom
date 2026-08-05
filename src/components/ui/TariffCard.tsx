@@ -5,6 +5,7 @@ import { Button } from './Button';
 import { Badge } from './Badge';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
 import { orderPath } from '../../i18n/paths';
+import { formatMoneyMajor } from '../../utils/money';
 
 const Card = styled.div<{ $highlighted?: boolean }>`
   display: flex;
@@ -83,17 +84,6 @@ interface TariffCardProps {
   isPending?: boolean;
 }
 
-// Locale-aware, currency-driven from the tariff itself — never hardcode a
-// symbol, since the catalogue is not limited to one currency (see
-// src/api/catalogue.ts).
-function formatPrice(amount: number, currency: string, lang: string): string {
-  return new Intl.NumberFormat(lang === 'ru' ? 'ru-RU' : 'en-US', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
 export function TariffCard({ tariff, period = 'monthly', onOrder, isPending = false }: TariffCardProps) {
   const t = useTranslation('pricing');
   const { lang } = useLang();
@@ -107,7 +97,7 @@ export function TariffCard({ tariff, period = 'monthly', onOrder, isPending = fa
       )}
       <Name>{tariff.name}</Name>
       <PriceRow>
-        <Price>{formatPrice(tariff.priceMonthly, tariff.currency, lang)}</Price>
+        <Price>{formatMoneyMajor(tariff.priceMonthly, tariff.currency, lang)}</Price>
         <Period $highlighted={tariff.highlighted}>{lang === 'ru' ? '/мес' : '/mo'}</Period>
       </PriceRow>
       <SpecList>

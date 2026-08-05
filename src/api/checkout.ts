@@ -51,7 +51,7 @@ function authHeaders(accessToken: string): Record<string, string> {
 export async function fetchPaymentMethods(
   accessToken: string,
   amountMinor: number,
-  currency = DEFAULT_CURRENCY,
+  currency: string = DEFAULT_CURRENCY,
 ): Promise<PaymentMethod[]> {
   const url = new URL(`${BILLING_API_BASE}/api/v1/payment-methods`);
   url.searchParams.set('tenant_id', TENANT_ID);

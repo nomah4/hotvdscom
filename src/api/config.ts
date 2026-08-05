@@ -9,11 +9,19 @@ export const TENANT_ID = 'vivi23';
 // anything else the same Billing instance sells.
 export const PROJECT_CODE = 'hotvds';
 
-// The only currency with a configured payment gateway on this install. Billing
-// itself is multi-currency (a package may carry several prices), so this is a
-// storefront default rather than a limit — widen it once a gateway that settles
-// another currency exists.
-export const DEFAULT_CURRENCY = 'RUB';
+// Storefront display currency. Billing stores explicit prices per currency; the
+// payment step still depends on the Payment Orchestrator having a gateway for
+// the selected currency.
+export const SUPPORTED_CURRENCIES = ['USD', 'RUB'] as const;
+export type BillingCurrency = (typeof SUPPORTED_CURRENCIES)[number];
+export const DEFAULT_CURRENCY: BillingCurrency = 'USD';
+
+export function normalizeCurrency(value: string | null | undefined): BillingCurrency {
+  const upper = value?.toUpperCase();
+  return SUPPORTED_CURRENCIES.includes(upper as BillingCurrency)
+    ? (upper as BillingCurrency)
+    : DEFAULT_CURRENCY;
+}
 
 export interface ApiErrorBody {
   error?: { code?: string; message?: string };

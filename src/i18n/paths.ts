@@ -42,8 +42,10 @@ export function orderPath(lang: Lang) {
  * re-reads it from the catalogue, so a shared or hand-edited link cannot show a
  * stale or forged total.
  */
-export function checkoutPath(lang: Lang, packageCode: string) {
-  return `${localizePath(lang, routePaths.checkout)}?package=${encodeURIComponent(packageCode)}`;
+export function checkoutPath(lang: Lang, packageCode: string, currency?: string) {
+  const params = new URLSearchParams({ package: packageCode });
+  if (currency) params.set('currency', currency);
+  return `${localizePath(lang, routePaths.checkout)}?${params.toString()}`;
 }
 
 export interface CustomCheckoutConfiguration {
@@ -54,7 +56,12 @@ export interface CustomCheckoutConfiguration {
   datacenter: string;
 }
 
-export function customCheckoutPath(lang: Lang, packageCode: string, configuration: CustomCheckoutConfiguration) {
+export function customCheckoutPath(
+  lang: Lang,
+  packageCode: string,
+  configuration: CustomCheckoutConfiguration,
+  currency?: string,
+) {
   const params = new URLSearchParams({
     package: packageCode,
     cpu: String(configuration.cpu),
@@ -63,5 +70,6 @@ export function customCheckoutPath(lang: Lang, packageCode: string, configuratio
     os: configuration.os,
     datacenter: configuration.datacenter,
   });
+  if (currency) params.set('currency', currency);
   return `${localizePath(lang, routePaths.checkout)}?${params.toString()}`;
 }

@@ -9,6 +9,8 @@ import { useConfigurableVds } from '../../api/catalogue';
 import { createQuote } from '../../api/checkout';
 import type { CustomVdsConfiguration } from '../../api/checkout';
 import { useCustomOrderIntent } from '../../api/useCheckout';
+import { DEFAULT_CURRENCY } from '../../api/config';
+import { formatMoneyMinor } from '../../utils/money';
 
 const Card = styled.div`
   display: grid;
@@ -163,19 +165,15 @@ function optionList(
   return source.filter((item) => allowedSet.has(item.value));
 }
 
-function formatMinor(amountMinor: number, currency: string, lang: string): string {
-  return new Intl.NumberFormat(lang === 'ru' ? 'ru-RU' : 'en-US', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amountMinor / 100);
+interface PricingSliderProps {
+  currency?: string;
 }
 
-export function PricingSlider() {
+export function PricingSlider({ currency = DEFAULT_CURRENCY }: PricingSliderProps) {
   const t = useTranslation('pricing');
   const tc = useTranslation('common');
   const { lang } = useLang();
-  const { customPackage, isLoading, error } = useConfigurableVds();
+  const { customPackage, isLoading, error } = useConfigurableVds(currency);
   const orderCustom = useCustomOrderIntent();
   const [cpu, setCpu] = useState(4);
   const [ram, setRam] = useState(8);
@@ -254,7 +252,7 @@ export function PricingSlider() {
 
   const priceText = quoteMinor === null
     ? '—'
-    : formatMinor(quoteMinor, customPackage?.currency ?? 'RUB', lang);
+    : formatMoneyMinor(quoteMinor, customPackage?.currency ?? currency, lang);
   const canOrder = Boolean(packageCode && quoteMinor !== null && !quoteLoading && !quoteError);
 
   return (
@@ -349,7 +347,7 @@ export function PricingSlider() {
           $fullWidth
           disabled={!canOrder}
           onClick={() => {
-            if (packageCode) orderCustom(packageCode, configuration);
+            if (packageCode && customPackage) orderCustom(packageCode, configuration, customPackage.currency);
           }}
         >
           {t.configurator.cta}

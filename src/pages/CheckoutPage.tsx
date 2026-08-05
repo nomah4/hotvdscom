@@ -12,7 +12,9 @@ import { findByPackageCode, useTariffs } from '../api/catalogue';
 import { createQuote } from '../api/checkout';
 import type { CustomVdsConfiguration, Quote } from '../api/checkout';
 import { customVdsIntentKey, useCheckout } from '../api/useCheckout';
+import { normalizeCurrency } from '../api/config';
 import { datacenters } from '../data/datacenters';
+import { formatMoneyMajor } from '../utils/money';
 
 const Panel = styled.div`
   max-width: 520px;
@@ -127,16 +129,6 @@ const StatusMessage = styled.p`
   color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
-// Mirrors TariffCard: currency comes from the catalogue, never a hardcoded
-// symbol, since the catalogue is not limited to one currency.
-function formatPrice(amount: number, currency: string, lang: string): string {
-  return new Intl.NumberFormat(lang === 'ru' ? 'ru-RU' : 'en-US', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
 const CUSTOM_PACKAGE_CODE_RE = /^VDS_CUSTOM_(MONTHLY|ANNUAL)$/;
 
 function customPeriodFromPackageCode(packageCode: string): 'monthly' | 'annual' | null {
@@ -182,10 +174,11 @@ export function CheckoutPage() {
   const location = useLocation();
   const [params] = useSearchParams();
   const packageCode = params.get('package') ?? '';
+  const checkoutCurrency = normalizeCurrency(params.get('currency'));
   const customPeriod = customPeriodFromPackageCode(packageCode);
 
   const { isAuthenticated, user, login, isLoading: authLoading } = useAuth();
-  const { tariffs, isLoading, error } = useTariffs();
+  const { tariffs, isLoading, error } = useTariffs(checkoutCurrency);
   const { confirm, confirmQuote, isSubmitting, error: checkoutError } = useCheckout();
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
@@ -215,7 +208,7 @@ export function CheckoutPage() {
     let active = true;
     setQuoteLoading(true);
     setQuoteError(null);
-    createQuote({ packageCode, configuration: customConfiguration })
+    createQuote({ packageCode, configuration: customConfiguration, currency: checkoutCurrency })
       .then((nextQuote) => {
         if (active) setQuote(nextQuote);
       })
@@ -232,7 +225,7 @@ export function CheckoutPage() {
     return () => {
       active = false;
     };
-  }, [customPeriod, customConfiguration, packageCode]);
+  }, [customPeriod, customConfiguration, packageCode, checkoutCurrency]);
 
   if (authLoading || (!customPeriod && isLoading) || (customPeriod && quoteLoading && !quote)) {
     return (
@@ -304,7 +297,7 @@ export function CheckoutPage() {
             <Divider />
             <TotalRow>
               <span>{t.checkout.totalLabel}</span>
-              <TotalAmount>{formatPrice(total, currency, lang)}</TotalAmount>
+              <TotalAmount>{formatMoneyMajor(total, currency, lang)}</TotalAmount>
             </TotalRow>
           </Card>
 
@@ -338,7 +331,7 @@ export function CheckoutPage() {
                   disabled={!termsAccepted || isSubmitting}
                   onClick={() => {
                     if (customPeriod) {
-                      void confirmQuote(quote!, customVdsIntentKey(packageCode, quote!.configuration));
+                      void confirmQuote(quote!, customVdsIntentKey(packageCode, quote!.configuration, quote!.currency));
                     } else {
                       void confirm(match!.tariff, period);
                     }

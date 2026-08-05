@@ -64,7 +64,8 @@ export function clearPendingInvoice(): void {
 }
 
 /**
- * One idempotency key per intent to buy a given package, not per click.
+ * One idempotency key per intent to buy a given package/currency/configuration,
+ * not per click.
  *
  * Billing replays the original response for a repeated key, so reusing it is
  * what makes a double-click — or a browser Back out of the gateway followed by
@@ -102,10 +103,11 @@ export function clearOrderIdempotencyKey(idempotencyScope: string): void {
   }
 }
 
-export function customVdsIntentKey(packageCode: string, configuration: CustomVdsConfiguration): string {
+export function customVdsIntentKey(packageCode: string, configuration: CustomVdsConfiguration, currency: string): string {
   return [
     'custom',
     packageCode,
+    currency,
     configuration.cpu,
     configuration.ram_gb,
     configuration.ssd_gb,
@@ -129,19 +131,23 @@ export function useOrderIntent(): (tariff: Tariff, period: BillingPeriod) => voi
 
   return useCallback(
     (tariff: Tariff, period: BillingPeriod) => {
-      navigate(checkoutPath(lang, tariff.packageCode[period]));
+      navigate(checkoutPath(lang, tariff.packageCode[period], tariff.currency));
     },
     [navigate, lang],
   );
 }
 
-export function useCustomOrderIntent(): (packageCode: string, configuration: CustomVdsConfiguration) => void {
+export function useCustomOrderIntent(): (
+  packageCode: string,
+  configuration: CustomVdsConfiguration,
+  currency: string,
+) => void {
   const navigate = useNavigate();
   const { lang } = useLang();
 
   return useCallback(
-    (packageCode: string, configuration: CustomVdsConfiguration) => {
-      navigate(customCheckoutPath(lang, packageCode, configuration));
+    (packageCode: string, configuration: CustomVdsConfiguration, currency: string) => {
+      navigate(customCheckoutPath(lang, packageCode, configuration, currency));
     },
     [navigate, lang],
   );
@@ -204,6 +210,7 @@ export function useCheckout(): UseCheckoutResult {
           localizePath(lang, routePaths.checkoutReturn),
           window.location.origin,
         ).toString();
+        const idempotencyScope = `${packageCode}:${tariff.currency}`;
         const invoice = await createInvoice({
           accessToken,
           packageCode,
@@ -213,13 +220,13 @@ export function useCheckout(): UseCheckoutResult {
           returnUrl,
           customerEmail: email,
           currency: tariff.currency,
-          idempotencyKey: orderIdempotencyKey(packageCode),
+          idempotencyKey: orderIdempotencyKey(idempotencyScope),
         });
 
         if (!invoice.payment_url) {
           throw new Error('no_payment_url');
         }
-        rememberPendingInvoice(invoice.invoice_id, packageCode);
+        rememberPendingInvoice(invoice.invoice_id, idempotencyScope);
         // The key is deliberately NOT cleared here. Backing out of the gateway
         // and confirming again must replay this same invoice, not open a second
         // one; CheckoutReturnPage retires it when the purchase settles.
