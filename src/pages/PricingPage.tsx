@@ -12,7 +12,7 @@ import { useTranslation } from '../i18n/LanguageContext';
 import { usePageMeta } from '../i18n/usePageMeta';
 import type { BillingPeriod } from '../data/tariffs';
 import { useTariffs } from '../api/catalogue';
-import { normalizeCurrency, SUPPORTED_CURRENCIES } from '../api/config';
+import { normalizeCurrency, STOREFRONT_CURRENCIES } from '../api/config';
 import { useOrderIntent } from '../api/useCheckout';
 import { media } from '../theme/breakpoints';
 
@@ -140,7 +140,7 @@ export function PricingPage() {
           <SectionHeading title={t.comparison.title} subtitle={t.comparison.subtitle} />
           <PricingControls>
             <Toggle role="group" aria-label="Currency">
-              {SUPPORTED_CURRENCIES.map((item) => (
+              {STOREFRONT_CURRENCIES.map((item) => (
                 <ToggleOption
                   key={item}
                   type="button"

@@ -9,16 +9,20 @@ export const TENANT_ID = 'vivi23';
 // anything else the same Billing instance sells.
 export const PROJECT_CODE = 'hotvds';
 
-// Storefront display currency. Billing stores explicit prices per currency; the
-// payment step still depends on the Payment Orchestrator having a gateway for
-// the selected currency.
+// Billing may store prices for more currencies than this storefront can charge
+// today. Keep USD in the catalogue for the future USD gateway, but only expose
+// currencies that have a working payment path.
 export const SUPPORTED_CURRENCIES = ['USD', 'RUB'] as const;
 export type BillingCurrency = (typeof SUPPORTED_CURRENCIES)[number];
-export const DEFAULT_CURRENCY: BillingCurrency = 'USD';
+export const STOREFRONT_CURRENCIES = ['RUB'] as const satisfies readonly BillingCurrency[];
+export const DEFAULT_CURRENCY: BillingCurrency = 'RUB';
 
-export function normalizeCurrency(value: string | null | undefined): BillingCurrency {
+export function normalizeCurrency(
+  value: string | null | undefined,
+  allowedCurrencies: readonly BillingCurrency[] = STOREFRONT_CURRENCIES,
+): BillingCurrency {
   const upper = value?.toUpperCase();
-  return SUPPORTED_CURRENCIES.includes(upper as BillingCurrency)
+  return allowedCurrencies.includes(upper as BillingCurrency)
     ? (upper as BillingCurrency)
     : DEFAULT_CURRENCY;
 }
