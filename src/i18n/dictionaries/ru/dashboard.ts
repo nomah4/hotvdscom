@@ -38,6 +38,7 @@ export const dashboard = {
     validUntil: 'Действует до',
     autoRenew: 'Автопродление',
     unknownPlan: 'Неизвестный план',
+    customPlan: 'Индивидуальный VDS',
     loading: 'Загружаем ваши серверы…',
     error: 'Не удалось загрузить ваши серверы.',
     empty: 'У вас пока нет серверов.',

@@ -41,6 +41,7 @@ export const dashboard = {
     validUntil: 'Valid until',
     autoRenew: 'Auto-renew',
     unknownPlan: 'Unknown plan',
+    customPlan: 'Custom VDS',
     loading: 'Loading your servers…',
     error: 'Could not load your servers.',
     empty: "You don't have any servers yet.",

@@ -2,6 +2,7 @@ import styled from 'styled-components';
 import type { InstanceStatus } from '../../data/instances';
 import type { Subscription, SubscriptionStatus } from '../../api/subscriptions';
 import type { Tariff } from '../../data/tariffs';
+import { datacenters } from '../../data/datacenters';
 import { StatusDot } from '../ui/StatusDot';
 import { SpecBadge } from '../ui/SpecBadge';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
@@ -86,6 +87,19 @@ const STATUS_TONE: Record<SubscriptionStatus, InstanceStatus> = {
   revoked: 'stopped',
 };
 
+function periodFromPackageCode(packageCode: string | null): 'monthly' | 'annual' | undefined {
+  if (packageCode?.endsWith('_MONTHLY')) return 'monthly';
+  if (packageCode?.endsWith('_ANNUAL')) return 'annual';
+  return undefined;
+}
+
+function osDisplayName(value: string): string {
+  return value
+    .split('-')
+    .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+    .join(' ');
+}
+
 interface SubscriptionListItemProps {
   subscription: Subscription;
   /** Catalogue match for the subscription's package_code, when the plan is still
@@ -98,8 +112,10 @@ interface SubscriptionListItemProps {
 export function SubscriptionListItem({ subscription, tariff, period }: SubscriptionListItemProps) {
   const t = useTranslation('dashboard');
   const { lang } = useLang();
+  const configuration = subscription.configuration ?? null;
 
-  const planName = tariff?.name ?? subscription.package_code ?? t.subscriptions.unknownPlan;
+  const planName = tariff?.name ?? (configuration ? t.subscriptions.customPlan : subscription.package_code ?? t.subscriptions.unknownPlan);
+  const resolvedPeriod = period ?? periodFromPackageCode(subscription.package_code);
   const tone = STATUS_TONE[subscription.status];
   const validUntil = subscription.valid_until
     ? new Date(subscription.valid_until).toLocaleDateString(lang, {
@@ -115,23 +131,33 @@ export function SubscriptionListItem({ subscription, tariff, period }: Subscript
     subscription.provisioning_status !== 'succeeded'
       ? t.subscriptions.provisioning[subscription.provisioning_status]
       : null;
+  const dc = configuration?.datacenter ? datacenters.find((item) => item.id === configuration.datacenter) : null;
+  const datacenterName = dc ? (lang === 'ru' ? dc.city : dc.cityEn) : configuration?.datacenter;
 
   return (
     <Row>
       <NameCell>
         <Name>{planName}</Name>
-        {period && <Term>{t.subscriptions.term[period]}</Term>}
+        {resolvedPeriod && <Term>{t.subscriptions.term[resolvedPeriod]}</Term>}
       </NameCell>
 
       <StatusDot status={tone} label={t.subscriptions.statusLabels[subscription.status]} />
 
-      {tariff && (
+      {tariff ? (
         <SpecsCell>
           <SpecBadge label="CPU" value={`${tariff.cpu} vCPU`} />
           <SpecBadge label="RAM" value={`${tariff.ram} GB`} />
           <SpecBadge label="SSD" value={`${tariff.ssd} GB`} />
         </SpecsCell>
-      )}
+      ) : configuration ? (
+        <SpecsCell>
+          {configuration.cpu && <SpecBadge label="CPU" value={`${configuration.cpu} vCPU`} />}
+          {configuration.ram_gb && <SpecBadge label="RAM" value={`${configuration.ram_gb} GB`} />}
+          {configuration.ssd_gb && <SpecBadge label="SSD" value={`${configuration.ssd_gb} GB`} />}
+          {configuration.os && <SpecBadge label="OS" value={osDisplayName(configuration.os)} />}
+          {datacenterName && <SpecBadge label="DC" value={datacenterName} />}
+        </SpecsCell>
+      ) : null}
 
       <MetaCell>
         <ValidUntil>

@@ -16,6 +16,9 @@ export const pricing = {
     osLabel: 'Операционная система',
     datacenterLabel: 'Дата-центр',
     priceLabel: 'Стоимость в месяц',
+    priceLabelAnnual: 'Стоимость за год',
+    loadingPrice: 'Рассчитываем…',
+    priceUnavailable: 'Расчёт недоступен',
     cta: 'Заказать',
   },
   billingToggle: {
@@ -53,6 +56,9 @@ export const pricing = {
     failedBody: 'Средства не списаны. Можно попробовать снова с любого тарифа.',
     backToPricing: 'Вернуться к тарифам',
     toDashboard: 'В личный кабинет',
+    customPlanName: 'Индивидуальный VDS',
+    pricingQuoteLoading: 'Рассчитываем конфигурацию…',
+    pricingQuoteFailed: 'Не удалось рассчитать эту конфигурацию — выберите другие параметры или попробуйте ещё раз.',
   },
   features: {
     title: 'Что входит в каждый тариф',

@@ -2,9 +2,10 @@ import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../auth/AuthContext';
 import { useLang } from '../i18n/LanguageContext';
-import { checkoutPath, localizePath, routePaths } from '../i18n/paths';
+import { checkoutPath, customCheckoutPath, localizePath, routePaths } from '../i18n/paths';
 import type { BillingPeriod, Tariff } from '../data/tariffs';
-import { createInvoice, fetchPaymentMethods } from './checkout';
+import { createInvoice, createInvoiceFromQuote, fetchPaymentMethods } from './checkout';
+import type { CustomVdsConfiguration, Quote } from './checkout';
 
 /**
  * The invoice the customer was last sent to pay.
@@ -18,14 +19,14 @@ const PENDING_INVOICE_KEY = 'hotvds.pendingInvoiceId';
 
 interface PendingInvoice {
   invoiceId: string;
-  /** Carried so clearing a settled purchase can also retire its idempotency key
-   * — the return page knows the invoice, not the package it was for. */
-  packageCode: string;
+  /** Carried so clearing a settled purchase can also retire its idempotency key.
+   * Older builds stored this as `packageCode`; keep reading that for migration. */
+  idempotencyScope: string;
 }
 
-export function rememberPendingInvoice(invoiceId: string, packageCode: string): void {
+export function rememberPendingInvoice(invoiceId: string, idempotencyScope: string): void {
   try {
-    sessionStorage.setItem(PENDING_INVOICE_KEY, JSON.stringify({ invoiceId, packageCode }));
+    sessionStorage.setItem(PENDING_INVOICE_KEY, JSON.stringify({ invoiceId, idempotencyScope }));
   } catch {
     // Private mode or storage disabled: the return page falls back to telling
     // the customer to check their dashboard.
@@ -36,8 +37,9 @@ function readPendingRecord(): PendingInvoice | null {
   try {
     const raw = sessionStorage.getItem(PENDING_INVOICE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<PendingInvoice>;
-    return parsed.invoiceId ? { invoiceId: parsed.invoiceId, packageCode: parsed.packageCode ?? '' } : null;
+    const parsed = JSON.parse(raw) as Partial<PendingInvoice> & { packageCode?: string };
+    const scope = parsed.idempotencyScope ?? parsed.packageCode ?? '';
+    return parsed.invoiceId ? { invoiceId: parsed.invoiceId, idempotencyScope: scope } : null;
   } catch {
     // Unreadable or written by an older build that stored a bare id string.
     return null;
@@ -58,7 +60,7 @@ export function clearPendingInvoice(): void {
   } catch {
     // Nothing to clean up if storage is unavailable.
   }
-  if (record?.packageCode) clearOrderIdempotencyKey(record.packageCode);
+  if (record?.idempotencyScope) clearOrderIdempotencyKey(record.idempotencyScope);
 }
 
 /**
@@ -92,12 +94,24 @@ export function orderIdempotencyKey(packageCode: string): string {
 
 /** Drops the key once a purchase has been handed to the gateway, so a later,
  * genuinely new purchase of the same plan is not replayed as the old one. */
-export function clearOrderIdempotencyKey(packageCode: string): void {
+export function clearOrderIdempotencyKey(idempotencyScope: string): void {
   try {
-    sessionStorage.removeItem(`${IDEMPOTENCY_KEY_PREFIX}${packageCode}`);
+    sessionStorage.removeItem(`${IDEMPOTENCY_KEY_PREFIX}${idempotencyScope}`);
   } catch {
     // Nothing to clean up if storage is unavailable.
   }
+}
+
+export function customVdsIntentKey(packageCode: string, configuration: CustomVdsConfiguration): string {
+  return [
+    'custom',
+    packageCode,
+    configuration.cpu,
+    configuration.ram_gb,
+    configuration.ssd_gb,
+    configuration.os,
+    configuration.datacenter,
+  ].join(':');
 }
 
 /**
@@ -121,12 +135,25 @@ export function useOrderIntent(): (tariff: Tariff, period: BillingPeriod) => voi
   );
 }
 
+export function useCustomOrderIntent(): (packageCode: string, configuration: CustomVdsConfiguration) => void {
+  const navigate = useNavigate();
+  const { lang } = useLang();
+
+  return useCallback(
+    (packageCode: string, configuration: CustomVdsConfiguration) => {
+      navigate(customCheckoutPath(lang, packageCode, configuration));
+    },
+    [navigate, lang],
+  );
+}
+
 interface UseCheckoutResult {
   isSubmitting: boolean;
   error: string | null;
   /** Opens the invoice and leaves for the gateway. Call only once the customer
    * has confirmed — this is the point money starts moving. */
   confirm: (tariff: Tariff, period: BillingPeriod) => Promise<void>;
+  confirmQuote: (quote: Quote, idempotencyScope: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -207,10 +234,58 @@ export function useCheckout(): UseCheckoutResult {
     [accessToken, user, lang],
   );
 
+  const confirmQuote = useCallback(
+    async (quote: Quote, idempotencyScope: string) => {
+      if (!accessToken) {
+        setError('not_signed_in');
+        return;
+      }
+
+      const email = user?.profile?.email;
+      if (!email) {
+        setError('missing_email');
+        return;
+      }
+
+      setIsSubmitting(true);
+      setError(null);
+      try {
+        const methods = await fetchPaymentMethods(accessToken, quote.amount_minor, quote.currency);
+        if (methods.length === 0) {
+          throw new Error('no_payment_methods');
+        }
+
+        const returnUrl = new URL(
+          localizePath(lang, routePaths.checkoutReturn),
+          window.location.origin,
+        ).toString();
+        const invoice = await createInvoiceFromQuote({
+          accessToken,
+          quoteId: quote.quote_id,
+          methodCode: methods[0].method_code,
+          returnUrl,
+          customerEmail: email,
+          idempotencyKey: orderIdempotencyKey(idempotencyScope),
+        });
+
+        if (!invoice.payment_url) {
+          throw new Error('no_payment_url');
+        }
+        rememberPendingInvoice(invoice.invoice_id, idempotencyScope);
+        window.location.assign(invoice.payment_url);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'checkout_failed');
+        setIsSubmitting(false);
+      }
+    },
+    [accessToken, user, lang],
+  );
+
   return {
     isSubmitting,
     error,
     confirm,
+    confirmQuote,
     clearError: useCallback(() => setError(null), []),
   };
 }

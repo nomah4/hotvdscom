@@ -17,6 +17,14 @@ export type SubscriptionStatus =
 // paid for but nothing downstream has built it yet.
 export type ProvisioningStatus = 'pending' | 'delayed' | 'succeeded' | 'failed';
 
+export interface SubscriptionConfiguration {
+  cpu?: number;
+  ram_gb?: number;
+  ssd_gb?: number;
+  os?: string;
+  datacenter?: string;
+}
+
 /** One row of GET /api/v1/subscriptions. Read-only: no money or ledger data —
  * Billing deliberately keeps those off this endpoint. */
 export interface Subscription {
@@ -29,6 +37,7 @@ export interface Subscription {
   valid_until: string | null;
   provisioning_status: ProvisioningStatus;
   auto_renew: boolean;
+  configuration?: SubscriptionConfiguration | null;
 }
 
 interface SubscriptionsResponse {
