@@ -19,6 +19,9 @@ export const pricing = {
     osLabel: 'Operating system',
     datacenterLabel: 'Data center',
     priceLabel: 'Price per month',
+    priceLabelAnnual: 'Price per year',
+    loadingPrice: 'Calculating…',
+    priceUnavailable: 'Pricing unavailable',
     cta: 'Order',
   },
   billingToggle: {
@@ -56,6 +59,9 @@ export const pricing = {
     failedBody: "You haven't been charged. You can try again from any plan.",
     backToPricing: 'Back to pricing',
     toDashboard: 'Go to dashboard',
+    customPlanName: 'Custom VDS',
+    pricingQuoteLoading: 'Calculating configuration…',
+    pricingQuoteFailed: "Couldn't calculate this configuration — choose different specs or try again.",
   },
   features: {
     title: "What's included in every plan",

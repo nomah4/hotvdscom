@@ -18,6 +18,24 @@ export interface Invoice {
   subscription_id: string | null;
 }
 
+export interface CustomVdsConfiguration {
+  cpu: number;
+  ram_gb: number;
+  ssd_gb: number;
+  os: string;
+  datacenter: string;
+}
+
+export interface Quote {
+  quote_id: string;
+  status: 'active' | 'consumed' | 'expired' | 'voided';
+  package_code: string;
+  amount_minor: number;
+  currency: string;
+  configuration: CustomVdsConfiguration;
+  expires_at: string;
+}
+
 function authHeaders(accessToken: string): Record<string, string> {
   return {
     Authorization: `Bearer ${accessToken}`,
@@ -46,6 +64,29 @@ export async function fetchPaymentMethods(
   }
   const data = (await response.json()) as { methods: PaymentMethod[] };
   return data.methods;
+}
+
+export async function createQuote(input: {
+  packageCode: string;
+  configuration: CustomVdsConfiguration;
+  currency?: string;
+}): Promise<Quote> {
+  const response = await fetch(`${BILLING_API_BASE}/api/v1/public/quotes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tenant_id: TENANT_ID,
+      project_code: PROJECT_CODE,
+      package_code: input.packageCode,
+      currency: input.currency ?? DEFAULT_CURRENCY,
+      configuration: input.configuration,
+    }),
+  });
+
+  if (!response.ok) {
+    throw await toApiError(response, 'Could not calculate this configuration');
+  }
+  return (await response.json()) as Quote;
 }
 
 export interface CreateInvoiceInput {
@@ -91,6 +132,38 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice>
       // external_user_id is deliberately omitted: under Bearer auth Billing takes
       // the identity from the token subject, and sending a value that disagrees
       // is rejected outright.
+    }),
+  });
+
+  if (!response.ok) {
+    throw await toApiError(response, 'Could not start the purchase');
+  }
+  return (await response.json()) as Invoice;
+}
+
+export interface CreateInvoiceFromQuoteInput {
+  accessToken: string;
+  quoteId: string;
+  methodCode: string;
+  returnUrl: string;
+  customerEmail: string;
+  idempotencyKey?: string;
+}
+
+export async function createInvoiceFromQuote(input: CreateInvoiceFromQuoteInput): Promise<Invoice> {
+  const response = await fetch(`${BILLING_API_BASE}/api/v1/invoices/from-quote`, {
+    method: 'POST',
+    headers: {
+      ...authHeaders(input.accessToken),
+      'X-Idempotency-Key': input.idempotencyKey ?? crypto.randomUUID(),
+    },
+    body: JSON.stringify({
+      tenant_id: TENANT_ID,
+      project_code: PROJECT_CODE,
+      quote_id: input.quoteId,
+      method_code: input.methodCode,
+      return_url: input.returnUrl,
+      customer_email: input.customerEmail,
     }),
   });
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router';
 import styled from 'styled-components';
 import { PageContainer } from '../components/layout/PageContainer';
@@ -9,7 +9,10 @@ import { useAuth } from '../auth/AuthContext';
 import { useLang, useTranslation } from '../i18n/LanguageContext';
 import { localizePath, routePaths } from '../i18n/paths';
 import { findByPackageCode, useTariffs } from '../api/catalogue';
-import { useCheckout } from '../api/useCheckout';
+import { createQuote } from '../api/checkout';
+import type { CustomVdsConfiguration, Quote } from '../api/checkout';
+import { customVdsIntentKey, useCheckout } from '../api/useCheckout';
+import { datacenters } from '../data/datacenters';
 
 const Panel = styled.div`
   max-width: 520px;
@@ -134,6 +137,36 @@ function formatPrice(amount: number, currency: string, lang: string): string {
   }).format(amount);
 }
 
+const CUSTOM_PACKAGE_CODE_RE = /^VDS_CUSTOM_(MONTHLY|ANNUAL)$/;
+
+function customPeriodFromPackageCode(packageCode: string): 'monthly' | 'annual' | null {
+  const match = CUSTOM_PACKAGE_CODE_RE.exec(packageCode);
+  if (!match) return null;
+  return match[1] === 'ANNUAL' ? 'annual' : 'monthly';
+}
+
+function positiveIntParam(params: URLSearchParams, key: string): number | null {
+  const value = Number(params.get(key));
+  return Number.isInteger(value) && value > 0 ? value : null;
+}
+
+function customConfigurationFromParams(params: URLSearchParams): CustomVdsConfiguration | null {
+  const cpu = positiveIntParam(params, 'cpu');
+  const ram = positiveIntParam(params, 'ram_gb');
+  const ssd = positiveIntParam(params, 'ssd_gb');
+  const os = params.get('os') ?? '';
+  const datacenter = params.get('datacenter') ?? '';
+  if (!cpu || !ram || !ssd || !os || !datacenter) return null;
+  return { cpu, ram_gb: ram, ssd_gb: ssd, os, datacenter };
+}
+
+function osDisplayName(value: string): string {
+  return value
+    .split('-')
+    .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+    .join(' ');
+}
+
 /**
  * The step between choosing a plan and paying for it.
  *
@@ -149,13 +182,21 @@ export function CheckoutPage() {
   const location = useLocation();
   const [params] = useSearchParams();
   const packageCode = params.get('package') ?? '';
+  const customPeriod = customPeriodFromPackageCode(packageCode);
 
   const { isAuthenticated, user, login, isLoading: authLoading } = useAuth();
   const { tariffs, isLoading, error } = useTariffs();
-  const { confirm, isSubmitting, error: checkoutError } = useCheckout();
+  const { confirm, confirmQuote, isSubmitting, error: checkoutError } = useCheckout();
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
 
+  const customConfiguration = useMemo(
+    () => (customPeriod ? customConfigurationFromParams(params) : null),
+    [customPeriod, params],
+  );
   const match = findByPackageCode(tariffs, packageCode);
   const backToPricing = (
     <Button as={Link} to={localizePath(lang, routePaths.pricing)} $variant="secondary">
@@ -163,23 +204,53 @@ export function CheckoutPage() {
     </Button>
   );
 
-  if (isLoading || authLoading) {
+  useEffect(() => {
+    if (!customPeriod || !customConfiguration) {
+      setQuote(null);
+      setQuoteLoading(false);
+      setQuoteError(null);
+      return;
+    }
+
+    let active = true;
+    setQuoteLoading(true);
+    setQuoteError(null);
+    createQuote({ packageCode, configuration: customConfiguration })
+      .then((nextQuote) => {
+        if (active) setQuote(nextQuote);
+      })
+      .catch((err: unknown) => {
+        if (active) {
+          setQuote(null);
+          setQuoteError(err instanceof Error ? err.message : 'quote_failed');
+        }
+      })
+      .finally(() => {
+        if (active) setQuoteLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [customPeriod, customConfiguration, packageCode]);
+
+  if (authLoading || (!customPeriod && isLoading) || (customPeriod && quoteLoading && !quote)) {
     return (
       <Section $background="secondary">
         <PageContainer>
-          <StatusMessage>{t.comparison.loading}</StatusMessage>
+          <StatusMessage>{customPeriod ? t.checkout.pricingQuoteLoading : t.comparison.loading}</StatusMessage>
         </PageContainer>
       </Section>
     );
   }
 
-  if (error || !match) {
+  if ((!customPeriod && (error || !match)) || (customPeriod && (!customConfiguration || quoteError || !quote))) {
     return (
       <Section $background="secondary">
         <PageContainer>
           <Panel>
-            <Title>{error ? t.checkout.confirmTitle : t.checkout.planNotFoundTitle}</Title>
-            <Note>{error ? t.comparison.error : t.checkout.planNotFoundBody}</Note>
+            <Title>{error || quoteError ? t.checkout.confirmTitle : t.checkout.planNotFoundTitle}</Title>
+            <Note>{error ? t.comparison.error : quoteError ? t.checkout.pricingQuoteFailed : t.checkout.planNotFoundBody}</Note>
             <Actions>{backToPricing}</Actions>
           </Panel>
         </PageContainer>
@@ -187,11 +258,26 @@ export function CheckoutPage() {
     );
   }
 
-  const { tariff, period } = match;
-  // The charged amount for the term actually being bought. Deliberately not the
-  // per-month figure the plan cards show for an annual plan — this is the number
-  // the customer is agreeing to hand over.
-  const total = period === 'annual' ? tariff.priceYearly : tariff.priceMonthly;
+  const period = customPeriod ?? match!.period;
+  const total = customPeriod ? quote!.amount_minor / 100 : period === 'annual' ? match!.tariff.priceYearly : match!.tariff.priceMonthly;
+  const currency = customPeriod ? quote!.currency : match!.tariff.currency;
+  const planName = customPeriod ? t.checkout.customPlanName : match!.tariff.name;
+  const dc = customConfiguration ? datacenters.find((item) => item.id === customConfiguration.datacenter) : null;
+  const datacenterName = dc ? (lang === 'ru' ? dc.city : dc.cityEn) : customConfiguration?.datacenter;
+  const specItems = customPeriod && customConfiguration
+    ? [
+        `${customConfiguration.cpu} vCPU`,
+        `${customConfiguration.ram_gb} ${lang === 'ru' ? 'ГБ RAM' : 'GB RAM'}`,
+        `${customConfiguration.ssd_gb} ${lang === 'ru' ? 'ГБ NVMe' : 'GB NVMe'}`,
+        osDisplayName(customConfiguration.os),
+        datacenterName,
+      ]
+    : [
+        `${match!.tariff.cpu} vCPU`,
+        `${match!.tariff.ram} ${lang === 'ru' ? 'ГБ RAM' : 'GB RAM'}`,
+        `${match!.tariff.ssd} ${lang === 'ru' ? 'ГБ NVMe' : 'GB NVMe'}`,
+        `${match!.tariff.traffic} ${lang === 'ru' ? 'трафика' : 'traffic'}`,
+      ];
   const email = user?.profile?.email;
 
   return (
@@ -200,12 +286,9 @@ export function CheckoutPage() {
         <Panel>
           <Title>{t.checkout.confirmTitle}</Title>
           <Card>
-            <PlanName>{tariff.name}</PlanName>
+            <PlanName>{planName}</PlanName>
             <SpecList>
-              <li>{tariff.cpu} vCPU</li>
-              <li>{tariff.ram} {lang === 'ru' ? 'ГБ RAM' : 'GB RAM'}</li>
-              <li>{tariff.ssd} {lang === 'ru' ? 'ГБ NVMe' : 'GB NVMe'}</li>
-              <li>{tariff.traffic} {lang === 'ru' ? 'трафика' : 'traffic'}</li>
+              {specItems.map((item) => item && <li key={item}>{item}</li>)}
             </SpecList>
             <Divider />
             <Row>
@@ -221,7 +304,7 @@ export function CheckoutPage() {
             <Divider />
             <TotalRow>
               <span>{t.checkout.totalLabel}</span>
-              <TotalAmount>{formatPrice(total, tariff.currency, lang)}</TotalAmount>
+              <TotalAmount>{formatPrice(total, currency, lang)}</TotalAmount>
             </TotalRow>
           </Card>
 
@@ -253,7 +336,13 @@ export function CheckoutPage() {
                   type="button"
                   $fullWidth
                   disabled={!termsAccepted || isSubmitting}
-                  onClick={() => void confirm(tariff, period)}
+                  onClick={() => {
+                    if (customPeriod) {
+                      void confirmQuote(quote!, customVdsIntentKey(packageCode, quote!.configuration));
+                    } else {
+                      void confirm(match!.tariff, period);
+                    }
+                  }}
                 >
                   {isSubmitting ? t.checkout.starting : t.checkout.proceedToPayment}
                 </Button>

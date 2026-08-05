@@ -45,3 +45,23 @@ export function orderPath(lang: Lang) {
 export function checkoutPath(lang: Lang, packageCode: string) {
   return `${localizePath(lang, routePaths.checkout)}?package=${encodeURIComponent(packageCode)}`;
 }
+
+export interface CustomCheckoutConfiguration {
+  cpu: number;
+  ram_gb: number;
+  ssd_gb: number;
+  os: string;
+  datacenter: string;
+}
+
+export function customCheckoutPath(lang: Lang, packageCode: string, configuration: CustomCheckoutConfiguration) {
+  const params = new URLSearchParams({
+    package: packageCode,
+    cpu: String(configuration.cpu),
+    ram_gb: String(configuration.ram_gb),
+    ssd_gb: String(configuration.ssd_gb),
+    os: configuration.os,
+    datacenter: configuration.datacenter,
+  });
+  return `${localizePath(lang, routePaths.checkout)}?${params.toString()}`;
+}
