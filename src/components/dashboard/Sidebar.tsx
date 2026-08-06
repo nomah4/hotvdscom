@@ -1,5 +1,8 @@
 import styled from 'styled-components';
-import { useTranslation } from '../../i18n/LanguageContext';
+import { Link, useLocation } from 'react-router';
+import { useLang, useTranslation } from '../../i18n/LanguageContext';
+import { useAuth } from '../../auth/AuthContext';
+import { localizePath, routePaths } from '../../i18n/paths';
 import { media } from '../../theme/breakpoints';
 
 const Wrap = styled.aside`
@@ -34,23 +37,45 @@ const Item = styled.button<{ $active?: boolean }>`
   white-space: nowrap;
 `;
 
+// An entry with no `to` has no page behind it yet. It stays rendered but
+// visibly inert rather than silently doing nothing when clicked — Billing and
+// Settings are in that state, tracked separately from this component.
+const InertItem = styled(Item)`
+  opacity: 0.45;
+  cursor: not-allowed;
+`;
+
 export function Sidebar() {
   const t = useTranslation('dashboard');
+  const { lang } = useLang();
+  const { isAdmin } = useAuth();
+  const { pathname } = useLocation();
 
-  const items = [
-    { label: t.sidebar.instances, icon: '🖥️', active: true },
-    { label: t.sidebar.billing, icon: '💳', active: false },
-    { label: t.sidebar.settings, icon: '⚙️', active: false },
+  const items: { label: string; icon: string; to?: string }[] = [
+    { label: t.sidebar.instances, icon: '🖥️', to: localizePath(lang, routePaths.dashboard) },
+    { label: t.sidebar.billing, icon: '💳' },
+    { label: t.sidebar.settings, icon: '⚙️' },
   ];
+
+  if (isAdmin) {
+    items.push({ label: t.sidebar.admin, icon: '👥', to: localizePath(lang, routePaths.admin) });
+  }
 
   return (
     <Wrap>
-      {items.map((item) => (
-        <Item key={item.label} type="button" $active={item.active}>
-          <span>{item.icon}</span>
-          {item.label}
-        </Item>
-      ))}
+      {items.map((item) =>
+        item.to ? (
+          <Item key={item.label} as={Link} to={item.to} $active={pathname === item.to}>
+            <span>{item.icon}</span>
+            {item.label}
+          </Item>
+        ) : (
+          <InertItem key={item.label} type="button" disabled>
+            <span>{item.icon}</span>
+            {item.label}
+          </InertItem>
+        ),
+      )}
     </Wrap>
   );
 }

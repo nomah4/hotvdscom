@@ -4,6 +4,7 @@ import { LangGate } from './components/layout/LangGate';
 import { HomePage } from './pages/HomePage';
 import { PricingPage } from './pages/PricingPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { AdminPage } from './pages/AdminPage';
 import { CallbackPage } from './pages/CallbackPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { CheckoutReturnPage } from './pages/CheckoutReturnPage';
@@ -39,6 +40,17 @@ export function AppRoutes() {
           element={
             <RequireAuth>
               <DashboardPage />
+            </RequireAuth>
+          }
+        />
+        {/* Staff-only view of who has been granted access to the storefront.
+            RequireAuth gets a session; AdminPage itself redirects a non-admin
+            away, and ZITADEL refuses the underlying query regardless. */}
+        <Route
+          path={routePaths.admin}
+          element={
+            <RequireAuth>
+              <AdminPage />
             </RequireAuth>
           }
         />
