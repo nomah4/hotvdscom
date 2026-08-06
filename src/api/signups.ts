@@ -1,4 +1,4 @@
-import { ZITADEL_AUTHORITY, ZITADEL_PROJECT_ID } from '../auth/config';
+import { HOTVDS_ROLE_PREFIX, ZITADEL_AUTHORITY, ZITADEL_PROJECT_ID } from '../auth/config';
 
 /**
  * Who has been given access to this storefront, read straight from ZITADEL.
@@ -9,14 +9,19 @@ import { ZITADEL_AUTHORITY, ZITADEL_PROJECT_ID } from '../auth/config';
  *
  * Scope caveat, deliberate and worth knowing: ZITADEL has one project
  * ("webtalk") covering the forum apps, the billing APIs and this storefront, so
- * a manager role granted for this page is a project-wide grant. This query is
- * scoped to the project — it is not scoped by role. That is deliberate for now
- * (2026-08-06): it is still unconfirmed whether a plain customer who registers
- * and logs into hotvds without ever being granted a role even produces an
- * authorization record here at all, or whether ZITADEL only creates one when a
- * role is explicitly assigned. Showing every role alongside each person, rather
- * than filtering to one role, is how that question gets answered instead of
- * guessed at.
+ * a manager role granted for this page is a project-wide grant.
+ *
+ * How someone ends up in this list, confirmed by testing on 2026-08-06: ZITADEL
+ * records no authorization for a user who merely registers and logs in. Only an
+ * explicitly granted role creates one. A ZITADEL Action now grants
+ * CUSTOMER_ROLE on authentication through this storefront — it checks the auth
+ * request's application id, so a forum-only login is skipped — which is what
+ * makes customers appear here at all. Anyone who signed up before that Action
+ * existed needs the role granted by hand or they stay invisible.
+ *
+ * The query is scoped to the project, then filtered by role prefix in code:
+ * ZITADEL's repeated filters are ANDed, so one request cannot express
+ * "hotvds_admin OR hotvds_customer".
  */
 
 const LIST_AUTHORIZATIONS_URL = `${ZITADEL_AUTHORITY}/zitadel.authorization.v2.AuthorizationService/ListAuthorizations`;
@@ -69,7 +74,7 @@ export async function fetchSignups(accessToken: string, signal?: AbortSignal): P
     // syntax error" — the caller gets no field-name hint, just a token-position
     // error, so this shape isn't discoverable by guessing from the response.
     //
-    // Deliberately not also filtering by role_key here — see the module comment.
+    // Role filtering happens in code below, not here — see the module comment.
     body: JSON.stringify({
       filters: [{ projectId: { id: ZITADEL_PROJECT_ID } }],
     }),
@@ -86,5 +91,10 @@ export async function fetchSignups(accessToken: string, signal?: AbortSignal): P
   }
 
   const body = (await response.json()) as { authorizations?: ZitadelAuthorization[] };
-  return (body.authorizations ?? []).map(toSignup);
+  return (body.authorizations ?? [])
+    .map(toSignup)
+    .filter((signup) => signup.roles.some((role) => role.startsWith(HOTVDS_ROLE_PREFIX)))
+    // Newest first: the question this page answers is "who has come to hosting",
+    // and the most recent arrivals are the ones being waited on.
+    .sort((a, b) => b.grantedAt.localeCompare(a.grantedAt));
 }

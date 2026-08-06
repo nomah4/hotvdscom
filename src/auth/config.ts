@@ -21,6 +21,18 @@ export const ZITADEL_ROLES_CLAIM = 'urn:zitadel:iam:org:project:roles';
 // actually needs to be secure on this alone.
 export const ADMIN_ROLE = 'hotvds_admin';
 
+// Granted automatically by a ZITADEL Action when someone authenticates through
+// this storefront (the Action checks the auth request's application id, so a
+// forum-only login does not get it). This is what makes a customer visible to
+// the admin sign-ups list at all: ZITADEL records no authorization for a user
+// who merely logs in, only for one who has been granted a role.
+export const CUSTOMER_ROLE = 'hotvds_customer';
+
+// Both storefront roles share this prefix. The ZITADEL project is shared with
+// the webtalk forum apps, so the sign-ups list filters on it to avoid showing
+// people who hold only a forum role, or a stale grant with no roles left.
+export const HOTVDS_ROLE_PREFIX = 'hotvds_';
+
 export const oidcSettings: UserManagerSettings = {
   authority: ZITADEL_AUTHORITY,
   client_id: ZITADEL_CLIENT_ID,
