@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## 2026-08-06
 
+### Changed
+- Split staging from production. The `hotvds.com` vhost had `root /var/www/dev.hotvds.com/dist` —
+  the *same directory* staging deploys into — so every merge to `main` published straight to
+  customers and there was no environment to verify anything in. Production now serves
+  `/var/www/hotvds.com/current`, a symlink into timestamped release directories, and ships only
+  from `deploy-prod.yml` on a `v*` tag or a manual dispatch. Rollback is a symlink swap
+  (`ssh hotvds-deploy@host rollback`) instead of a rebuild. The production deploy key is pinned to
+  a forced command with no shell, running as an unprivileged user. `hotvds.com` also serves a real
+  `robots.txt` now, rather than answering `/robots.txt` with the SPA shell.
+
 ### Added
 - Test suite (Vitest + Testing Library + jsdom, `npm test`) and a `CI` workflow that runs lint,
   type check, tests, and build on every pull request — previously nothing was verified until after

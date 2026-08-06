@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+#
+# Production deploy endpoint for hotvds.com.
+#
+# Installed on the web server as /usr/local/bin/hotvds-prod-deploy and pinned as
+# the forced command of the production deploy key, so that key can do exactly
+# these four things and nothing else — no shell, no arbitrary rsync path:
+#
+#   deploy <ref>   read a gzipped tar of dist/ on stdin, publish it
+#   rollback       repoint current/ at the previous release
+#   list           print releases, newest first, marking the live one
+#   current        print the live release
+#
+# The client's command line arrives in SSH_ORIGINAL_COMMAND; it is untrusted and
+# is only ever used as a sanitised directory label.
+#
+# Layout:
+#   /var/www/hotvds.com/releases/<utc-timestamp>-<ref>/   one directory per deploy
+#   /var/www/hotvds.com/current -> releases/<...>         what nginx serves
+#
+set -euo pipefail
+
+# Overridable only to let the script be exercised against a throwaway tree;
+# sshd does not forward the environment, so the deploy key always gets the default.
+ROOT="${HOTVDS_PROD_ROOT:-/var/www/hotvds.com}"
+RELEASES="$ROOT/releases"
+CURRENT="$ROOT/current"
+KEEP=10
+
+die() { echo "hotvds-prod-deploy: $*" >&2; exit 1; }
+
+# Word-split without globbing or evaluating anything from the client.
+read -ra argv <<<"${SSH_ORIGINAL_COMMAND:-}"
+action="${argv[0]:-}"
+
+# Publishing is not atomic at the filesystem level for a directory tree, so the
+# release is assembled off to the side and only linked in once it is complete
+# and has been sanity-checked. A half-uploaded build can never be live.
+publish() {
+  local target="$1"
+  ln -sfn "$target" "$CURRENT.new"
+  mv -Tf "$CURRENT.new" "$CURRENT"
+}
+
+case "$action" in
+  deploy)
+    # Anything but [A-Za-z0-9._-] is dropped: this becomes a path component.
+    ref=$(printf '%s' "${argv[1]:-manual}" | tr -cd 'A-Za-z0-9._-' | cut -c1-40)
+    [ -n "$ref" ] || ref=manual
+
+    mkdir -p "$RELEASES"
+    dest="$RELEASES/$(date -u +%Y%m%dT%H%M%SZ)-$ref"
+
+    # Staging lives outside releases/ so a rejected upload cannot be mistaken for
+    # a release by the rotation below, and is removed however this script exits.
+    staging="$ROOT/.incoming.$$"
+    rm -rf "$staging"
+    mkdir -p "$staging"
+    trap 'rm -rf "$staging"' EXIT
+
+    tar -xzf - -C "$staging"
+
+    # Refuse to publish a build that is missing its entry point or its assets —
+    # an empty or truncated upload would otherwise replace a working site with
+    # a 404 and the previous release would still look "fine" in the logs.
+    [ -f "$staging/index.html" ] || die "upload has no index.html, refusing to publish"
+    [ -d "$staging/assets" ] || die "upload has no assets/, refusing to publish"
+
+    chmod -R a+rX "$staging"
+    mv -T "$staging" "$dest"
+    publish "$dest"
+    echo "published $(basename "$dest")"
+
+    # Keep the tail for rollback; drop the rest.
+    if [ "$(find "$RELEASES" -mindepth 1 -maxdepth 1 -type d | wc -l)" -gt "$KEEP" ]; then
+      find "$RELEASES" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \
+        | sort -r | tail -n +$((KEEP + 1)) \
+        | while read -r old; do rm -rf -- "${RELEASES:?}/$old"; done
+    fi
+    ;;
+
+  rollback)
+    [ -L "$CURRENT" ] || die "no current release to roll back from"
+    live=$(basename "$(readlink -f "$CURRENT")")
+    # Releases sort chronologically by name, newest first; the previous one is
+    # whatever follows the live entry. -F because a release name is data, not a pattern.
+    previous=$(find "$RELEASES" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \
+      | sort -r | grep -A1 -F -x -- "$live" | tail -n1)
+    [ -n "$previous" ] && [ "$previous" != "$live" ] || die "no earlier release to roll back to"
+    publish "$RELEASES/$previous"
+    echo "rolled back to $previous"
+    ;;
+
+  list)
+    live=$([ -L "$CURRENT" ] && basename "$(readlink -f "$CURRENT")" || echo '')
+    find "$RELEASES" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -r \
+      | while read -r r; do
+          if [ "$r" = "$live" ]; then echo "$r  <- live"; else echo "$r"; fi
+        done
+    ;;
+
+  current)
+    [ -L "$CURRENT" ] || die "nothing published yet"
+    basename "$(readlink -f "$CURRENT")"
+    ;;
+
+  *)
+    die "unknown command '${action:-<empty>}'; expected deploy|rollback|list|current"
+    ;;
+esac

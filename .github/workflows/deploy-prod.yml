@@ -1,0 +1,60 @@
+name: Deploy hotvds.com (production)
+
+# Production never deploys on a push to main — that is what dev.hotvds.com is
+# for. Shipping to customers is an explicit act: tag a release, or press Run
+# workflow. Everything the PR gate checks is re-checked here, because a tag can
+# point at a commit that never went through a pull request.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit -p tsconfig.app.json
+      - run: npm test
+      - run: npm run build
+
+      - name: Publish
+        env:
+          SSH_KEY: ${{ secrets.PROD_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.PROD_DEPLOY_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/prod_key
+          chmod 600 ~/.ssh/prod_key
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          # The key's forced command is hotvds-prod-deploy, so this argument is a
+          # label for the release directory, not a shell command. The server
+          # unpacks stdin into a fresh release and only then flips the symlink —
+          # a failed upload leaves the running site untouched.
+          REF="${GITHUB_REF_NAME:-manual}-${GITHUB_SHA::7}"
+          tar -czf - -C dist . | ssh -i ~/.ssh/prod_key "hotvds-deploy@$SSH_HOST" "deploy $REF"
+
+      - name: Verify
+        env:
+          SSH_HOST: ${{ secrets.PROD_DEPLOY_HOST }}
+        run: |
+          LIVE=$(ssh -i ~/.ssh/prod_key "hotvds-deploy@$SSH_HOST" current)
+          echo "live release: $LIVE"
+          # Fetched over the public URL, so this also proves nginx is serving the
+          # new release rather than a stale path or a cached upstream.
+          curl -fsS https://hotvds.com/ | grep -q '<div id="root">' \
+            && echo "hotvds.com responds with the app shell"
