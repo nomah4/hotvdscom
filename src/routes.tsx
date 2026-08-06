@@ -3,7 +3,6 @@ import { MarketingLayout } from './components/layout/MarketingLayout';
 import { LangGate } from './components/layout/LangGate';
 import { HomePage } from './pages/HomePage';
 import { PricingPage } from './pages/PricingPage';
-import { ProductPage } from './pages/ProductPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CallbackPage } from './pages/CallbackPage';
 import { CheckoutPage } from './pages/CheckoutPage';
@@ -26,7 +25,6 @@ export function AppRoutes() {
         <Route element={<MarketingLayout />}>
           <Route index element={<HomePage />} />
           <Route path={routePaths.pricing} element={<PricingPage />} />
-          <Route path={routePaths.gpuServers} element={<ProductPage />} />
           <Route path={routePaths.terms} element={<TermsPage />} />
         </Route>
         {/* Order confirmation. Deliberately NOT behind RequireAuth: a visitor

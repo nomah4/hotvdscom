@@ -91,7 +91,6 @@ export function Header() {
   const links = [
     { to: localizePath(lang, routePaths.home), label: t.nav.home },
     { to: localizePath(lang, routePaths.pricing), label: t.nav.pricing },
-    { to: localizePath(lang, routePaths.gpuServers), label: t.nav.product },
     { to: dashboardPath, label: t.nav.dashboard },
   ];
 

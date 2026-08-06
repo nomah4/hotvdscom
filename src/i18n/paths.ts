@@ -11,7 +11,6 @@ export function isLang(value: string | undefined): value is Lang {
 export const routePaths = {
   home: '',
   pricing: 'pricing',
-  gpuServers: 'products/gpu-servers',
   dashboard: 'dashboard',
   // Order confirmation. Nothing is charged and no invoice exists until the
   // customer confirms here.

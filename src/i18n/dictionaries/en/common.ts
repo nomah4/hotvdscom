@@ -6,7 +6,6 @@ export const common = {
   nav: {
     home: 'Home',
     pricing: 'Pricing',
-    product: 'GPU Servers',
     dashboard: 'Dashboard',
   },
   buttons: {
@@ -21,7 +20,7 @@ export const common = {
     columns: {
       product: {
         title: 'Product',
-        links: ['Pricing', 'GPU Servers', 'Data Centers', 'API'],
+        links: ['Pricing', 'Data Centers', 'API'],
       },
       company: {
         title: 'Company',

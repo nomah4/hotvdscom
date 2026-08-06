@@ -53,12 +53,10 @@ export const home = {
       { question: 'Can I change my plan later?', answer: 'Yes, upgrades and downgrades are available anytime from the dashboard.' },
       { question: 'Do you offer backups?', answer: 'Daily backups are included in every plan except the base tier.' },
       { question: 'What payment methods do you accept?', answer: 'Bank cards, instant bank transfer, and cryptocurrency.' },
-      { question: 'Is there a free trial?', answer: "Yes — your first 7 days are free, no card required. If it isn't a fit, simply don't renew." },
     ],
   },
   finalCta: {
     title: 'Ready to launch your project?',
-    subtitle: 'First 7 days free, no card required.',
-    cta: 'Start for free',
+    cta: 'Launch a server',
   },
 } as const satisfies DeepWiden<typeof ruHome>;
