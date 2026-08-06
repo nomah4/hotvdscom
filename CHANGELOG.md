@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 ## 2026-08-06
 
+### Added
+- Test suite (Vitest + Testing Library + jsdom, `npm test`) and a `CI` workflow that runs lint,
+  type check, tests, and build on every pull request — previously nothing was verified until after
+  a merge landed on `main`. Tests cover what the compiler cannot: the footer's index-based pairing
+  of labels to paths, RU/EN array-length parity, the nav's contents, the catch-all redirect, and a
+  guard against trial/GPU promises reappearing in the dictionaries. `deploy-dev.yml` now runs the
+  tests before shipping.
+
 ### Removed
 - GPU server product page (`/:lang/products/gpu-servers`) and everything wiring it up: the route,
   the `product` i18n namespace, the mock `gpuTiers` table, and the header/footer nav entries.
