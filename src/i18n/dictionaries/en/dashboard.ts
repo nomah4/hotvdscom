@@ -53,5 +53,15 @@ export const dashboard = {
     nextInvoice: 'Next charge',
     topUp: 'Top up balance',
   },
+  admin: {
+    title: 'Who came to hosting',
+    subtitle: 'People with access to hotvds, as recorded by webtalk.',
+    columns: { user: 'User', login: 'Login', granted: 'Access granted' },
+    loading: 'Loading the list…',
+    error: 'Could not load the list.',
+    forbidden: 'Your account is not permitted to view this list.',
+    empty: 'Nobody has been granted access yet.',
+    count: 'Total: {count}',
+  },
   footer: '© {year} hotvds.com',
 } as const satisfies DeepWiden<typeof ruDashboard>;
