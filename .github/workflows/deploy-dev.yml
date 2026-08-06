@@ -1,5 +1,8 @@
 name: Deploy dev.hotvds.com
 
+# Staging only. Until 2026-08-06 the hotvds.com vhost shared this docroot, so
+# every push to main also went straight to customers; the two now have separate
+# roots and production ships from deploy-prod.yml on an explicit tag or dispatch.
 on:
   push:
     branches: [main]

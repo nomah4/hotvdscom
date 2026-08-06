@@ -59,13 +59,43 @@ npx tsc --noEmit -p tsconfig.app.json   # type-check only
 
 ## Deployment
 
-Pushes to `main` auto-deploy to **dev.hotvds.com** via GitHub Actions
-(`.github/workflows/deploy-dev.yml`): build → rsync `dist/` to the server over a dedicated,
-rsync-only-restricted SSH deploy key (see `DEV_DEPLOY_SSH_KEY` / `DEV_DEPLOY_HOST` repo secrets).
+Two environments on one host (167.179.34.32), separate document roots, separate deploy keys.
+An nginx `stream{}` SNI router (`/etc/nginx/stream.d/stream.conf`) sends both hostnames to
+127.0.0.1:8443, where the two vhosts are told apart by `server_name`.
 
-Server-side: `dev.hotvds.com` is served by nginx from `/var/www/dev.hotvds.com/dist`
-(`/etc/nginx/sites-available/dev.hotvds.com` on the host), with `X-Robots-Tag: noindex, nofollow`
-and a blanket-disallow `robots.txt` so the staging environment doesn't get indexed.
+### Staging — dev.hotvds.com
+
+Every push to `main` deploys automatically (`.github/workflows/deploy-dev.yml`): build → rsync
+`dist/` over an SSH key restricted to `rrsync -wo /var/www/dev.hotvds.com/dist`
+(`DEV_DEPLOY_SSH_KEY` / `DEV_DEPLOY_HOST`). Served from `/var/www/dev.hotvds.com/dist`, with
+`X-Robots-Tag: noindex, nofollow` and a blanket-disallow `robots.txt` so staging stays unindexed.
+
+### Production — hotvds.com
+
+Never deploys on a push. Ships on a `v*` tag or a manual **Run workflow**
+(`.github/workflows/deploy-prod.yml`), which re-runs lint, types, tests, and build before
+publishing. `dist/` goes over as a tar stream to an SSH key whose forced command is
+`/usr/local/bin/hotvds-prod-deploy` (`deploy/hotvds-prod-deploy` in this repo) — that key gets no
+shell and can only run `deploy` / `rollback` / `list` / `current`. Secrets: `PROD_DEPLOY_SSH_KEY` /
+`PROD_DEPLOY_HOST`, connecting as the unprivileged `hotvds-deploy` user.
+
+Layout, so a bad release can be undone in a second rather than rebuilt:
+
+```
+/var/www/hotvds.com/releases/<utc-timestamp>-<ref>/   last 10 deploys
+/var/www/hotvds.com/current -> releases/<...>         nginx root
+```
+
+The upload is unpacked to a staging directory and checked for `index.html` and `assets/` before
+the symlink is swapped, so a truncated build cannot replace a working site.
+
+```bash
+ssh -i <key> hotvds-deploy@<host> list       # releases, newest first, live one marked
+ssh -i <key> hotvds-deploy@<host> rollback   # repoint current/ at the previous release
+```
+
+> Before 2026-08-06 the production vhost had `root /var/www/dev.hotvds.com/dist` — the same
+> directory as staging — so every merge to `main` went straight to customers with no staging step.
 
 **DNS caveat:** `dev.hotvds.com` is not yet a real public DNS record — it currently only resolves
 on networks that have a private/VPN override for it. Add an A record for `dev.hotvds.com` →
