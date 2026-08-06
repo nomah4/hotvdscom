@@ -190,11 +190,6 @@ const CtaTitle = styled.h2`
   font-size: ${({ theme }) => theme.fontSizes.h2};
 `;
 
-const CtaSubtitle = styled.p`
-  color: ${({ theme }) => theme.colors.accent[50]};
-  font-size: 1.0625rem;
-`;
-
 const icons = ['⚡', '🛡️', '💬', '🚀'];
 
 export function HomePage() {
@@ -306,7 +301,6 @@ export function HomePage() {
         <PageContainer>
           <CtaBanner>
             <CtaTitle>{t.finalCta.title}</CtaTitle>
-            <CtaSubtitle>{t.finalCta.subtitle}</CtaSubtitle>
             <Button as={Link} to={orderPath(lang)} $variant="secondary" $size="lg" style={{ background: '#fff' }}>
               {t.finalCta.cta}
             </Button>

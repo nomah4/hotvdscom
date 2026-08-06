@@ -3,7 +3,6 @@ export const common = {
   nav: {
     home: 'Главная',
     pricing: 'Тарифы',
-    product: 'GPU-серверы',
     dashboard: 'Личный кабинет',
   },
   buttons: {
@@ -18,7 +17,7 @@ export const common = {
     columns: {
       product: {
         title: 'Продукт',
-        links: ['Тарифы', 'GPU-серверы', 'Дата-центры', 'API'],
+        links: ['Тарифы', 'Дата-центры', 'API'],
       },
       company: {
         title: 'Компания',
