@@ -5,22 +5,61 @@ All notable changes to this project are documented in this file.
 ## 2026-08-06
 
 ### Changed
-- Split staging from production. The `hotvds.com` vhost had `root /var/www/dev.hotvds.com/dist` —
-  the *same directory* staging deploys into — so every merge to `main` published straight to
-  customers and there was no environment to verify anything in. Production now serves
-  `/var/www/hotvds.com/current`, a symlink into timestamped release directories, and ships only
-  from `deploy-prod.yml` on a `v*` tag or a manual dispatch. Rollback is a symlink swap
-  (`ssh hotvds-deploy@host rollback`) instead of a rebuild. The production deploy key is pinned to
-  a forced command with no shell, running as an unprivileged user. `hotvds.com` also serves a real
-  `robots.txt` now, rather than answering `/robots.txt` with the SPA shell.
+
+**Staging and production are now separate environments.** They were not before: the `hotvds.com`
+vhost carried `root /var/www/dev.hotvds.com/dist` — the very directory the staging workflow rsyncs
+into. Both hostnames served the same files, so every merge to `main` published straight to
+customers, `dev.hotvds.com` was only a second hostname with `noindex` headers rather than a place
+to check anything, and `rsync --delete` overwrote the live site in place with no previous build
+left to fall back to. Confirmed on the host, not inferred: both configs in
+`/etc/nginx/sites-available/` held the same `root`, and both hostnames served byte-identical
+bundles.
+
+- Production serves `/var/www/hotvds.com/current`, a symlink into timestamped release directories
+  (last 10 kept). Staging keeps `/var/www/dev.hotvds.com/dist` and is otherwise untouched. An
+  nginx `stream{}` SNI router (`/etc/nginx/stream.d/stream.conf`) still sends both hostnames to
+  127.0.0.1:8443, where `server_name` tells the two vhosts apart.
+- The cutover seeded the new root with a byte-identical copy of what was already live, so not one
+  served byte changed at the switch. Backups of the vhost and `authorized_keys` are on the host at
+  `/root/backup-*.20260806055354`.
+- `deploy-prod.yml` ships production, and never runs on a push: it triggers on a `v*` tag or a
+  manual dispatch, and re-runs lint, types, tests, and build first, because a tag can point at a
+  commit no pull request ever saw. `main` still auto-deploys to staging via `deploy-dev.yml`.
+- Rollback is a symlink swap rather than a rebuild from an old commit:
+  `ssh -i <key> hotvds-deploy@<host> rollback`. `list` shows the releases with the live one marked.
+- The production deploy key is pinned to a forced command (`deploy/hotvds-prod-deploy`, installed
+  at `/usr/local/bin/`) and runs as the unprivileged `hotvds-deploy` user, so it gets no shell and
+  can only deploy, roll back, or list. The build arrives as a tar stream on stdin, is unpacked to a
+  staging directory outside `releases/`, and is checked for `index.html` and `assets/` before the
+  symlink moves — a truncated upload leaves the running site untouched instead of replacing it
+  with a 404. Verified on the host: `id`, `rm -rf /var/www`, and an interactive login are all
+  refused; a path-traversal attempt in the release label is sanitised away.
+- `hotvds.com` serves a real `robots.txt`. Previously `/robots.txt` fell through `try_files` and
+  answered 200 with the SPA shell.
+- Still outstanding: the staging deploy key remains `rrsync`-restricted but connects as `root`,
+  unlike production's unprivileged user; and `deploy-prod.yml` declares `environment: production`
+  but that environment is not configured in repository settings, so no reviewer approval is
+  required before a production deploy.
 
 ### Added
-- Test suite (Vitest + Testing Library + jsdom, `npm test`) and a `CI` workflow that runs lint,
-  type check, tests, and build on every pull request — previously nothing was verified until after
-  a merge landed on `main`. Tests cover what the compiler cannot: the footer's index-based pairing
-  of labels to paths, RU/EN array-length parity, the nav's contents, the catch-all redirect, and a
-  guard against trial/GPU promises reappearing in the dictionaries. `deploy-dev.yml` now runs the
-  tests before shipping.
+- Test suite — Vitest + Testing Library + jsdom, `npm test` / `npm run test:watch` — and a `CI`
+  workflow running lint, type check, tests, and build on every pull request. Until now the only
+  automated check was `tsc --noEmit` inside the deploy workflow, which fires on push to `main`, so
+  a branch merged with nothing verified and types were checked on the way to the server rather
+  than before the merge. `deploy-dev.yml` now runs the tests before shipping too.
+- The tests deliberately target what the type system cannot reach:
+  - `Footer` pairs labels to paths **by array index**, and neither array is length-typed, so
+    deleting an entry from one silently re-points the remaining links at the wrong pages.
+  - The EN dictionaries are `satisfies DeepWiden<typeof ru*>`, which catches a missing key but not
+    a missing array *element* — one dropped FAQ item ships a page that says different things per
+    language. Compared structurally instead, array lengths included.
+  - A guard that no trial or GPU claim reappears in the dictionaries, and that the retired GPU URL
+    resolves through the catch-all to the home page.
+- Two environment quirks worth knowing before writing more tests, both commented at the assertion
+  that depends on them: react-router resolves `to="#"` against the current location, so the
+  footer's inert links render with the current path rather than a literal `#`; and jsdom does not
+  evaluate media queries, so the desktop nav keeps its mobile-first `display: none` and needs
+  `hidden: true` to be queryable.
 
 ### Removed
 - GPU server product page (`/:lang/products/gpu-servers`) and everything wiring it up: the route,
