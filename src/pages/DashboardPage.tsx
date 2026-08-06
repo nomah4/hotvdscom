@@ -5,6 +5,7 @@ import { Logo } from '../components/ui/Logo';
 import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
 import { Sidebar } from '../components/dashboard/Sidebar';
 import { SubscriptionListItem } from '../components/dashboard/SubscriptionListItem';
+import { SignupList } from '../components/dashboard/SignupList';
 import { Button } from '../components/ui/Button';
 import { useLang, useTranslation, interpolate } from '../i18n/LanguageContext';
 import { useAuth } from '../auth/AuthContext';
@@ -260,6 +261,12 @@ export function DashboardPage() {
                   )}
                 </ServerList>
               </div>
+
+              {/* Admin-only. `isAdmin` decides whether to render, but it is a
+                  client-side signal and not the access control — ZITADEL rejects
+                  the query itself unless the caller's own token carries the
+                  permission, and SignupList says so plainly when it does. */}
+              {isAdmin && <SignupList />}
             </Main>
           </Layout>
         </PageContainer>

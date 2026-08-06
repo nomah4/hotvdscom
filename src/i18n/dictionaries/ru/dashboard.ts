@@ -50,5 +50,15 @@ export const dashboard = {
     nextInvoice: 'Следующее списание',
     topUp: 'Пополнить баланс',
   },
+  admin: {
+    title: 'Кто пришёл на хостинг',
+    subtitle: 'Пользователи с доступом к hotvds, по данным webtalk.',
+    columns: { user: 'Пользователь', login: 'Логин', granted: 'Доступ выдан' },
+    loading: 'Загружаем список…',
+    error: 'Не удалось загрузить список.',
+    forbidden: 'У вашей учётной записи нет прав на просмотр этого списка.',
+    empty: 'Пока никто не получил доступ.',
+    count: 'Всего: {count}',
+  },
   footer: '© {year} hotvds.com',
 } as const;

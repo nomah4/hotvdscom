@@ -35,12 +35,18 @@ export const oidcSettings: UserManagerSettings = {
   // offline_access is what actually yields a refresh token; ticking "Refresh Token"
   // on the app only permits it. The project ":aud" scope is required or bl rejects
   // the token with audience_mismatch.
+  //
+  // The `:zitadel:aud` scope puts ZITADEL's own APIs in the audience too, so the
+  // admin page can query ZITADEL directly for who has signed up. Both audiences
+  // coexist: bl checks its accepted audiences by set intersection, so the extra
+  // entry cannot make it reject a token it previously accepted.
   scope: [
     'openid',
     'profile',
     'email',
     'offline_access',
     `urn:zitadel:iam:org:project:id:${ZITADEL_PROJECT_ID}:aud`,
+    'urn:zitadel:iam:org:project:id:zitadel:aud',
   ].join(' '),
 
   // localStorage keeps the session across browser restarts (deliberate: a
