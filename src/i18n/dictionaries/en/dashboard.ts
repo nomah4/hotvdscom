@@ -10,6 +10,7 @@ export const dashboard = {
     instances: 'Instances',
     billing: 'Billing',
     settings: 'Settings',
+    admin: 'Users',
   },
   stats: {
     activeServers: 'Active servers',

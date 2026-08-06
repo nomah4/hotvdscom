@@ -7,6 +7,7 @@ export const dashboard = {
     instances: 'Инстансы',
     billing: 'Биллинг',
     settings: 'Настройки',
+    admin: 'Пользователи',
   },
   stats: {
     activeServers: 'Активных серверов',

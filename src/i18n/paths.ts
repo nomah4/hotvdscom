@@ -12,6 +12,10 @@ export const routePaths = {
   home: '',
   pricing: 'pricing',
   dashboard: 'dashboard',
+  // Staff view of who has been granted access to the storefront. Gated by the
+  // hotvds_admin role in the UI, and by ZITADEL's own permission check on the
+  // data behind it.
+  admin: 'admin',
   // Order confirmation. Nothing is charged and no invoice exists until the
   // customer confirms here.
   checkout: 'checkout',
