@@ -57,8 +57,18 @@ export async function fetchSignups(accessToken: string, signal?: AbortSignal): P
       // Required by ZITADEL's Connect-protocol endpoints; omitting it is a 400.
       'Connect-Protocol-Version': '1',
     },
+    // AuthorizationsSearchFilter is a oneof — each entry wraps a nested filter
+    // message, not a bare scalar. Confirmed against ZITADEL's own .proto source
+    // (authorization.proto / filter.proto): project_id takes an IDFilter{id},
+    // role_key takes a RoleKeyQuery{key, method}. A flat {"projectId": "..."}
+    // fails protobuf-JSON unmarshalling with "proto: syntax error" — the caller
+    // gets no field-name hint, just a token-position error, so this shape isn't
+    // discoverable by guessing from the response alone.
     body: JSON.stringify({
-      filters: [{ projectId: ZITADEL_PROJECT_ID }, { roleKey: ADMIN_ROLE }],
+      filters: [
+        { projectId: { id: ZITADEL_PROJECT_ID } },
+        { roleKey: { key: ADMIN_ROLE, method: 'TEXT_FILTER_METHOD_EQUALS' } },
+      ],
     }),
   });
 
