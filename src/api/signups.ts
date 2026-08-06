@@ -1,4 +1,4 @@
-import { ADMIN_ROLE, ZITADEL_AUTHORITY, ZITADEL_PROJECT_ID } from '../auth/config';
+import { ZITADEL_AUTHORITY, ZITADEL_PROJECT_ID } from '../auth/config';
 
 /**
  * Who has been given access to this storefront, read straight from ZITADEL.
@@ -9,9 +9,14 @@ import { ADMIN_ROLE, ZITADEL_AUTHORITY, ZITADEL_PROJECT_ID } from '../auth/confi
  *
  * Scope caveat, deliberate and worth knowing: ZITADEL has one project
  * ("webtalk") covering the forum apps, the billing APIs and this storefront, so
- * a manager role granted for this page is a project-wide grant. Filtering by
- * ADMIN_ROLE below narrows what this page *shows*, not what the caller is
- * permitted to fetch.
+ * a manager role granted for this page is a project-wide grant. This query is
+ * scoped to the project — it is not scoped by role. That is deliberate for now
+ * (2026-08-06): it is still unconfirmed whether a plain customer who registers
+ * and logs into hotvds without ever being granted a role even produces an
+ * authorization record here at all, or whether ZITADEL only creates one when a
+ * role is explicitly assigned. Showing every role alongside each person, rather
+ * than filtering to one role, is how that question gets answered instead of
+ * guessed at.
  */
 
 const LIST_AUTHORIZATIONS_URL = `${ZITADEL_AUTHORITY}/zitadel.authorization.v2.AuthorizationService/ListAuthorizations`;
@@ -59,16 +64,14 @@ export async function fetchSignups(accessToken: string, signal?: AbortSignal): P
     },
     // AuthorizationsSearchFilter is a oneof — each entry wraps a nested filter
     // message, not a bare scalar. Confirmed against ZITADEL's own .proto source
-    // (authorization.proto / filter.proto): project_id takes an IDFilter{id},
-    // role_key takes a RoleKeyQuery{key, method}. A flat {"projectId": "..."}
-    // fails protobuf-JSON unmarshalling with "proto: syntax error" — the caller
-    // gets no field-name hint, just a token-position error, so this shape isn't
-    // discoverable by guessing from the response alone.
+    // (authorization.proto / filter.proto): project_id takes an IDFilter{id}. A
+    // flat {"projectId": "..."} fails protobuf-JSON unmarshalling with "proto:
+    // syntax error" — the caller gets no field-name hint, just a token-position
+    // error, so this shape isn't discoverable by guessing from the response.
+    //
+    // Deliberately not also filtering by role_key here — see the module comment.
     body: JSON.stringify({
-      filters: [
-        { projectId: { id: ZITADEL_PROJECT_ID } },
-        { roleKey: { key: ADMIN_ROLE, method: 'TEXT_FILTER_METHOD_EQUALS' } },
-      ],
+      filters: [{ projectId: { id: ZITADEL_PROJECT_ID } }],
     }),
   });
 

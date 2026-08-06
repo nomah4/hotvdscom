@@ -109,6 +109,7 @@ export function SignupList() {
                 <tr>
                   <th>{t.admin.columns.user}</th>
                   <th>{t.admin.columns.login}</th>
+                  <th>{t.admin.columns.roles}</th>
                   <th>{t.admin.columns.granted}</th>
                 </tr>
               </thead>
@@ -117,6 +118,7 @@ export function SignupList() {
                   <tr key={signup.id}>
                     <td>{signup.displayName}</td>
                     <td>{signup.loginName}</td>
+                    <td>{signup.roles.length > 0 ? signup.roles.join(', ') : '—'}</td>
                     <td>
                       {signup.grantedAt
                         ? new Date(signup.grantedAt).toLocaleDateString(lang, {
