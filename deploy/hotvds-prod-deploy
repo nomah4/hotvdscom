@@ -20,6 +20,12 @@
 #
 set -euo pipefail
 
+# Never inherit the caller's working directory. sshd starts the forced command in
+# the deploy user's home, but a directory this user cannot stat — /root, or a
+# release that rotation has just removed — makes find fail and the whole run
+# abort. Nothing here is relative, so anywhere readable will do.
+cd /
+
 # Overridable only to let the script be exercised against a throwaway tree;
 # sshd does not forward the environment, so the deploy key always gets the default.
 ROOT="${HOTVDS_PROD_ROOT:-/var/www/hotvds.com}"
