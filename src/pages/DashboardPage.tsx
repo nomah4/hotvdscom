@@ -5,6 +5,7 @@ import { SubscriptionListItem } from '../components/dashboard/SubscriptionListIt
 import { Button } from '../components/ui/Button';
 import { useLang, useTranslation } from '../i18n/LanguageContext';
 import { useSubscriptions } from '../api/subscriptions';
+import { useRenewal } from '../api/useCheckout';
 import { findByPackageCode, useTariffs } from '../api/catalogue';
 import { localizePath, routePaths } from '../i18n/paths';
 import { media } from '../theme/breakpoints';
@@ -80,6 +81,7 @@ export function DashboardPage() {
   // specs. A failure here must not blank the dashboard, so its error is ignored —
   // subscriptions still render, just with the raw code and no spec badges.
   const { tariffs } = useTariffs();
+  const { renew, renewingId, error: renewError, errorSubscriptionId } = useRenewal();
 
   const activeCount = subscriptions.filter((s) => s.status === 'active').length;
   // Earliest upcoming renewal among active subscriptions — the next date the user
@@ -134,6 +136,11 @@ export function DashboardPage() {
                   subscription={subscription}
                   tariff={match?.tariff}
                   period={match?.period}
+                  onRenew={renew}
+                  isRenewing={renewingId === subscription.subscription_id}
+                  renewError={
+                    errorSubscriptionId === subscription.subscription_id ? renewError : null
+                  }
                 />
               );
             })

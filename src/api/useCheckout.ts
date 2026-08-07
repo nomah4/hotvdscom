@@ -4,8 +4,9 @@ import { useAuth } from '../auth/AuthContext';
 import { useLang } from '../i18n/LanguageContext';
 import { checkoutPath, customCheckoutPath, localizePath, routePaths } from '../i18n/paths';
 import type { BillingPeriod, Tariff } from '../data/tariffs';
-import { createInvoice, createInvoiceFromQuote, fetchPaymentMethods } from './checkout';
+import { createInvoice, createInvoiceFromQuote, createRenewal, fetchPaymentMethods } from './checkout';
 import type { CustomVdsConfiguration, Quote } from './checkout';
+import type { Subscription } from './subscriptions';
 
 /**
  * The invoice the customer was last sent to pay.
@@ -294,5 +295,111 @@ export function useCheckout(): UseCheckoutResult {
     confirm,
     confirmQuote,
     clearError: useCallback(() => setError(null), []),
+  };
+}
+
+interface UseRenewalResult {
+  /** The subscription currently being sent to the gateway, so only its own
+   * button shows a busy state while the others stay usable. */
+  renewingId: string | null;
+  error: string | null;
+  /** Which subscription `error` belongs to, so a list of servers can show the
+   * failure on the card that actually failed. */
+  errorSubscriptionId: string | null;
+  renew: (subscription: Subscription, tariff: Tariff, period: BillingPeriod) => Promise<void>;
+  clearError: () => void;
+}
+
+/**
+ * Renewing one existing server from the dashboard.
+ *
+ * Deliberately NOT routed through the confirmation page the way a first purchase
+ * is: the customer already owns this server at this price, so there is no new
+ * plan or total to agree to — this is "add another term to what I already have".
+ * The amount still comes from Billing, never from here.
+ *
+ * One server per press by design. Billing bills one subscription per invoice
+ * (its capture path reads exactly one invoice line), so a "renew all" button
+ * would have to open several invoices and walk the customer through the gateway
+ * once per server — worse than letting them renew the one they came for.
+ *
+ * ⚠️ Fixed-plan subscriptions only. Billing's renewal endpoint prices the
+ * renewal through `active_price_for_package`, which reads a `PackagePrice` row —
+ * and a configurable ("Custom VDS") package deliberately has none, so renewing
+ * one answers 422 `unsupported_currency`. The caller must therefore supply the
+ * catalogue tariff, which exists only for a plan the catalogue still lists; that
+ * requirement is what keeps this off the custom subscriptions it cannot serve.
+ */
+export function useRenewal(): UseRenewalResult {
+  const { accessToken } = useAuth();
+  const { lang } = useLang();
+  const [renewingId, setRenewingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [errorSubscriptionId, setErrorSubscriptionId] = useState<string | null>(null);
+
+  const renew = useCallback(
+    async (subscription: Subscription, tariff: Tariff, period: BillingPeriod) => {
+      if (!accessToken) {
+        setError('not_signed_in');
+        setErrorSubscriptionId(subscription.subscription_id);
+        return;
+      }
+
+      setRenewingId(subscription.subscription_id);
+      setError(null);
+      setErrorSubscriptionId(null);
+      try {
+        // Billing prices the renewal itself; this amount is only for the
+        // payment-method lookup, which filters methods by what they can take.
+        // `GET /api/v1/subscriptions` returns no money data at all, so the
+        // catalogue tariff is the only price the browser can see.
+        const currency = tariff.currency;
+        const amountMinor = Math.round(
+          (period === 'annual' ? tariff.priceYearly : tariff.priceMonthly) * 100,
+        );
+        const methods = await fetchPaymentMethods(accessToken, amountMinor, currency);
+        if (methods.length === 0) {
+          throw new Error('no_payment_methods');
+        }
+
+        const returnUrl = new URL(
+          localizePath(lang, routePaths.checkoutReturn),
+          window.location.origin,
+        ).toString();
+        // Scoped to the subscription, not the package: renewing server A must
+        // never replay server B's renewal, even on the same plan.
+        const idempotencyScope = `renewal:${subscription.subscription_id}`;
+        const renewal = await createRenewal({
+          accessToken,
+          subscriptionId: subscription.subscription_id,
+          methodCode: methods[0].method_code,
+          returnUrl,
+          currency,
+          idempotencyKey: orderIdempotencyKey(idempotencyScope),
+        });
+
+        if (!renewal.payment_url || !renewal.invoice_id) {
+          throw new Error('no_payment_url');
+        }
+        rememberPendingInvoice(renewal.invoice_id, idempotencyScope);
+        window.location.assign(renewal.payment_url);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'renewal_failed');
+        setErrorSubscriptionId(subscription.subscription_id);
+        setRenewingId(null);
+      }
+    },
+    [accessToken, lang],
+  );
+
+  return {
+    renewingId,
+    error,
+    errorSubscriptionId,
+    renew,
+    clearError: useCallback(() => {
+      setError(null);
+      setErrorSubscriptionId(null);
+    }, []),
   };
 }

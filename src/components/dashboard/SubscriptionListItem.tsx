@@ -66,6 +66,33 @@ const AutoRenew = styled.span`
   color: ${({ theme }) => theme.colors.neutral[500]};
 `;
 
+const RenewButton = styled.button`
+  align-self: center;
+  padding: 8px 16px;
+  border-radius: ${({ theme }) => theme.radii.md};
+  border: 1px solid ${({ theme }) => theme.colors.indigo[900]};
+  background: ${({ theme }) => theme.colors.indigo[900]};
+  color: #fff;
+  font-family: ${({ theme }) => theme.fonts.heading};
+  font-size: ${({ theme }) => theme.fontSizes.small};
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+`;
+
+// Renewal failures are shown on the card that failed, not as a page-level
+// banner: with several servers listed, a detached message cannot say which one
+// it belongs to.
+const RenewError = styled.div`
+  flex-basis: 100%;
+  font-size: ${({ theme }) => theme.fontSizes.small};
+  color: ${({ theme }) => theme.colors.semantic.error};
+`;
+
 // A provisioning note only shows while the server is not yet built. It is a full
 // row so it reads as a status line under the plan, not a spec.
 const ProvisioningNote = styled.div`
@@ -107,9 +134,21 @@ interface SubscriptionListItemProps {
    * catalogue no longer lists, in which case the raw code is shown with no specs. */
   tariff?: Tariff;
   period?: 'monthly' | 'annual';
+  /** Renewing this server. Omitted where renewal is not offered at all. */
+  onRenew?: (subscription: Subscription, tariff: Tariff, period: 'monthly' | 'annual') => void;
+  isRenewing?: boolean;
+  /** Shown on this card only — see RenewError. */
+  renewError?: string | null;
 }
 
-export function SubscriptionListItem({ subscription, tariff, period }: SubscriptionListItemProps) {
+export function SubscriptionListItem({
+  subscription,
+  tariff,
+  period,
+  onRenew,
+  isRenewing = false,
+  renewError = null,
+}: SubscriptionListItemProps) {
   const t = useTranslation('dashboard');
   const { lang } = useLang();
   const configuration = subscription.configuration ?? null;
@@ -166,7 +205,23 @@ export function SubscriptionListItem({ subscription, tariff, period }: Subscript
         {subscription.auto_renew && <AutoRenew>{t.subscriptions.autoRenew}</AutoRenew>}
       </MetaCell>
 
+      {/* Renewal needs the catalogue tariff (Billing prices a renewal from a
+          PackagePrice row, which a Custom VDS package does not have) and an
+          active subscription (Billing refuses any other state). Both conditions
+          are Billing's, not cosmetic — hiding the button is how the UI stays
+          honest about what it can actually do. */}
+      {onRenew && tariff && resolvedPeriod && subscription.status === 'active' && (
+        <RenewButton
+          type="button"
+          onClick={() => onRenew(subscription, tariff, resolvedPeriod)}
+          disabled={isRenewing}
+        >
+          {isRenewing ? t.subscriptions.renewing : t.subscriptions.renew}
+        </RenewButton>
+      )}
+
       {provisioningNote && <ProvisioningNote>{provisioningNote}</ProvisioningNote>}
+      {renewError && <RenewError>{t.subscriptions.renewError}</RenewError>}
     </Row>
   );
 }
