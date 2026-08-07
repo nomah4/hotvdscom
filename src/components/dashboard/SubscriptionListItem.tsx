@@ -135,7 +135,7 @@ interface SubscriptionListItemProps {
   tariff?: Tariff;
   period?: 'monthly' | 'annual';
   /** Renewing this server. Omitted where renewal is not offered at all. */
-  onRenew?: (subscription: Subscription, tariff: Tariff, period: 'monthly' | 'annual') => void;
+  onRenew?: (subscription: Subscription) => void;
   isRenewing?: boolean;
   /** Shown on this card only — see RenewError. */
   renewError?: string | null;
@@ -205,17 +205,13 @@ export function SubscriptionListItem({
         {subscription.auto_renew && <AutoRenew>{t.subscriptions.autoRenew}</AutoRenew>}
       </MetaCell>
 
-      {/* Renewal needs the catalogue tariff (Billing prices a renewal from a
-          PackagePrice row, which a Custom VDS package does not have) and an
-          active subscription (Billing refuses any other state). Both conditions
-          are Billing's, not cosmetic — hiding the button is how the UI stays
-          honest about what it can actually do. */}
-      {onRenew && tariff && resolvedPeriod && subscription.status === 'active' && (
-        <RenewButton
-          type="button"
-          onClick={() => onRenew(subscription, tariff, resolvedPeriod)}
-          disabled={isRenewing}
-        >
+      {/* Active subscriptions only: Billing refuses to renew any other state
+          (`subscription_not_renewable`), so offering the button there would be a
+          promise the server breaks. Works for Custom VDS as well as fixed plans —
+          Billing prices a configurable renewal from the configuration this
+          subscription already recorded. */}
+      {onRenew && subscription.status === 'active' && (
+        <RenewButton type="button" onClick={() => onRenew(subscription)} disabled={isRenewing}>
           {isRenewing ? t.subscriptions.renewing : t.subscriptions.renew}
         </RenewButton>
       )}

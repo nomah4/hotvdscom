@@ -183,6 +183,46 @@ export interface Renewal {
   payment_url: string | null;
 }
 
+export interface RenewalPreview {
+  subscription_id: string;
+  package_code: string;
+  pricing_model: 'fixed_price' | 'configurable';
+  amount_minor: number;
+  currency: string;
+  billing_period: string;
+  valid_until: string | null;
+  renewable: boolean;
+  status: string;
+  breakdown: unknown[] | null;
+}
+
+/**
+ * What renewing this server would cost, read from Billing without creating
+ * anything.
+ *
+ * Needed because the price is not knowable client-side: `GET /subscriptions`
+ * returns no money data by design, and a Custom VDS has no catalogue price at
+ * all — its amount comes from a pricing rule applied to the configuration the
+ * customer actually bought. Also supplies the figure the payment-method lookup
+ * needs, which is amount-scoped.
+ */
+export async function fetchRenewalPreview(
+  accessToken: string,
+  subscriptionId: string,
+  currency: string = DEFAULT_CURRENCY,
+): Promise<RenewalPreview> {
+  const url = new URL(
+    `${BILLING_API_BASE}/api/v1/subscriptions/${subscriptionId}/renewal-preview`,
+  );
+  url.searchParams.set('currency', currency);
+
+  const response = await fetch(url.toString(), { headers: authHeaders(accessToken) });
+  if (!response.ok) {
+    throw await toApiError(response, 'Could not price this renewal');
+  }
+  return (await response.json()) as RenewalPreview;
+}
+
 export interface CreateRenewalInput {
   accessToken: string;
   subscriptionId: string;

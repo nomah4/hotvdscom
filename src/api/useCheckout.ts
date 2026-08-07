@@ -4,9 +4,16 @@ import { useAuth } from '../auth/AuthContext';
 import { useLang } from '../i18n/LanguageContext';
 import { checkoutPath, customCheckoutPath, localizePath, routePaths } from '../i18n/paths';
 import type { BillingPeriod, Tariff } from '../data/tariffs';
-import { createInvoice, createInvoiceFromQuote, createRenewal, fetchPaymentMethods } from './checkout';
+import {
+  createInvoice,
+  createInvoiceFromQuote,
+  createRenewal,
+  fetchPaymentMethods,
+  fetchRenewalPreview,
+} from './checkout';
 import type { CustomVdsConfiguration, Quote } from './checkout';
 import type { Subscription } from './subscriptions';
+import { DEFAULT_CURRENCY } from './config';
 
 /**
  * The invoice the customer was last sent to pay.
@@ -306,7 +313,7 @@ interface UseRenewalResult {
   /** Which subscription `error` belongs to, so a list of servers can show the
    * failure on the card that actually failed. */
   errorSubscriptionId: string | null;
-  renew: (subscription: Subscription, tariff: Tariff, period: BillingPeriod) => Promise<void>;
+  renew: (subscription: Subscription) => Promise<void>;
   clearError: () => void;
 }
 
@@ -323,12 +330,10 @@ interface UseRenewalResult {
  * would have to open several invoices and walk the customer through the gateway
  * once per server — worse than letting them renew the one they came for.
  *
- * ⚠️ Fixed-plan subscriptions only. Billing's renewal endpoint prices the
- * renewal through `active_price_for_package`, which reads a `PackagePrice` row —
- * and a configurable ("Custom VDS") package deliberately has none, so renewing
- * one answers 422 `unsupported_currency`. The caller must therefore supply the
- * catalogue tariff, which exists only for a plan the catalogue still lists; that
- * requirement is what keeps this off the custom subscriptions it cannot serve.
+ * Works for both fixed plans and Custom VDS. The price comes from Billing's
+ * renewal-preview, which is the only way to know it: `GET /subscriptions` returns
+ * no money data, and a configurable package has no catalogue price — its amount
+ * is a pricing rule applied to the configuration the customer actually bought.
  */
 export function useRenewal(): UseRenewalResult {
   const { accessToken } = useAuth();
@@ -338,7 +343,7 @@ export function useRenewal(): UseRenewalResult {
   const [errorSubscriptionId, setErrorSubscriptionId] = useState<string | null>(null);
 
   const renew = useCallback(
-    async (subscription: Subscription, tariff: Tariff, period: BillingPeriod) => {
+    async (subscription: Subscription) => {
       if (!accessToken) {
         setError('not_signed_in');
         setErrorSubscriptionId(subscription.subscription_id);
@@ -349,15 +354,17 @@ export function useRenewal(): UseRenewalResult {
       setError(null);
       setErrorSubscriptionId(null);
       try {
-        // Billing prices the renewal itself; this amount is only for the
-        // payment-method lookup, which filters methods by what they can take.
-        // `GET /api/v1/subscriptions` returns no money data at all, so the
-        // catalogue tariff is the only price the browser can see.
-        const currency = tariff.currency;
-        const amountMinor = Math.round(
-          (period === 'annual' ? tariff.priceYearly : tariff.priceMonthly) * 100,
+        // Ask Billing what this renewal costs before anything else: the
+        // payment-method lookup is amount-scoped, so a guessed total risks
+        // choosing a method that cannot take the real one. Billing prices the
+        // invoice itself regardless — this figure never sets what is charged.
+        const preview = await fetchRenewalPreview(
+          accessToken,
+          subscription.subscription_id,
+          DEFAULT_CURRENCY,
         );
-        const methods = await fetchPaymentMethods(accessToken, amountMinor, currency);
+        const currency = preview.currency;
+        const methods = await fetchPaymentMethods(accessToken, preview.amount_minor, currency);
         if (methods.length === 0) {
           throw new Error('no_payment_methods');
         }
