@@ -54,7 +54,8 @@ export const dashboard = {
   admin: {
     title: 'Кто пришёл на хостинг',
     subtitle: 'Пользователи с доступом к hotvds, по данным webtalk.',
-    columns: { user: 'Пользователь', login: 'Логин', roles: 'Роли', granted: 'Доступ выдан' },
+    columns: { user: 'Пользователь', login: 'Логин', roles: 'Роли', granted: 'Доступ выдан', billing: '' },
+    viewBilling: 'Биллинг ↗',
     loading: 'Загружаем список…',
     error: 'Не удалось загрузить список.',
     forbidden: 'У вашей учётной записи нет прав на просмотр этого списка.',

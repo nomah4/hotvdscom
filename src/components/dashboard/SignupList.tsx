@@ -3,6 +3,22 @@ import styled from 'styled-components';
 import { useAuth } from '../../auth/AuthContext';
 import { useLang, useTranslation, interpolate } from '../../i18n/LanguageContext';
 import { fetchSignups, SignupsPermissionError, type Signup } from '../../api/signups';
+import { BILLING_API_BASE, PROJECT_CODE, TENANT_ID } from '../../api/config';
+
+// Billing has no login/session tied to ZITADEL — this just deep-links into
+// bl's own separate admin panel (its own login, its own credentials) with the
+// user's ZITADEL id pre-filled, instead of making the viewer copy it by hand
+// from the ZITADEL console. Billing's admin search returns subscription
+// status/history only, no money fields, so the link itself carries no
+// financial data.
+function billingLookupUrl(userId: string): string {
+  const params = new URLSearchParams({
+    external_user_id: userId,
+    tenant_id: TENANT_ID,
+    project_code: PROJECT_CODE,
+  });
+  return `${BILLING_API_BASE}/admin/ui/subscriptions?${params.toString()}`;
+}
 
 const Card = styled.section`
   background: ${({ theme }) => theme.colors.background.primary};
@@ -111,6 +127,7 @@ export function SignupList() {
                   <th>{t.admin.columns.login}</th>
                   <th>{t.admin.columns.roles}</th>
                   <th>{t.admin.columns.granted}</th>
+                  <th>{t.admin.columns.billing}</th>
                 </tr>
               </thead>
               <tbody>
@@ -127,6 +144,13 @@ export function SignupList() {
                             day: 'numeric',
                           })
                         : '—'}
+                    </td>
+                    <td>
+                      {signup.userId && (
+                        <a href={billingLookupUrl(signup.userId)} target="_blank" rel="noopener noreferrer">
+                          {t.admin.viewBilling}
+                        </a>
+                      )}
                     </td>
                   </tr>
                 ))}

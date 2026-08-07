@@ -57,7 +57,8 @@ export const dashboard = {
   admin: {
     title: 'Who came to hosting',
     subtitle: 'People with access to hotvds, as recorded by webtalk.',
-    columns: { user: 'User', login: 'Login', roles: 'Roles', granted: 'Access granted' },
+    columns: { user: 'User', login: 'Login', roles: 'Roles', granted: 'Access granted', billing: '' },
+    viewBilling: 'Billing ↗',
     loading: 'Loading the list…',
     error: 'Could not load the list.',
     forbidden: 'Your account is not permitted to view this list.',
