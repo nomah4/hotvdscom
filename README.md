@@ -100,3 +100,9 @@ ssh -i <key> hotvds-deploy@<host> rollback   # repoint current/ at the previous 
 **DNS caveat:** `dev.hotvds.com` is not yet a real public DNS record — it currently only resolves
 on networks that have a private/VPN override for it. Add an A record for `dev.hotvds.com` →
 the server IP in the `hotvds.com` Cloudflare zone for the site to be reachable publicly.
+
+## Security
+
+Open security work is tracked in [SECURITY-TODO.md](SECURITY-TODO.md), ordered by urgency. The
+top item concerns the OIDC scopes in `src/auth/config.ts` — read it before changing anything about
+how tokens are requested or stored.
