@@ -6,6 +6,34 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+**Customers can renew a server they already own.** The dashboard had no way to pay for an existing
+server: buying the plan again hands the customer a *second* one, because the purchase policy is
+`separate`. A per-card Renew button now drives Billing's `POST /api/v1/subscriptions/<id>/renewals`,
+which creates the `SubscriptionRenewal` link the capture path needs, so the payment extends that
+exact subscription rather than starting another.
+
+- Billing locks the row, returns an existing unpaid renewal instead of duplicating it, and continues
+  the term from the current `valid_until` rather than from today — so renewing early loses no paid
+  time. Idempotency is scoped per subscription, so renewing server A never replays server B.
+- One invoice per subscription, not one bill for all of them. Billing's capture path reads exactly
+  one invoice line (`services.py:1106` `.get()`), so a combined "pay for all 10" invoice would be a
+  change to the money path; renewing per server is not.
+- **Configurable servers renew too.** The button was first gated to catalogue tariffs, because
+  Billing could not price a configurable renewal at all — which excluded the customers who actually
+  have servers, since every legacy-imported subscription is `VDS_CUSTOM_MONTHLY`. Billing can now
+  (`create_renewal_quote`), so the gate is off. The price comes from the new read-only
+  `GET /api/v1/subscriptions/{id}/renewal-preview`: the amount is not knowable client-side —
+  `GET /subscriptions` returns no money data by design, and a Custom VDS has no catalogue price,
+  only a pricing rule applied to the configuration it recorded. Billing still prices the invoice
+  itself, so the previewed figure never decides what is charged.
+- The remaining condition is Billing's own: active subscriptions only, since it answers
+  `subscription_not_renewable` for anything else.
+
+Two caveats worth keeping in view. This does not make real payment possible — YooKassa is still in
+test mode on this install. And the renewal path ships with **no tests of its own**; the suite that
+passes around it does not exercise it, so its correctness rests on review and on Billing's
+guarantees rather than on CI.
+
 **Every footer link now leads to a real page.** Nine of the eleven rendered as `to="#"`; the footer
 is the site map, so those were pages nobody could reach. New routes: `/datacenters`, `/status`,
 `/knowledge-base`, `/api`, `/about`, `/blog`, `/partners`, `/contacts`. "Контакты" and "Связаться с
