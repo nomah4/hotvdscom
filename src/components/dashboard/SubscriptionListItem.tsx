@@ -101,7 +101,7 @@ const CornerCell = styled.div`
 // a chip of its own rather than another grey line. Tinted indigo instead of
 // coral: coral is the Renew action next to it, and the two must not read as the
 // same thing.
-const ValidUntilChip = styled.span`
+const ValidUntilChip = styled.button<{ $clickable: boolean }>`
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
@@ -112,6 +112,23 @@ const ValidUntilChip = styled.span`
   font-size: ${({ theme }) => theme.fontSizes.small};
   color: ${({ theme }) => theme.colors.indigo[600]};
   white-space: nowrap;
+  /* Rendered as a plain span when renewal is not on offer, so the hover
+     affordance never appears on something that cannot be clicked. */
+  cursor: ${({ $clickable }) => ($clickable ? 'pointer' : 'default')};
+
+  ${({ $clickable, theme }) =>
+    $clickable &&
+    `
+    &:hover {
+      border-color: ${theme.colors.accent[500]};
+      background: ${theme.colors.accent[50]};
+    }
+  `}
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
 `;
 
 const ValidUntilValue = styled.span`
@@ -167,23 +184,35 @@ const ActionRow = styled.div`
   flex-basis: 100%;
 `;
 
-const ControlButton = styled.button`
+/**
+ * `$tone="go"` paints the button mint, `undefined` leaves it neutral.
+ *
+ * The power button carries the tone, so its colour states what pressing it would
+ * do: green to start a server that is down, grey to stop one that is up. That
+ * makes the row itself readable at a glance — a green button in the list means
+ * something is not running. Reboot stays neutral in both states; it is the same
+ * action either way.
+ */
+const ControlButton = styled.button<{ $tone?: 'go' }>`
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
   border-radius: ${({ theme }) => theme.radii.md};
-  border: 1px solid ${({ theme }) => theme.colors.neutral[300]};
-  background: ${({ theme }) => theme.colors.background.primary};
-  color: ${({ theme }) => theme.colors.neutral[800]};
+  border: 1px solid
+    ${({ theme, $tone }) => ($tone === 'go' ? theme.colors.mint[400] : theme.colors.neutral[300])};
+  background: ${({ theme, $tone }) =>
+    $tone === 'go' ? theme.colors.mint[100] : theme.colors.background.primary};
+  color: ${({ theme, $tone }) => ($tone === 'go' ? theme.colors.mint[700] : theme.colors.neutral[800])};
   font-family: ${({ theme }) => theme.fonts.heading};
   font-size: ${({ theme }) => theme.fontSizes.small};
   cursor: pointer;
   white-space: nowrap;
 
   &:hover {
-    border-color: ${({ theme }) => theme.colors.indigo[400]};
-    color: ${({ theme }) => theme.colors.indigo[900]};
+    border-color: ${({ theme, $tone }) =>
+      $tone === 'go' ? theme.colors.mint[600] : theme.colors.indigo[400]};
+    color: ${({ theme, $tone }) => ($tone === 'go' ? theme.colors.mint[700] : theme.colors.indigo[900])};
   }
 `;
 
@@ -307,6 +336,17 @@ export function SubscriptionListItem({
    */
   const isRunning = subscription.status === 'active' && subscription.provisioning_status === 'succeeded';
 
+  /**
+   * Active subscriptions only: Billing answers `subscription_not_renewable` for
+   * every other state, so offering renewal there would be a promise the server
+   * breaks. Works for Custom VDS as well as fixed plans — Billing prices a
+   * configurable renewal from the configuration this subscription recorded.
+   *
+   * Gates both entry points, so the clickable date and the button can never
+   * disagree about whether renewal is on offer.
+   */
+  const canRenew = Boolean(onRenew) && subscription.status === 'active';
+
   const planName = tariff?.name ?? (configuration ? t.subscriptions.customPlan : subscription.package_code ?? t.subscriptions.unknownPlan);
   const resolvedPeriod = period ?? periodFromPackageCode(subscription.package_code);
   const tone = STATUS_TONE[subscription.status];
@@ -364,17 +404,23 @@ export function SubscriptionListItem({
           it extends — the two are one thought, and separating them left the
           button in a row of unrelated power controls. */}
       <CornerCell>
-        <ValidUntilChip>
+        {/* The date is itself the shortcut to extending it. `title` carries the
+            hint because a hover-only affordance nobody can guess is worse than
+            none — and the explicit Renew button below stays, so the shortcut is
+            a convenience rather than the only way in. */}
+        <ValidUntilChip
+          as={canRenew ? 'button' : 'span'}
+          type={canRenew ? 'button' : undefined}
+          $clickable={canRenew}
+          onClick={canRenew ? () => onRenew!(subscription) : undefined}
+          disabled={canRenew ? isRenewing : undefined}
+          title={canRenew ? t.subscriptions.renewHint : undefined}
+        >
           {t.subscriptions.validUntil}: <ValidUntilValue>{validUntil}</ValidUntilValue>
         </ValidUntilChip>
 
-        {/* Active subscriptions only: Billing refuses to renew any other state
-            (`subscription_not_renewable`), so offering the button there would be
-            a promise the server breaks. Works for Custom VDS as well as fixed
-            plans — Billing prices a configurable renewal from the configuration
-            this subscription already recorded. */}
-        {onRenew && subscription.status === 'active' && (
-          <RenewButton type="button" onClick={() => onRenew(subscription)} disabled={isRenewing}>
+        {canRenew && (
+          <RenewButton type="button" onClick={() => onRenew!(subscription)} disabled={isRenewing}>
             {isRenewing ? t.subscriptions.renewing : t.subscriptions.renew}
           </RenewButton>
         )}
@@ -412,7 +458,11 @@ export function SubscriptionListItem({
             cannot reach a machine yet, so pressing one says so instead of
             reporting an action that did not happen. The power icon and label
             follow `isRunning`. */}
-        <ControlButton type="button" onClick={() => setControlsPressed(true)}>
+        <ControlButton
+          type="button"
+          onClick={() => setControlsPressed(true)}
+          $tone={isRunning ? undefined : 'go'}
+        >
           <span aria-hidden>{isRunning ? '⏹' : '▶'}</span>
           {isRunning ? t.subscriptions.controls.powerOff : t.subscriptions.controls.powerOn}
         </ControlButton>
