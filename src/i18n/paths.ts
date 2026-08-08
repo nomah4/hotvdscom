@@ -23,6 +23,20 @@ export const routePaths = {
   // because we build this URL ourselves and know which language they left from.
   checkoutReturn: 'checkout/return',
   terms: 'terms',
+
+  // Everything the footer links to. Each one is a real page — the footer is the
+  // site map, so a segment listed here without a <Route> in routes.tsx is a
+  // visitor sent to the not-found page by their own navigation.
+  datacenters: 'datacenters',
+  api: 'api',
+  about: 'about',
+  blog: 'blog',
+  partners: 'partners',
+  // Reached from two footer columns: "Контакты" under Company and "Связаться с
+  // нами" under Support. One page, two entrances — deliberately not two routes.
+  contacts: 'contacts',
+  knowledgeBase: 'knowledge-base',
+  status: 'status',
 };
 
 export function localizePath(lang: Lang, path: string) {

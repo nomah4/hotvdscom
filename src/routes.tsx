@@ -9,6 +9,15 @@ import { CallbackPage } from './pages/CallbackPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { CheckoutReturnPage } from './pages/CheckoutReturnPage';
 import { TermsPage } from './pages/TermsPage';
+import { DatacentersPage } from './pages/DatacentersPage';
+import { ApiPage } from './pages/ApiPage';
+import { AboutPage } from './pages/AboutPage';
+import { BlogPage } from './pages/BlogPage';
+import { PartnersPage } from './pages/PartnersPage';
+import { ContactsPage } from './pages/ContactsPage';
+import { KnowledgeBasePage } from './pages/KnowledgeBasePage';
+import { StatusPage } from './pages/StatusPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { RequireAuth } from './auth/RequireAuth';
 import { DEFAULT_LANG, routePaths } from './i18n/paths';
 
@@ -27,6 +36,21 @@ export function AppRoutes() {
           <Route index element={<HomePage />} />
           <Route path={routePaths.pricing} element={<PricingPage />} />
           <Route path={routePaths.terms} element={<TermsPage />} />
+          <Route path={routePaths.datacenters} element={<DatacentersPage />} />
+          <Route path={routePaths.api} element={<ApiPage />} />
+          <Route path={routePaths.about} element={<AboutPage />} />
+          <Route path={routePaths.blog} element={<BlogPage />} />
+          <Route path={routePaths.partners} element={<PartnersPage />} />
+          {/* Both footer entrances — "Контакты" and "Связаться с нами" — land here. */}
+          <Route path={routePaths.contacts} element={<ContactsPage />} />
+          <Route path={routePaths.knowledgeBase} element={<KnowledgeBasePage />} />
+          <Route path={routePaths.status} element={<StatusPage />} />
+          {/* Localized not-found. Inside /:lang and inside the layout, so a
+              mistyped URL keeps the visitor's language and still gets the footer —
+              which is the site map, and the most useful thing to hand someone who
+              did not find what they wanted. A splat scores lowest, so the real
+              routes above and the authenticated ones below still win. */}
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
         {/* Order confirmation. Deliberately NOT behind RequireAuth: a visitor
             should see what they are about to buy, and at what price, before
@@ -67,6 +91,9 @@ export function AppRoutes() {
           }
         />
       </Route>
+      {/* Only reachable by paths that never matched a language segment at all —
+          /:lang swallows anything with one, and hands it to NotFoundPage above.
+          Kept as the backstop for the shapes that slip past, e.g. a bare "/". */}
       <Route path="*" element={<Navigate to={`/${DEFAULT_LANG}`} replace />} />
     </Routes>
   );

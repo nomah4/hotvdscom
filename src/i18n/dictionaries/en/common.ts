@@ -17,21 +17,45 @@ export const common = {
   },
   footer: {
     tagline: 'Powerful VDS hosting with an honest uptime.',
+    // Key order must match ru/common.ts — see the note there.
     columns: {
       product: {
         title: 'Product',
-        links: ['Pricing', 'Data Centers', 'API'],
+        links: {
+          pricing: 'Pricing',
+          datacenters: 'Data Centers',
+          api: 'API',
+        },
       },
       company: {
         title: 'Company',
-        links: ['About', 'Blog', 'Partners', 'Contact', 'Terms of Service'],
+        links: {
+          about: 'About',
+          blog: 'Blog',
+          partners: 'Partners',
+          contacts: 'Contact',
+          terms: 'Terms of Service',
+        },
       },
       support: {
         title: 'Support',
-        links: ['Knowledge Base', 'Service Status', 'Contact Us'],
+        links: {
+          knowledgeBase: 'Knowledge Base',
+          status: 'Service Status',
+          contactUs: 'Contact Us',
+        },
       },
     },
-    copyright: '© {year} hotvds.com — design prototype.',
+    copyright: '© {year} hotvds.com',
+  },
+  notFound: {
+    meta: {
+      title: 'Page not found — hotvds',
+      description: 'No such page on hotvds.com.',
+    },
+    title: 'Page not found',
+    body: 'The address may have a typo, or the page has moved. Everything the site does have is linked in the footer below.',
+    backHome: 'Back to home',
   },
   auth: {
     signInRequired: 'Sign in required',

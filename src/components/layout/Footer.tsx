@@ -4,15 +4,9 @@ import { PageContainer } from './PageContainer';
 import { Logo } from '../ui/Logo';
 import { BuildStamp } from '../ui/BuildStamp';
 import { useLang, useTranslation, interpolate } from '../../i18n/LanguageContext';
-import { localizePath, routePaths } from '../../i18n/paths';
+import { localizePath } from '../../i18n/paths';
 import { media } from '../../theme/breakpoints';
-
-const footerLinkPaths: Record<string, (string | undefined)[]> = {
-  product: [routePaths.pricing, undefined, undefined],
-  // Index 4 is Terms — the only company link that leads anywhere real today.
-  company: [undefined, undefined, undefined, undefined, routePaths.terms],
-  support: [undefined, undefined, undefined],
-};
+import { footerLinkPaths, type FooterLinkKey } from './footerLinks';
 
 const Wrap = styled.footer`
   background: ${({ theme }) => theme.colors.indigo[900]};
@@ -87,7 +81,13 @@ const Bottom = styled.div`
 export function Footer() {
   const t = useTranslation('common');
   const { lang } = useLang();
-  const columns = Object.entries(t.footer.columns) as [string, { title: string; links: readonly string[] }][];
+  // Object key order is the display order, so ru/common.ts and en/common.ts must
+  // list the links in the same order — the dictionaries parity test sorts keys
+  // and cannot see this. Footer.test.tsx compares the rendered order instead.
+  const columns = Object.entries(t.footer.columns) as [
+    string,
+    { title: string; links: Record<FooterLinkKey, string> },
+  ][];
 
   return (
     <Wrap>
@@ -102,14 +102,11 @@ export function Footer() {
               <div key={key}>
                 <ColumnTitle>{col.title}</ColumnTitle>
                 <ul>
-                  {col.links.map((link, i) => {
-                    const relPath = footerLinkPaths[key]?.[i];
-                    return (
-                      <li key={link}>
-                        <ColumnLink to={relPath !== undefined ? localizePath(lang, relPath) : '#'}>{link}</ColumnLink>
-                      </li>
-                    );
-                  })}
+                  {(Object.entries(col.links) as [FooterLinkKey, string][]).map(([linkKey, label]) => (
+                    <li key={linkKey}>
+                      <ColumnLink to={localizePath(lang, footerLinkPaths[linkKey])}>{label}</ColumnLink>
+                    </li>
+                  ))}
                 </ul>
               </div>
             ))}

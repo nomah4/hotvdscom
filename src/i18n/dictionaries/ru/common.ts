@@ -14,21 +14,51 @@ export const common = {
   },
   footer: {
     tagline: 'Мощный VDS-хостинг с честным аптаймом.',
+    // Keyed, not positional: Footer.tsx pairs each key with a route, so a label
+    // without a destination is a compile error instead of a link that silently
+    // borrows its neighbour's page. Keep the key order identical to en/common.ts —
+    // it is the display order, and the parity test sorts keys and cannot see it.
     columns: {
       product: {
         title: 'Продукт',
-        links: ['Тарифы', 'Дата-центры', 'API'],
+        links: {
+          pricing: 'Тарифы',
+          datacenters: 'Дата-центры',
+          api: 'API',
+        },
       },
       company: {
         title: 'Компания',
-        links: ['О нас', 'Блог', 'Партнёрам', 'Контакты', 'Условия обслуживания'],
+        links: {
+          about: 'О нас',
+          blog: 'Блог',
+          partners: 'Партнёрам',
+          contacts: 'Контакты',
+          terms: 'Условия обслуживания',
+        },
       },
       support: {
         title: 'Поддержка',
-        links: ['База знаний', 'Статус сервиса', 'Связаться с нами'],
+        links: {
+          knowledgeBase: 'База знаний',
+          status: 'Статус сервиса',
+          contactUs: 'Связаться с нами',
+        },
       },
     },
-    copyright: '© {year} hotvds.com — дизайн-прототип.',
+    copyright: '© {year} hotvds.com',
+  },
+  notFound: {
+    meta: {
+      title: 'Страница не найдена — hotvds',
+      description: 'Такой страницы на hotvds.com нет.',
+    },
+    title: 'Страница не найдена',
+    // Deliberately does not echo the address that was requested: reflecting the
+    // visitor's own string into the page buys nothing and is one more thing to
+    // escape. The footer below already lists everything the site has.
+    body: 'Возможно, в адресе опечатка, или страница переехала. Ссылки на всё, что у нас есть, — в футере ниже.',
+    backHome: 'На главную',
   },
   auth: {
     signInRequired: 'Требуется вход',
