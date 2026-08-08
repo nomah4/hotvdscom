@@ -5,6 +5,7 @@ import { HomePage } from './pages/HomePage';
 import { PricingPage } from './pages/PricingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { AdminPage } from './pages/AdminPage';
+import { NewServerPage } from './pages/NewServerPage';
 import { CallbackPage } from './pages/CallbackPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { CheckoutReturnPage } from './pages/CheckoutReturnPage';
@@ -64,6 +65,18 @@ export function AppRoutes() {
           element={
             <RequireAuth>
               <DashboardPage />
+            </RequireAuth>
+          }
+        />
+        {/* Ordering from inside the account. Behind RequireAuth like the rest of
+            the cabinet — it is reached from the sidebar, and the customer is
+            signed in by definition. Buys nothing here: it hands off to the
+            shared /checkout, same as the public pricing page. */}
+        <Route
+          path={routePaths.newServer}
+          element={
+            <RequireAuth>
+              <NewServerPage />
             </RequireAuth>
           }
         />

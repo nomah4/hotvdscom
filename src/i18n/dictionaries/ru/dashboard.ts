@@ -5,14 +5,23 @@ export const dashboard = {
   },
   sidebar: {
     instances: 'Инстансы',
+    newServer: 'Новый сервер',
     billing: 'Биллинг',
     settings: 'Настройки',
     admin: 'Пользователи',
   },
+  newServer: {
+    title: 'Новый сервер',
+    subtitle: 'Соберите конфигурацию или возьмите готовый тариф — не выходя из кабинета.',
+    plansTitle: 'Готовые тарифы',
+    configuratorTitle: 'Своя конфигурация',
+  },
   stats: {
     activeServers: 'Активных серверов',
     nextRenewal: 'Следующее продление',
-    totalPlans: 'Всего планов',
+    totalServices: 'Всего услуг',
+    balance: 'Баланс',
+    balanceUnavailable: 'пока не подключён',
   },
   instances: {
     title: 'Мои серверы',

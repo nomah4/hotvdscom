@@ -16,7 +16,7 @@ const StatRow = styled.div`
   gap: 16px;
 
   ${media.tablet`
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   `}
 `;
 
@@ -40,6 +40,14 @@ const StatValue = styled.span`
   font-size: 1.5rem;
   font-weight: ${({ theme }) => theme.fontWeights.extrabold};
   color: ${({ theme }) => theme.colors.indigo[900]};
+`;
+
+// Says why the value is a dash. Without it the balance tile reads as a balance
+// of zero sitting next to three tiles that are genuinely computed — which is a
+// statement about the customer's money, and the wrong one.
+const StatNote = styled.span`
+  font-size: ${({ theme }) => theme.fontSizes.h6};
+  color: ${({ theme }) => theme.colors.neutral[500]};
 `;
 
 const SectionTitle = styled.h2`
@@ -106,8 +114,19 @@ export function DashboardPage() {
           <StatValue>{nextRenewalLabel}</StatValue>
         </StatCard>
         <StatCard>
-          <StatLabel>{t.stats.totalPlans}</StatLabel>
+          <StatLabel>{t.stats.totalServices}</StatLabel>
           <StatValue>{subscriptions.length}</StatValue>
+        </StatCard>
+        {/* Placeholder on purpose. Billing exposes no balance endpoint — the
+            storefront can reach invoices, subscriptions, packages, quotes,
+            payment methods and renewals, and none of them carry an account
+            balance. A plausible figure here would be a claim about the
+            customer's money, so the tile states that it is not connected rather
+            than inventing one. Tracked in TODO.md. */}
+        <StatCard>
+          <StatLabel>{t.stats.balance}</StatLabel>
+          <StatValue>—</StatValue>
+          <StatNote>{t.stats.balanceUnavailable}</StatNote>
         </StatCard>
       </StatRow>
 

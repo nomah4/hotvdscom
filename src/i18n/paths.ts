@@ -16,6 +16,10 @@ export const routePaths = {
   // hotvds_admin role in the UI, and by ZITADEL's own permission check on the
   // data behind it.
   admin: 'admin',
+  // Ordering from inside the account, so a customer who already has servers
+  // never has to go back out to the storefront to buy another. Same configurator
+  // and the same /checkout as the public pricing page — only the chrome differs.
+  newServer: 'dashboard/new',
   // Order confirmation. Nothing is charged and no invoice exists until the
   // customer confirms here.
   checkout: 'checkout',

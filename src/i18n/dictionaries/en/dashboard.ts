@@ -8,14 +8,23 @@ export const dashboard = {
   },
   sidebar: {
     instances: 'Instances',
+    newServer: 'New server',
     billing: 'Billing',
     settings: 'Settings',
     admin: 'Users',
   },
+  newServer: {
+    title: 'New server',
+    subtitle: 'Build a configuration or take a ready-made plan — without leaving your account.',
+    plansTitle: 'Ready-made plans',
+    configuratorTitle: 'Custom configuration',
+  },
   stats: {
     activeServers: 'Active servers',
     nextRenewal: 'Next renewal',
-    totalPlans: 'Total plans',
+    totalServices: 'Total services',
+    balance: 'Balance',
+    balanceUnavailable: 'not connected yet',
   },
   instances: {
     title: 'My servers',
