@@ -57,7 +57,8 @@ const AutoRenew = styled.span`
 // action. Accent is the design system's primary-action colour and is used
 // nowhere else on this card.
 const RenewButton = styled.button`
-  align-self: center;
+  /* Right-aligned under the valid-until chip it belongs to. */
+  align-self: flex-end;
   padding: 8px 16px;
   border-radius: ${({ theme }) => theme.radii.md};
   border: 1px solid ${({ theme }) => theme.colors.accent[500]};
@@ -328,12 +329,14 @@ export function SubscriptionListItem({
 
   return (
     <Row>
+      {/* Status first, above the name: it is the one thing a customer scanning a
+          list of servers is looking for, and the top-left corner is where they
+          look first. */}
       <NameCell>
+        <StatusDot status={tone} label={t.subscriptions.statusLabels[subscription.status]} />
         <Name>{planName}</Name>
         {resolvedPeriod && <Term>{t.subscriptions.term[resolvedPeriod]}</Term>}
       </NameCell>
-
-      <StatusDot status={tone} label={t.subscriptions.statusLabels[subscription.status]} />
 
       {/* Hardware only. OS and datacenter moved to the corner: they describe
           where the server lives rather than what it is made of, and they used to
@@ -356,11 +359,26 @@ export function SubscriptionListItem({
         )}
       </SpecsCell>
 
-      {/* Top right: when the service runs out, then where the server lives. */}
+      {/* Top right: when the service runs out, the button that pushes that date
+          back, then where the server lives. Renew sits directly under the date
+          it extends — the two are one thought, and separating them left the
+          button in a row of unrelated power controls. */}
       <CornerCell>
         <ValidUntilChip>
           {t.subscriptions.validUntil}: <ValidUntilValue>{validUntil}</ValidUntilValue>
         </ValidUntilChip>
+
+        {/* Active subscriptions only: Billing refuses to renew any other state
+            (`subscription_not_renewable`), so offering the button there would be
+            a promise the server breaks. Works for Custom VDS as well as fixed
+            plans — Billing prices a configurable renewal from the configuration
+            this subscription already recorded. */}
+        {onRenew && subscription.status === 'active' && (
+          <RenewButton type="button" onClick={() => onRenew(subscription)} disabled={isRenewing}>
+            {isRenewing ? t.subscriptions.renewing : t.subscriptions.renew}
+          </RenewButton>
+        )}
+
         {configuration?.os && (
           <CornerLine>
             OS <CornerValue>{osDisplayName(configuration.os)}</CornerValue>
@@ -390,17 +408,6 @@ export function SubscriptionListItem({
       {/* Bottom row: actions left to right by how often they are wanted, with
           the irreversible one pushed to the far corner away from the rest. */}
       <ActionRow>
-        {/* Active subscriptions only: Billing refuses to renew any other state
-            (`subscription_not_renewable`), so offering the button there would be
-            a promise the server breaks. Works for Custom VDS as well as fixed
-            plans — Billing prices a configurable renewal from the configuration
-            this subscription already recorded. */}
-        {onRenew && subscription.status === 'active' && (
-          <RenewButton type="button" onClick={() => onRenew(subscription)} disabled={isRenewing}>
-            {isRenewing ? t.subscriptions.renewing : t.subscriptions.renew}
-          </RenewButton>
-        )}
-
         {/* Power and reboot. Styled as live controls, and they are — they just
             cannot reach a machine yet, so pressing one says so instead of
             reporting an action that did not happen. The power icon and label
