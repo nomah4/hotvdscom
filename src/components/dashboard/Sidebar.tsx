@@ -53,6 +53,8 @@ export function Sidebar() {
 
   const items: { label: string; icon: string; to?: string }[] = [
     { label: t.sidebar.instances, icon: '🖥️', to: localizePath(lang, routePaths.dashboard) },
+    // Next to the server list, because that is what it adds to.
+    { label: t.sidebar.newServer, icon: '➕', to: localizePath(lang, routePaths.newServer) },
     { label: t.sidebar.billing, icon: '💳' },
     { label: t.sidebar.settings, icon: '⚙️' },
   ];

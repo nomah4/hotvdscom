@@ -82,6 +82,17 @@ describe('routing', () => {
     }
   });
 
+  it('mounts the in-account order page at its own route', async () => {
+    // `dashboard/new` sits under the same /:lang parent as `dashboard`; if the
+    // route were missing or its slug typed wrong, the splat would answer instead
+    // and the sidebar link would quietly lead to a 404.
+    renderAt('/ru/dashboard/new');
+
+    expect(await screen.findByRole('heading', { level: 1 })).not.toHaveTextContent(
+      dictionaries.ru.common.notFound.title,
+    );
+  });
+
   it('does not let the not-found splat swallow a more specific route', async () => {
     // Splats score lowest in react-router's ranking, so the authenticated routes
     // declared outside the marketing layout still win. Worth asserting rather
