@@ -1,4 +1,5 @@
 import styled from 'styled-components';
+import { PlaceholderSections } from '../content/PlaceholderSections';
 import { useTranslation } from '../../i18n/LanguageContext';
 
 // Deliberately loud. These terms are not real yet, and nobody — customer,
@@ -10,23 +11,6 @@ const DraftBanner = styled.div`
   border: 1px solid ${({ theme }) => theme.colors.semantic.error};
   color: ${({ theme }) => theme.colors.semantic.error};
   font-size: ${({ theme }) => theme.fontSizes.small};
-`;
-
-const Clause = styled.section`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
-
-const ClauseTitle = styled.h3`
-  font-size: ${({ theme }) => theme.fontSizes.body};
-  color: ${({ theme }) => theme.colors.neutral[900]};
-`;
-
-const Placeholder = styled.p`
-  font-family: ${({ theme }) => theme.fonts.mono};
-  font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
 const Wrap = styled.div`
@@ -44,7 +28,10 @@ const Wrap = styled.div`
  * one thing and the page another.
  *
  * Headings are h3 so they nest correctly under either host: the page supplies an
- * h1 title, the modal an h2.
+ * h1 title, the modal an h2. That is PlaceholderSections' default, which renders
+ * the clauses here — the banner is what stays local, because it is calibrated to
+ * a document the customer formally accepts and does not belong on an ordinary
+ * unfinished page.
  */
 export function TermsContent() {
   const t = useTranslation('legal');
@@ -52,12 +39,7 @@ export function TermsContent() {
   return (
     <Wrap>
       <DraftBanner>{t.terms.draftWarning}</DraftBanner>
-      {t.terms.sections.map((section) => (
-        <Clause key={section.heading}>
-          <ClauseTitle>{section.heading}</ClauseTitle>
-          <Placeholder>{section.placeholder}</Placeholder>
-        </Clause>
-      ))}
+      <PlaceholderSections sections={t.terms.sections} />
     </Wrap>
   );
 }

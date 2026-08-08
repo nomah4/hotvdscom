@@ -2,6 +2,46 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-08-08
+
+### Added
+
+**Every footer link now leads to a real page.** Nine of the eleven rendered as `to="#"`; the footer
+is the site map, so those were pages nobody could reach. New routes: `/datacenters`, `/status`,
+`/knowledge-base`, `/api`, `/about`, `/blog`, `/partners`, `/contacts`. "Контакты" and "Связаться с
+нами" are two entrances to one `/contacts` page — a second route would be a second copy of the
+contact details, and the two would drift.
+
+- `/datacenters` and `/status` are real: both read `src/data/datacenters.ts`, the same array the
+  home page and the configurator use, and the group counts are derived from it rather than typed
+  into the copy. `/knowledge-base` gathers the FAQ answers already published on `/` and `/pricing`,
+  so it makes no new claim.
+- `/status` deliberately reports no uptime figure, no "all systems operational" and no incident
+  history: there is no monitoring backend, and a percentage on a status page is a number customers
+  hold you to. It states that it measures nothing, shows location readiness and the serving build.
+  `StatusPage.test.tsx` fails if a percentage ever appears.
+- The remaining pages ship structure with `__ТЕКСТ_ОТ_VICTOR__` placeholders, following
+  `TermsPage`: the legal entity, its details, contact addresses and partner terms are commitments,
+  not copy, and an invented support address is worse than a marked gap — someone would write to it.
+
+**A localized not-found page.** `/:lang` had no fallback of its own, so a mistyped `/ru/datacentres`
+fell through to the global catch-all and redirected to `/en`, discarding both the address and the
+visitor's language. A splat inside the marketing layout now catches it with the header and footer
+intact. It does not echo the requested address. Note this stays a *soft* 404 — nginx answers 200
+with the SPA shell for any path.
+
+### Changed
+
+**Footer labels and destinations are matched by key, not by array position.** `footerLinkPaths` was
+a parallel array indexed against the dictionary's `links`, so inserting a label in the middle
+silently re-pointed every link after it — and compiled. `links` is now a keyed object and
+`src/components/layout/footerLinks.ts` closes the map with `satisfies Record<FooterLinkKey, string>`:
+a label with no destination fails the Record constraint, a destination with no label fails the
+excess-property check. Verified by deleting a key and watching `tsc` reject it (TS1360). The
+`to="#"` fallback is gone — an inert footer link is no longer expressible.
+
+The footer copyright drops "— дизайн-прототип" / "— design prototype"; the site sells real plans.
+
 ## 2026-08-06
 
 ### Changed

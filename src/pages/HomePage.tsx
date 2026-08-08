@@ -6,7 +6,7 @@ import { SectionHeading } from '../components/ui/SectionHeading';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { TariffCard } from '../components/ui/TariffCard';
-import { DatacenterBadge } from '../components/ui/DatacenterBadge';
+import { DatacenterRow } from '../components/ui/DatacenterRow';
 import { TestimonialCard } from '../components/ui/TestimonialCard';
 import { LogoStrip } from '../components/ui/LogoStrip';
 import { FaqAccordionItem } from '../components/ui/FaqAccordionItem';
@@ -14,7 +14,6 @@ import { useLang, useTranslation } from '../i18n/LanguageContext';
 import { localizePath, orderPath, routePaths } from '../i18n/paths';
 import { usePageMeta } from '../i18n/usePageMeta';
 import { useTariffs } from '../api/catalogue';
-import { datacenters } from '../data/datacenters';
 import { media } from '../theme/breakpoints';
 
 const Hero = styled.div`
@@ -148,14 +147,6 @@ const CenterLink = styled.div`
   margin-top: 40px;
 `;
 
-const DatacenterRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 40px;
-`;
-
 const TestimonialGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr;
@@ -264,11 +255,7 @@ export function HomePage() {
       <Section $background="primary">
         <PageContainer>
           <SectionHeading title={t.datacenters.title} subtitle={t.datacenters.subtitle} />
-          <DatacenterRow>
-            {datacenters.map((dc) => (
-              <DatacenterBadge key={dc.id} datacenter={dc} />
-            ))}
-          </DatacenterRow>
+          <DatacenterRow />
         </PageContainer>
       </Section>
 

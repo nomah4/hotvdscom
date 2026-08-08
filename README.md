@@ -20,10 +20,24 @@ production hosting control panel.
 |---|---|
 | `/:lang` | Home — hero, value props, tariff teaser, datacenters, testimonials, FAQ |
 | `/:lang/pricing` | Pricing & VPS configurator (live price calculator + tariff comparison) |
+| `/:lang/datacenters` | The five locations, grouped live vs coming soon (from `src/data/datacenters.ts`) |
+| `/:lang/status` | Location readiness and the serving build. Measures nothing — there is no monitoring |
+| `/:lang/knowledge-base` | The FAQ answers already published on `/` and `/pricing`, plus guide stubs |
+| `/:lang/api` | Scaffold — there is no public API yet |
+| `/:lang/about`, `/:lang/blog`, `/:lang/partners`, `/:lang/contacts` | Scaffolds awaiting company facts |
+| `/:lang/terms` | Terms of Service scaffold, shared with the checkout dialog |
 | `/:lang/dashboard` | Mock authenticated console (instances, billing) — no marketing chrome |
 
 `:lang` is `en` or `ru`. `/` redirects to `/en` (default language). An unrecognized language segment
-also redirects to `/en`. See `src/i18n/paths.ts` and `src/components/layout/LangGate.tsx`.
+also redirects to `/en`; an unknown path *under* a valid language renders the localized not-found
+page instead, keeping the visitor's language. See `src/i18n/paths.ts` and
+`src/components/layout/LangGate.tsx`.
+
+Every marketing page above except the home and pricing pages ships its structure with the text
+still missing, marked `__ТЕКСТ_ОТ_VICTOR__`. That is deliberate and follows `src/pages/TermsPage.tsx`:
+company facts — the legal entity, its details, contact addresses, SLA figures — read as settled once
+written down, so inventing them is worse than leaving a named gap. The footer is the site map, and
+`src/components/layout/footerLinks.ts` is what pairs each footer label with its route.
 
 ## Design system
 
