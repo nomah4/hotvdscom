@@ -42,6 +42,35 @@ excess-property check. Verified by deleting a key and watching `tsc` reject it (
 
 The footer copyright drops "— дизайн-прототип" / "— design prototype"; the site sells real plans.
 
+### Fixed
+
+**Unknown URLs answer a real 404 instead of 200.** Both vhosts served
+`try_files $uri $uri/ /index.html`, so every path — mistyped, retired, invented —
+came back 200 with the app shell. To a crawler that is a page that exists and
+happens to say "not found", which is what gets a soft 404 indexed. Unknown paths
+now return status 404 while still rendering the localized not-found page, so the
+visitor keeps a usable page with the site map in its footer and search engines
+are told the truth. Applied to dev and production and verified from outside on
+both.
+
+- The explicit `error_page 404 =404 /index.html` is load-bearing: the bare form
+  serves the shell but relabels the response 200, which is the very bug. Found
+  by testing on dev, not by reading the docs.
+- Along the way: `/etc/nginx/sites-enabled/dev.hotvds.com` was a regular file
+  rather than a symlink into `sites-available`, and the two had drifted — the
+  live copy listened on `127.0.0.1:8443` behind the SNI router while the other
+  still said `443`. Editing `sites-available` changed nothing served, silently.
+  Both hosts are symlinks now.
+
+**The nginx configs are in the repo.** `deploy/nginx/` holds copies of what is
+actually serving, with `README.md` covering how to apply a change and the
+symlink trap above. Nothing deploys them — the production key's forced command
+only publishes `dist/` — so they are a record with a history and a diff, which
+they did not have while living only on the host. `src/nginxRoutes.test.ts` fails
+when the route list in the snippet drifts from `routePaths`, because that drift
+produces a page which renders perfectly and answers 404 to crawlers: invisible
+in a browser, fatal in search.
+
 ## 2026-08-06
 
 ### Changed
