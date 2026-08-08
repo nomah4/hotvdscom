@@ -64,8 +64,17 @@ the in-flight button disable as the double-submit guard — decide whether that 
 acceptable before changing a money path. Workaround meanwhile: a new tab gets a
 fresh `sessionStorage`, and therefore a fresh key.
 
-## Soft 404
+## nginx config is applied by hand
 
-`NotFoundPage` renders for unknown paths under a valid language, but nginx
-answers 200 with the SPA shell for any path, so crawlers are never told a page
-is missing. Fixing it is server-side work, outside this repo.
+Fixed 2026-08-08: unknown paths now answer a real 404 while still rendering the
+localized not-found page. See `deploy/nginx/README.md`.
+
+What remains is the process, not the bug. The configs in `deploy/nginx/` are a
+*record*, not a deployment — nothing installs them, and the production deploy
+key cannot (its forced command only publishes `dist/`). A change there is not
+live until someone scp's it and reloads, and a change made on the host is not in
+the repo until someone pulls it back.
+
+`src/nginxRoutes.test.ts` keeps the route list in the snippet in step with
+`routePaths`, so at least that drift fails in CI. Nothing yet detects the repo
+copy and the host disagreeing in other ways.
