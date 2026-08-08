@@ -7,16 +7,13 @@ import { datacenters } from '../../data/datacenters';
 import { StatusDot } from '../ui/StatusDot';
 import { SpecBadge } from '../ui/SpecBadge';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
-import { media } from '../../theme/breakpoints';
 
 const Row = styled.div`
-  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 16px 24px;
-  /* Right padding leaves room for the delete button pinned in the corner. */
-  padding: 20px 56px 20px 20px;
+  padding: 20px;
   border-radius: ${({ theme }) => theme.radii.lg};
   background: ${({ theme }) => theme.colors.background.primary};
   border: 1px solid ${({ theme }) => theme.colors.neutral[200]};
@@ -83,38 +80,20 @@ const RenewButton = styled.button`
 const DELETE_BORDEAUX = '#7C3239';
 
 /**
- * Top-right corner: where the server *is* (datacenter, OS) and the one
- * destructive action.
+ * Top-right of the card: when the service runs out, and where the server lives.
  *
- * Placement is deliberately not absolute on small screens — an absolutely
- * positioned corner overlaps the plan name once the card is narrow enough, and
- * this card wraps a lot. Below tablet it simply flows as another wrapped group;
- * from tablet up, where there is room, it pins to the corner.
+ * Stays in normal flow, pushed right by `margin-left: auto`. It was absolutely
+ * positioned at first and that was wrong: the corner holds a chip and two lines,
+ * not a single icon, so the flow content underneath ran straight into it — the
+ * Renew button and the SSD chip were overlapped by it on a real card.
  */
 const CornerCell = styled.div`
   display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-
-  ${media.tablet`
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    flex-wrap: nowrap;
-  `}
-`;
-
-// Plain text, not SpecBadge: OS and datacenter say *where the server lives*,
-// which is a different kind of fact from the hardware it is made of. Painting
-// them as chips put them in the same visual class as CPU/RAM/SSD and made the
-// spec row read as five equal things.
-const CornerStack = styled.div`
-  display: flex;
   flex-direction: column;
   align-items: flex-end;
+  align-self: flex-start;
+  margin-left: auto;
   gap: 4px;
-  text-align: right;
 `;
 
 // The one date that decides whether the customer still has a server, so it gets
@@ -156,6 +135,7 @@ const CornerValue = styled.span`
 `;
 
 const DeleteButton = styled.button`
+  margin-left: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -175,10 +155,15 @@ const DeleteButton = styled.button`
   }
 `;
 
-const ControlsCell = styled.div`
+// The card's last line: Renew at the left where the eye finishes reading, the
+// bin at the far right. Distance is the point — delete is the only irreversible
+// action here, and it should not sit a few pixels from "Reboot".
+const ActionRow = styled.div`
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+  flex-basis: 100%;
 `;
 
 const ControlButton = styled.button`
@@ -343,33 +328,6 @@ export function SubscriptionListItem({
 
   return (
     <Row>
-      <CornerCell>
-        <CornerStack>
-          <ValidUntilChip>
-            {t.subscriptions.validUntil}: <ValidUntilValue>{validUntil}</ValidUntilValue>
-          </ValidUntilChip>
-          {configuration?.os && (
-            <CornerLine>
-              OS <CornerValue>{osDisplayName(configuration.os)}</CornerValue>
-            </CornerLine>
-          )}
-          {datacenterName && (
-            <CornerLine>
-              DC <CornerValue>{datacenterName}</CornerValue>
-            </CornerLine>
-          )}
-          {subscription.auto_renew && <AutoRenew>{t.subscriptions.autoRenew}</AutoRenew>}
-        </CornerStack>
-        <DeleteButton
-          type="button"
-          onClick={() => setControlsPressed(true)}
-          aria-label={t.subscriptions.controls.delete}
-          title={t.subscriptions.controls.delete}
-        >
-          🗑
-        </DeleteButton>
-      </CornerCell>
-
       <NameCell>
         <Name>{planName}</Name>
         {resolvedPeriod && <Term>{t.subscriptions.term[resolvedPeriod]}</Term>}
@@ -398,31 +356,23 @@ export function SubscriptionListItem({
         )}
       </SpecsCell>
 
-      {/* Active subscriptions only: Billing refuses to renew any other state
-          (`subscription_not_renewable`), so offering the button there would be a
-          promise the server breaks. Works for Custom VDS as well as fixed plans —
-          Billing prices a configurable renewal from the configuration this
-          subscription already recorded. */}
-      {onRenew && subscription.status === 'active' && (
-        <RenewButton type="button" onClick={() => onRenew(subscription)} disabled={isRenewing}>
-          {isRenewing ? t.subscriptions.renewing : t.subscriptions.renew}
-        </RenewButton>
-      )}
-
-      {/* Power and reboot. Styled as live controls, and they are — they just
-          cannot reach a machine yet, so pressing one says so instead of
-          reporting an action that did not happen. The power icon and label
-          follow `isRunning`. */}
-      <ControlsCell>
-        <ControlButton type="button" onClick={() => setControlsPressed(true)}>
-          <span aria-hidden>{isRunning ? '⏹' : '▶'}</span>
-          {isRunning ? t.subscriptions.controls.powerOff : t.subscriptions.controls.powerOn}
-        </ControlButton>
-        <ControlButton type="button" onClick={() => setControlsPressed(true)}>
-          <span aria-hidden>⟳</span>
-          {t.subscriptions.controls.reboot}
-        </ControlButton>
-      </ControlsCell>
+      {/* Top right: when the service runs out, then where the server lives. */}
+      <CornerCell>
+        <ValidUntilChip>
+          {t.subscriptions.validUntil}: <ValidUntilValue>{validUntil}</ValidUntilValue>
+        </ValidUntilChip>
+        {configuration?.os && (
+          <CornerLine>
+            OS <CornerValue>{osDisplayName(configuration.os)}</CornerValue>
+          </CornerLine>
+        )}
+        {datacenterName && (
+          <CornerLine>
+            DC <CornerValue>{datacenterName}</CornerValue>
+          </CornerLine>
+        )}
+        {subscription.auto_renew && <AutoRenew>{t.subscriptions.autoRenew}</AutoRenew>}
+      </CornerCell>
 
       <TelemetryCell>
         <TelemetryItem>
@@ -436,6 +386,43 @@ export function SubscriptionListItem({
         </TelemetryItem>
         <TelemetryNote>{t.subscriptions.telemetry.note}</TelemetryNote>
       </TelemetryCell>
+
+      {/* Bottom row: actions left to right by how often they are wanted, with
+          the irreversible one pushed to the far corner away from the rest. */}
+      <ActionRow>
+        {/* Active subscriptions only: Billing refuses to renew any other state
+            (`subscription_not_renewable`), so offering the button there would be
+            a promise the server breaks. Works for Custom VDS as well as fixed
+            plans — Billing prices a configurable renewal from the configuration
+            this subscription already recorded. */}
+        {onRenew && subscription.status === 'active' && (
+          <RenewButton type="button" onClick={() => onRenew(subscription)} disabled={isRenewing}>
+            {isRenewing ? t.subscriptions.renewing : t.subscriptions.renew}
+          </RenewButton>
+        )}
+
+        {/* Power and reboot. Styled as live controls, and they are — they just
+            cannot reach a machine yet, so pressing one says so instead of
+            reporting an action that did not happen. The power icon and label
+            follow `isRunning`. */}
+        <ControlButton type="button" onClick={() => setControlsPressed(true)}>
+          <span aria-hidden>{isRunning ? '⏹' : '▶'}</span>
+          {isRunning ? t.subscriptions.controls.powerOff : t.subscriptions.controls.powerOn}
+        </ControlButton>
+        <ControlButton type="button" onClick={() => setControlsPressed(true)}>
+          <span aria-hidden>⟳</span>
+          {t.subscriptions.controls.reboot}
+        </ControlButton>
+
+        <DeleteButton
+          type="button"
+          onClick={() => setControlsPressed(true)}
+          aria-label={t.subscriptions.controls.delete}
+          title={t.subscriptions.controls.delete}
+        >
+          🗑
+        </DeleteButton>
+      </ActionRow>
 
       {controlsPressed && <ControlNotice>{t.subscriptions.controls.unavailable}</ControlNotice>}
       {provisioningNote && <ProvisioningNote>{provisioningNote}</ProvisioningNote>}
