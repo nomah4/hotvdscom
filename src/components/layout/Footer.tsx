@@ -2,6 +2,7 @@ import styled from 'styled-components';
 import { Link } from 'react-router';
 import { PageContainer } from './PageContainer';
 import { Logo } from '../ui/Logo';
+import { BuildStamp } from '../ui/BuildStamp';
 import { useLang, useTranslation, interpolate } from '../../i18n/LanguageContext';
 import { localizePath, routePaths } from '../../i18n/paths';
 import { media } from '../../theme/breakpoints';
@@ -77,6 +78,10 @@ const Bottom = styled.div`
   border-top: 1px solid ${({ theme }) => theme.colors.indigo[700]};
   font-size: ${({ theme }) => theme.fontSizes.small};
   color: ${({ theme }) => theme.colors.indigo[200]};
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  justify-content: space-between;
 `;
 
 export function Footer() {
@@ -110,7 +115,10 @@ export function Footer() {
             ))}
           </Columns>
         </Top>
-        <Bottom>{interpolate(t.footer.copyright, { year: new Date().getFullYear() })}</Bottom>
+        <Bottom>
+          <span>{interpolate(t.footer.copyright, { year: new Date().getFullYear() })}</span>
+          <BuildStamp />
+        </Bottom>
       </PageContainer>
     </Wrap>
   );

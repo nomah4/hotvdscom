@@ -4,6 +4,7 @@ import { PageContainer } from '../layout/PageContainer';
 import { Logo } from '../ui/Logo';
 import { LanguageSwitcher } from '../ui/LanguageSwitcher';
 import { Button } from '../ui/Button';
+import { BuildStamp } from '../ui/BuildStamp';
 import { Sidebar } from './Sidebar';
 import { useTranslation, interpolate } from '../../i18n/LanguageContext';
 import { useAuth } from '../../auth/AuthContext';
@@ -142,7 +143,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         </PageContainer>
       </Body>
 
-      <FooterNote>{interpolate(t.footer, { year: new Date().getFullYear() })}</FooterNote>
+      <FooterNote>
+        {interpolate(t.footer, { year: new Date().getFullYear() })} · <BuildStamp />
+      </FooterNote>
     </Page>
   );
 }
