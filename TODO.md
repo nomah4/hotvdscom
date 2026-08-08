@@ -3,6 +3,47 @@
 Known gaps, with enough context to pick them up cold. Security findings live in
 `SECURITY-TODO.md` (branch `security-backlog`).
 
+## Ordering a fixed plan never asks for OS or datacenter
+
+Buying a catalogue plan (Start/Basic/Pro/…) posts only `package_code` to
+`/api/v1/invoices` — see `createInvoice` in `src/api/checkout.ts`. The
+configurator's custom path sends a full configuration; the fixed path sends
+none. So a fixed-plan subscription comes back from Billing with
+`configuration: null`, and its dashboard card can show no OS and no datacenter
+while a Custom VDS card shows both.
+
+`SubscriptionListItem` no longer *hides* them — it used to read OS and
+datacenter only in the branch for packages missing from the catalogue, so even a
+fixed plan that did record them showed neither. That is fixed. The remaining gap
+is upstream: nothing collects the values in the first place.
+
+**To finish:** decide where a fixed plan gets its OS and location. Either the
+checkout page asks before confirming (a real UI change on the money path), or
+Billing assigns defaults and returns them in `configuration`. Until one of the
+two happens, those servers cannot be provisioned meaningfully either — nobody
+has said what to install or where.
+
+## Server telemetry and controls are placeholders
+
+The instance card shows IP address, CPU load and network as dashes, and its
+power / reboot / delete buttons answer "not connected yet" rather than acting.
+Both are deliberate: `Subscription` carries no address and no metrics, there is
+no power API, and the provisioning adapter (Phase 4) that would own all of it
+does not exist — every real subscription sits at `provisioning_status: pending`.
+
+The buttons are styled as live controls on purpose, so the card shows its
+eventual shape. They must never report success they did not achieve: a customer
+who believes a reboot happened will wait for a server that never went down, and
+one who believes a delete happened will be billed for a server they think is
+gone.
+
+**To finish:** with provisioning in place, wire power/reboot/delete to real
+endpoints (delete needs a confirmation step — it is the only irreversible one),
+read the IP from the subscription, and take load and network from whatever
+monitoring lands alongside. `isRunning` in `SubscriptionListItem` is currently
+inferred from `status === 'active' && provisioning_status === 'succeeded'`
+because there is no power state to read; replace it with the real one.
+
 ## Account balance is not connected
 
 The dashboard shows a **Balance** tile with a dash and "not connected yet"
