@@ -52,29 +52,6 @@ const AutoRenew = styled.span`
   color: ${({ theme }) => theme.colors.neutral[500]};
 `;
 
-// Coral, not indigo: SpecBadge paints the CPU/RAM/SSD chips indigo[900], so an
-// indigo button sat in the same card reading as one more spec rather than the
-// action. Accent is the design system's primary-action colour and is used
-// nowhere else on this card.
-const RenewButton = styled.button`
-  /* Right-aligned under the valid-until chip it belongs to. */
-  align-self: flex-end;
-  padding: 8px 16px;
-  border-radius: ${({ theme }) => theme.radii.md};
-  border: 1px solid ${({ theme }) => theme.colors.accent[500]};
-  background: ${({ theme }) => theme.colors.accent[500]};
-  color: #fff;
-  font-family: ${({ theme }) => theme.fonts.heading};
-  font-size: ${({ theme }) => theme.fontSizes.small};
-  cursor: pointer;
-  white-space: nowrap;
-
-  &:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-`;
-
 // Muted bordeaux rather than semantic.error (#E5484D): destructive, but this is
 // a resting control on every card, not an alarm. A bright red row of them would
 // read as five broken servers.
@@ -85,8 +62,8 @@ const DELETE_BORDEAUX = '#7C3239';
  *
  * Stays in normal flow, pushed right by `margin-left: auto`. It was absolutely
  * positioned at first and that was wrong: the corner holds a chip and two lines,
- * not a single icon, so the flow content underneath ran straight into it — the
- * Renew button and the SSD chip were overlapped by it on a real card.
+ * not a single icon, so the flow content underneath ran straight into it and
+ * overlapped the spec chips on a real card.
  */
 const CornerCell = styled.div`
   display: flex;
@@ -97,10 +74,10 @@ const CornerCell = styled.div`
   gap: 4px;
 `;
 
-// The one date that decides whether the customer still has a server, so it gets
-// a chip of its own rather than another grey line. Tinted indigo instead of
-// coral: coral is the Renew action next to it, and the two must not read as the
-// same thing.
+// The one date that decides whether the customer still has a server — and, since
+// the separate Renew button is gone, the control that extends it. Indigo rather
+// than the accent colour: it is a fact first and a button second, and painting it
+// like a CTA would make every card shout.
 const ValidUntilChip = styled.button<{ $clickable: boolean }>`
   display: inline-flex;
   align-items: baseline;
@@ -173,9 +150,9 @@ const DeleteButton = styled.button`
   }
 `;
 
-// The card's last line: Renew at the left where the eye finishes reading, the
-// bin at the far right. Distance is the point — delete is the only irreversible
-// action here, and it should not sit a few pixels from "Reboot".
+// The card's last line: the machine controls at the left, the bin at the far
+// right. The distance is the point — delete is the only irreversible action on
+// the card and should not sit a few pixels from "Reboot".
 const ActionRow = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -404,10 +381,13 @@ export function SubscriptionListItem({
           it extends — the two are one thought, and separating them left the
           button in a row of unrelated power controls. */}
       <CornerCell>
-        {/* The date is itself the shortcut to extending it. `title` carries the
-            hint because a hover-only affordance nobody can guess is worse than
-            none — and the explicit Renew button below stays, so the shortcut is
-            a convenience rather than the only way in. */}
+        {/* The date is the renew control — there is no separate button. The
+            chip therefore has to advertise itself: `title` on hover, a pointer
+            cursor, and an accent border that only appears when it is actually
+            clickable. Without those it is a date that silently charges money,
+            which is worse than an extra button. While the purchase is opening it
+            switches to the "renewing" label, so the one control still reports
+            its own progress. */}
         <ValidUntilChip
           as={canRenew ? 'button' : 'span'}
           type={canRenew ? 'button' : undefined}
@@ -416,14 +396,14 @@ export function SubscriptionListItem({
           disabled={canRenew ? isRenewing : undefined}
           title={canRenew ? t.subscriptions.renewHint : undefined}
         >
-          {t.subscriptions.validUntil}: <ValidUntilValue>{validUntil}</ValidUntilValue>
+          {canRenew && isRenewing ? (
+            t.subscriptions.renewing
+          ) : (
+            <>
+              {t.subscriptions.validUntil}: <ValidUntilValue>{validUntil}</ValidUntilValue>
+            </>
+          )}
         </ValidUntilChip>
-
-        {canRenew && (
-          <RenewButton type="button" onClick={() => onRenew!(subscription)} disabled={isRenewing}>
-            {isRenewing ? t.subscriptions.renewing : t.subscriptions.renew}
-          </RenewButton>
-        )}
 
         {configuration?.os && (
           <CornerLine>
