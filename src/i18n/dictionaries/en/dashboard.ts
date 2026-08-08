@@ -51,6 +51,7 @@ export const dashboard = {
     validUntil: 'Valid until',
     autoRenew: 'Auto-renew',
     renew: 'Renew',
+    renewHint: 'Click to renew this service',
     renewing: 'Opening payment…',
     renewError: 'Could not start the renewal. Please try again.',
     unknownPlan: 'Unknown plan',

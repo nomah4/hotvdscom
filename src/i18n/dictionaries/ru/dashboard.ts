@@ -48,6 +48,7 @@ export const dashboard = {
     validUntil: 'Действует до',
     autoRenew: 'Автопродление',
     renew: 'Продлить',
+    renewHint: 'Нажмите, чтобы продлить услугу',
     renewing: 'Открываем оплату…',
     renewError: 'Не удалось начать продление. Попробуйте ещё раз.',
     unknownPlan: 'Неизвестный план',
