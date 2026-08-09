@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CHATWOOT_BASE_URL, CHATWOOT_WEBSITE_TOKEN, isChatConfigured, setChatSource } from './chatwoot';
+import { CHATWOOT_BASE_URL, isChatConfigured, setChatSource, websiteToken } from './chatwoot';
 
 /**
  * The widget's config is two plain constants, which makes one mistake very easy
@@ -16,11 +16,21 @@ describe('chatwoot config', () => {
     expect(CHATWOOT_BASE_URL).not.toMatch(/\/$/);
   });
 
-  it('exports exactly one token', () => {
-    // A second secret-shaped constant here is the failure this guards: the HMAC
-    // key must stay in Chatwoot's inbox settings and be used server-side only.
-    expect(CHATWOOT_WEBSITE_TOKEN).toMatch(/^[A-Za-z0-9]+$/);
-    expect(CHATWOOT_WEBSITE_TOKEN.length).toBeGreaterThan(10);
+  it('carries a token per language, and only tokens', () => {
+    // A secret-shaped constant appearing beside these is the failure this
+    // guards: the inbox HMAC key must stay in Chatwoot and be used server-side
+    // only. Everything in this file ships to every visitor.
+    for (const lang of ['ru', 'en'] as const) {
+      expect(websiteToken(lang)).toMatch(/^[A-Za-z0-9]+$/);
+      expect(websiteToken(lang).length).toBeGreaterThan(10);
+    }
+  });
+
+  it('gives each language its own inbox', () => {
+    // One inbox cannot greet both: `locale` translates the widget chrome, but
+    // the welcome text is a fixed string on the inbox. Sharing a token here
+    // would silently put «Чем помочь?» in front of English visitors.
+    expect(websiteToken('ru')).not.toBe(websiteToken('en'));
   });
 });
 
