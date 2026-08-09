@@ -1,3 +1,5 @@
+import type { Lang } from '../i18n/dictionaries';
+
 /**
  * Chatwoot live chat, running on its own VM at chat.hotvds.com (10.0.1.14),
  * fronted by the gateway's SNI router like every other backend.
@@ -18,10 +20,29 @@
 // these would narrow, and `isChatConfigured`'s comparison against '' would become
 // a compile error — taking the "blank them to switch chat off" path with it.
 export const CHATWOOT_BASE_URL: string = 'https://chat.hotvds.com';
-export const CHATWOOT_WEBSITE_TOKEN: string = 'B4yyYVime7EvnsUCA9wwoiz4';
+
+/**
+ * One inbox per language, not one inbox with a locale setting.
+ *
+ * `chatwootSettings.locale` translates the widget's own chrome — buttons,
+ * placeholders — but the greeting is a fixed string stored on the inbox, so a
+ * single inbox greets every visitor in whichever language it was written in. An
+ * English visitor was being asked «Чем помочь?».
+ *
+ * Separate inboxes also tell an agent the language of a conversation before they
+ * open it, and let the two be routed and staffed differently.
+ */
+const WEBSITE_TOKENS: Record<Lang, string> = {
+  ru: 'B4yyYVime7EvnsUCA9wwoiz4',
+  en: 'rp8pffwqq9nELi76KxGD5i8u',
+};
+
+export function websiteToken(lang: Lang): string {
+  return WEBSITE_TOKENS[lang];
+}
 
 export function isChatConfigured(): boolean {
-  return CHATWOOT_BASE_URL !== '' && CHATWOOT_WEBSITE_TOKEN !== '';
+  return CHATWOOT_BASE_URL !== '' && Object.values(WEBSITE_TOKENS).every((token) => token !== '');
 }
 
 interface ChatwootSdk {
@@ -54,16 +75,21 @@ const SCRIPT_ID = 'chatwoot-sdk';
  * runs effects twice in development, and two copies of the SDK means two chat
  * bubbles.
  */
-export function loadChat(locale: string): void {
+export function loadChat(lang: Lang): void {
   if (!isChatConfigured()) return;
   if (typeof document === 'undefined') return;
 
   if (document.getElementById(SCRIPT_ID)) {
-    window.$chatwoot?.setLocale(locale);
+    // The SDK can be re-localed in place, but it cannot be re-pointed at another
+    // inbox: `run()` binds the token once. Switching language mid-session
+    // therefore keeps the conversation in the inbox it started in, which is the
+    // right outcome anyway — moving a live conversation between inboxes would
+    // strand it away from the agent already reading it.
+    window.$chatwoot?.setLocale(lang);
     return;
   }
 
-  window.chatwootSettings = { locale, position: 'right', type: 'expanded_bubble' };
+  window.chatwootSettings = { locale: lang, position: 'right', type: 'expanded_bubble' };
 
   const script = document.createElement('script');
   script.id = SCRIPT_ID;
@@ -71,7 +97,7 @@ export function loadChat(locale: string): void {
   script.defer = true;
   script.async = true;
   script.onload = () => {
-    window.chatwootSDK?.run({ websiteToken: CHATWOOT_WEBSITE_TOKEN, baseUrl: CHATWOOT_BASE_URL });
+    window.chatwootSDK?.run({ websiteToken: websiteToken(lang), baseUrl: CHATWOOT_BASE_URL });
   };
   document.head.appendChild(script);
 }
