@@ -29,6 +29,16 @@ describe('Sidebar', () => {
     );
   });
 
+  it.each(langs)('[%s] links Support at its own route', (lang) => {
+    renderWithProviders(<Sidebar />, { lang });
+    const t = dictionaries[lang].dashboard.sidebar;
+
+    expect(screen.getByRole('link', { name: new RegExp(t.support) })).toHaveAttribute(
+      'href',
+      `/${lang}/${routePaths.support}`,
+    );
+  });
+
   it('places New server directly after Instances', () => {
     const { container } = renderWithProviders(<Sidebar />, { lang: 'ru' });
     const t = dictionaries.ru.dashboard.sidebar;

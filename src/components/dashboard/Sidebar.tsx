@@ -56,6 +56,7 @@ export function Sidebar() {
     // Next to the server list, because that is what it adds to.
     { label: t.sidebar.newServer, icon: '➕', to: localizePath(lang, routePaths.newServer) },
     { label: t.sidebar.billing, icon: '💳' },
+    { label: t.sidebar.support, icon: '💬', to: localizePath(lang, routePaths.support) },
     { label: t.sidebar.settings, icon: '⚙️' },
   ];
 
