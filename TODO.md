@@ -3,40 +3,66 @@
 Known gaps, with enough context to pick them up cold. Security findings live in
 `SECURITY-TODO.md` (branch `security-backlog`).
 
-## Chatwoot is wired but not configured, and the chat is anonymous
+## Paid invoices are not becoming subscriptions
 
-`src/support/chatwoot.ts` holds two empty constants. Fill in `CHATWOOT_BASE_URL`
-and `CHATWOOT_WEBSITE_TOKEN` and the widget appears on the marketing pages and
-in the account's Support section with no code change; leave either blank and no
-third-party script loads at all. Neither is a secret — the website token
-identifies an inbox, the way `BILLING_API_BASE` identifies a catalogue.
+**The most serious open item, and it is on Billing's side.** A customer pays and
+receives nothing: the invoice reaches `paid`, no subscription is created, no
+server appears.
 
-Add the new route to `deploy/nginx/snippets-hotvds-spa-routes.conf` **and** the
-host whenever one is added here, or the page answers 404 to crawlers while
-rendering fine in a browser. `src/nginxRoutes.test.ts` catches it — it did,
-during this change.
+Established from `billing_db` on X1 (10.0.1.11) on 2026-08-09, not inferred:
 
-**The blocker for step two: the chat cannot say who the customer is.** Chatwoot
-only *validates* an identity when `setUser` carries an `identifier_hash`, an
-HMAC of the identifier signed with the inbox key. That key cannot be in the
-browser, and this storefront is a pure SPA with no backend of its own, so there
-is nowhere to sign it.
+- Three invoices paid that day — two `VDS_START_MONTHLY`, one
+  `VDS_BASIC_MONTHLY`. **Zero new subscriptions created.**
+- Across the whole database, **17 paid invoices have no subscription**
+  (`source_invoice_id` unmatched), spread over every package: START 7, BASIC 3,
+  PRO 3, BUSINESS 2, ULTRA 2. Earliest 2026-07-20, so this has been live for
+  three weeks at least.
+
+**This corrects an earlier diagnosis in this file.** The storefront's idempotency
+key was a real defect and is fixed, but it was never the cause of "I cannot buy a
+second identical server". A replayed key returns the original invoice and creates
+no new row; the two same-package purchases on 9 August are two distinct rows with
+distinct ids. No replay happened, before or after the fix.
+
+**To finish:** the payment-capture path in Billing — why `paid` does not produce
+a subscription. Not fixable from this repo.
+
+**Blocking that investigation: X1 has no application logs.** `journalctl -u
+bl-api` holds only gunicorn start/stop lines, and there are no file logs. The
+findings above came from querying Postgres directly because there was nothing
+else to read. For a money path that is its own defect: no individual failure can
+be reconstructed after the fact.
+
+Handoff document: https://claude.ai/code/artifact/fe0f706e-4069-4f61-8c42-a501e42e7d74
+
+## Chatwoot: the chat is live, but anonymous
+
+Configured 2026-08-09. `chat.hotvds.com` (VM 1224, 10.0.1.14), account
+`hotvds.com`, one website inbox. The widget is on the marketing pages and in the
+account's Support section; `src/support/chatwoot.ts` carries the base URL and the
+website token, both public. Blanking either switches chat off entirely, script
+included.
+
+**The chat cannot say who the customer is, and must not pretend to.** Chatwoot
+validates an identity only when `setUser` carries an `identifier_hash`, an HMAC
+of the identifier signed with the inbox key. That key cannot be in the browser,
+and this storefront is a pure SPA with no backend of its own.
 
 Calling `setUser` without the hash is not a smaller version of the same thing:
 Chatwoot would accept whatever email the page claims, so a customer could open
-the console, claim someone else's address, and land in that person's
-conversation history in the agent inbox. Anonymous chat is strictly safer than
-that.
+the console, claim someone else's address, and land in that person's conversation
+history in the agent inbox.
 
-**To finish:** put the signing somewhere server-side — Billing, or a small
-endpoint beside it — that takes the ZITADEL token and returns the identifier and
-its hash. Then `identifyInChat` in `chatwoot.ts` becomes real, and the
-conversation can carry `subscription_id` and package as custom attributes, which
-is what turns "my server is down" into a conversation that already knows which
-server.
+**To finish:** somewhere server-side that takes the ZITADEL token and returns the
+identifier with its hash — Billing, or a small endpoint beside it. Then
+`identifyInChat` becomes real and conversations can carry `subscription_id` and
+package as custom attributes, which is what turns "my server is down" into a
+conversation that already knows which server.
 
-Also unresolved: chat transcripts are personal data under 152-ФЗ, and the terms
-covering that are still `__ТЕКСТ_ОТ_VICTOR__`.
+Also outstanding on the Chatwoot install itself: **SMTP is not configured**, so
+there are no invitation or notification emails and no password recovery. And chat
+transcripts are personal data under 152-ФЗ, while the terms covering that are
+still `__ТЕКСТ_ОТ_VICTOR__`.
 
 ## Ordering a fixed plan never asks for OS or datacenter
 
@@ -110,9 +136,10 @@ data. The file was left behind rather than deleted, so nothing renders it today.
 gives it real numbers to show. It is harmless while unreferenced and wrong the
 moment someone reuses it.
 
-## Repeat purchase: fixed, but Billing's side is unconfirmed
+## Repeat purchase: the storefront half is fixed — but see the section above
 
-Fixed 2026-08-09. The order idempotency key is now retired as soon as Billing
+Fixed 2026-08-09. **This was not the cause of the reported symptom** — that is
+"Paid invoices are not becoming subscriptions" at the top of this file. The order idempotency key is now retired as soon as Billing
 accepts the purchase — in `confirm`, `confirmQuote` and `renew` alike — rather
 than when `CheckoutReturnPage` observes the invoice settle. That closed all
 three situations which used to leave it alive: payment outlasting the 30s poll,

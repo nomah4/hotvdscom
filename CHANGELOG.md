@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 ## 2026-08-09
 
+### Added
+
+**Live chat is on.** Chatwoot runs on its own VM at `chat.hotvds.com`; the two constants in
+`src/support/chatwoot.ts` are filled in, so the widget now appears on the marketing pages and in the
+account's Support section. Set up through the Rails console rather than the browser onboarding, so
+the result is reproducible: account `hotvds.com`, one administrator, one website inbox. SMTP is not
+configured on that install, so the administrator was confirmed explicitly — otherwise the account
+would have been created and immediately unusable, with no email able to rescue it.
+
+Only the website token is in the repo, and it is public by design: it names an inbox the way
+`BILLING_API_BASE` names a catalogue. The inbox's HMAC key stays in Chatwoot — it is what would
+verify a claimed identity, and everything in that file ships to every visitor's browser.
+`chatwoot.test.ts` guards against a second secret-shaped constant appearing beside the token. The
+chat is still anonymous, for the reason recorded in `TODO.md`.
+
 ### Fixed
 
 **Ordering a second identical server now creates a second server.** It did not: the idempotency key
@@ -30,8 +45,25 @@ lifetime with nothing able to find it again.
   latter would have passed throughout. Verified by removing the fix and watching four of five fail —
   including a second identical order receiving the same key.
 
-Billing's half is still unconfirmed: key scoping, TTL, and whether a replayed response hands back a
-payment URL for an already-paid invoice. Listed in `TODO.md`.
+**Correction, same day: this was not the cause of the reported symptom.** Billing's own database
+shows the two same-package purchases on 9 August created two *distinct* invoice rows, and a replayed
+key creates no new row — so no replay ever occurred, before the fix or after. The idempotency defect
+was real and worth fixing; it simply was not what stopped a customer buying a second server.
+
+What does: **paid invoices are not becoming subscriptions.** Three invoices paid on 9 August produced
+zero new subscriptions, and 17 paid invoices across the database have none, on every package, going
+back to 20 July. That is Billing's payment-capture path, not this repo. Recorded in `TODO.md` with
+the queries behind it.
+
+Worth stating plainly because it changed how the first diagnosis should be read: it came from
+reading code, which established that the defect *existed*, and was then attributed to a symptom it
+did not cause. The database settled it; the code could not have.
+
+**A second fix the same day:** the key retirement above only helped purchases made from then on.
+Keys already stranded in customers' `sessionStorage` kept replaying their first invoice until the tab
+was closed, so "fixed" was untrue for exactly the people who had hit the bug. Any key present when
+the app boots is now cleared — a key can no longer legitimately survive a page load, so anything left
+is stranded by definition.
 
 ### Added
 
