@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useLang } from '../i18n/LanguageContext';
-import { loadChat } from './chatwoot';
+import { loadChat, setChatSource, type ChatSource } from './chatwoot';
 
 /**
  * Mounts the Chatwoot widget for the surface it is rendered on.
@@ -12,13 +12,18 @@ import { loadChat } from './chatwoot';
  *
  * Does nothing at all while Chatwoot is unconfigured, so an unconfigured build
  * loads no third-party script.
+ *
+ * `source` tags the conversation with the surface it started from, so an agent
+ * can tell a pre-sales question from an existing customer's problem before
+ * reading a word. It is not identity — see setChatSource.
  */
-export function ChatWidget() {
+export function ChatWidget({ source }: { source: ChatSource }) {
   const { lang } = useLang();
 
   useEffect(() => {
     loadChat(lang);
-  }, [lang]);
+    setChatSource(source);
+  }, [lang, source]);
 
   return null;
 }

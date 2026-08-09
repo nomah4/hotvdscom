@@ -31,7 +31,11 @@ interface ChatwootSdk {
 interface ChatwootApi {
   toggle(state?: 'open' | 'close'): void;
   setLocale(locale: string): void;
+  setCustomAttributes(attributes: Record<string, string>): void;
 }
+
+/** Which surface the visitor opened the chat from. */
+export type ChatSource = 'website' | 'dashboard';
 
 declare global {
   interface Window {
@@ -70,6 +74,43 @@ export function loadChat(locale: string): void {
     window.chatwootSDK?.run({ websiteToken: CHATWOOT_WEBSITE_TOKEN, baseUrl: CHATWOOT_BASE_URL });
   };
   document.head.appendChild(script);
+}
+
+/**
+ * Tags the conversation with the surface it came from.
+ *
+ * Chatwoot already records the page a conversation started on, but that is a
+ * single URL: someone who reads the pricing page and then opens the chat from
+ * their account looks like either, depending on when they clicked. This is an
+ * explicit statement from the surface that mounted the widget.
+ *
+ * Conversation attributes, unlike identity, need no HMAC — nothing here claims
+ * *who* the visitor is, only where they were. So it works today, while
+ * identification is still blocked on a server-side signer.
+ *
+ * The SDK loads asynchronously, so this waits for `chatwoot:ready` when the API
+ * is not up yet; setting attributes before it is silently does nothing.
+ */
+export function setChatSource(source: ChatSource): void {
+  if (!isChatConfigured()) return;
+  if (typeof window === 'undefined') return;
+
+  const apply = () =>
+    window.$chatwoot?.setCustomAttributes({
+      hotvds_source: source,
+      // Stated in the agent's own sidebar, because the risk here is not
+      // technical but conversational: `dashboard` means the widget was mounted
+      // behind RequireAuth, and nothing more. The browser sets these, so anyone
+      // can set them from the console — an agent who reads "dashboard" as proof
+      // of identity may disclose one customer's account to another.
+      //
+      // Flips to 'verified' only when setUser carries a valid identifier_hash,
+      // which needs a server-side signer that does not exist yet.
+      hotvds_identity: 'unverified',
+    });
+
+  if (window.$chatwoot) apply();
+  else window.addEventListener('chatwoot:ready', apply, { once: true });
 }
 
 /** Opens the chat if it is loaded. Safe to call when it is not. */
