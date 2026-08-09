@@ -228,6 +228,11 @@ export interface CreateRenewalInput {
   subscriptionId: string;
   methodCode: string;
   returnUrl: string;
+  /** Where the gateway sends the fiscal receipt. Required in practice on a
+   * fiscalized install: PO refuses a payment carrying neither email nor phone
+   * (54-FZ), and Billing surfaces that refusal as a 502 — which is exactly why
+   * every renewal failed between 2026-08-07 and 2026-08-09. */
+  customerEmail: string;
   currency?: string;
   idempotencyKey?: string;
 }
@@ -271,8 +276,12 @@ export async function createRenewal(input: CreateRenewalInput): Promise<Renewal>
         currency: input.currency ?? DEFAULT_CURRENCY,
         method_code: input.methodCode,
         return_url: input.returnUrl,
+        customer_email: input.customerEmail,
         // external_user_id omitted on purpose: under Bearer auth Billing takes
         // the identity from the token subject and rejects a disagreeing value.
+        // customer_email is different in kind — contact detail for the receipt,
+        // never identity, so the customer may change it without it affecting
+        // whose subscription is being renewed.
       }),
     },
   );
