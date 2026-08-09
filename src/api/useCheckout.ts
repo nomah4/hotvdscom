@@ -209,8 +209,11 @@ interface UseCheckoutResult {
   error: string | null;
   /** Opens the invoice and leaves for the gateway. Call only once the customer
    * has confirmed — this is the point money starts moving. */
-  confirm: (tariff: Tariff, period: BillingPeriod) => Promise<void>;
-  confirmQuote: (quote: Quote, idempotencyScope: string) => Promise<void>;
+  /** `customerEmail` overrides the address the receipt goes to. Omit it to use
+   * the verified profile address, which is what it was before the confirm page
+   * let the customer edit it. */
+  confirm: (tariff: Tariff, period: BillingPeriod, customerEmail?: string) => Promise<void>;
+  confirmQuote: (quote: Quote, idempotencyScope: string, customerEmail?: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -229,7 +232,7 @@ export function useCheckout(): UseCheckoutResult {
   const [error, setError] = useState<string | null>(null);
 
   const confirm = useCallback(
-    async (tariff: Tariff, period: BillingPeriod) => {
+    async (tariff: Tariff, period: BillingPeriod, customerEmail?: string) => {
       const packageCode = tariff.packageCode[period];
 
       // The page renders a sign-in button instead of Confirm when there is no
@@ -240,7 +243,10 @@ export function useCheckout(): UseCheckoutResult {
         return;
       }
 
-      const email = user?.profile?.email;
+      // An explicit value from the confirm page wins; otherwise fall back to the
+      // verified profile. Either way we never invent one — a fiscalized gateway
+      // refuses a payment with nowhere to send the receipt.
+      const email = (customerEmail ?? user?.profile?.email ?? '').trim();
       if (!email) {
         // The gateway needs an address for the fiscal receipt and we only ever
         // take it from the verified profile, so stop rather than invent one.
@@ -297,13 +303,16 @@ export function useCheckout(): UseCheckoutResult {
   );
 
   const confirmQuote = useCallback(
-    async (quote: Quote, idempotencyScope: string) => {
+    async (quote: Quote, idempotencyScope: string, customerEmail?: string) => {
       if (!accessToken) {
         setError('not_signed_in');
         return;
       }
 
-      const email = user?.profile?.email;
+      // An explicit value from the confirm page wins; otherwise fall back to the
+      // verified profile. Either way we never invent one — a fiscalized gateway
+      // refuses a payment with nowhere to send the receipt.
+      const email = (customerEmail ?? user?.profile?.email ?? '').trim();
       if (!email) {
         setError('missing_email');
         return;
@@ -363,7 +372,9 @@ interface UseRenewalResult {
   /** Which subscription `error` belongs to, so a list of servers can show the
    * failure on the card that actually failed. */
   errorSubscriptionId: string | null;
-  renew: (subscription: Subscription) => Promise<void>;
+  /** `customerEmail` is where the fiscal receipt goes. Taken from the confirm
+   * step, where it is prefilled from the verified profile and editable. */
+  renew: (subscription: Subscription, customerEmail: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -393,9 +404,19 @@ export function useRenewal(): UseRenewalResult {
   const [errorSubscriptionId, setErrorSubscriptionId] = useState<string | null>(null);
 
   const renew = useCallback(
-    async (subscription: Subscription) => {
+    async (subscription: Subscription, customerEmail: string) => {
       if (!accessToken) {
         setError('not_signed_in');
+        setErrorSubscriptionId(subscription.subscription_id);
+        return;
+      }
+
+      // Stop here rather than sending an empty address: on a fiscalized install
+      // PO refuses the payment and Billing reports it as a 502, which tells the
+      // customer nothing. The confirm step should never submit an empty value,
+      // so reaching this is a bug — say so plainly instead of guessing one.
+      if (!customerEmail.trim()) {
+        setError('missing_email');
         setErrorSubscriptionId(subscription.subscription_id);
         return;
       }
@@ -431,6 +452,7 @@ export function useRenewal(): UseRenewalResult {
           subscriptionId: subscription.subscription_id,
           methodCode: methods[0].method_code,
           returnUrl,
+          customerEmail: customerEmail.trim(),
           currency,
           idempotencyKey: orderIdempotencyKey(idempotencyScope),
         });

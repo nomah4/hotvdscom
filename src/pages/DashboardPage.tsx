@@ -1,10 +1,12 @@
+import { useState } from 'react';
 import { Link } from 'react-router';
 import styled from 'styled-components';
 import { DashboardShell } from '../components/dashboard/DashboardShell';
+import { RenewalConfirmModal } from '../components/dashboard/RenewalConfirmModal';
 import { SubscriptionListItem } from '../components/dashboard/SubscriptionListItem';
 import { Button } from '../components/ui/Button';
 import { useLang, useTranslation } from '../i18n/LanguageContext';
-import { useSubscriptions } from '../api/subscriptions';
+import { useSubscriptions, type Subscription } from '../api/subscriptions';
 import { useRenewal } from '../api/useCheckout';
 import { findByPackageCode, useTariffs } from '../api/catalogue';
 import { localizePath, routePaths } from '../i18n/paths';
@@ -89,7 +91,29 @@ export function DashboardPage() {
   // specs. A failure here must not blank the dashboard, so its error is ignored —
   // subscriptions still render, just with the raw code and no spec badges.
   const { tariffs } = useTariffs();
-  const { renew, renewingId, error: renewError, errorSubscriptionId } = useRenewal();
+  const { renew, renewingId, error: renewError, errorSubscriptionId, clearError } = useRenewal();
+
+  // Which server the customer is confirming a renewal for. Clicking the expiry
+  // chip opens this instead of charging immediately — see RenewalConfirmModal for
+  // why that step exists rather than the click going straight to the gateway.
+  const [renewTarget, setRenewTarget] = useState<Subscription | null>(null);
+
+  const closeRenewal = () => {
+    setRenewTarget(null);
+    clearError();
+  };
+
+  // Same fallback chain SubscriptionListItem uses, so the card and the confirm
+  // dialog can never name the server differently: catalogue name, else "Custom
+  // VDS" when the subscription carries its own configuration, else the raw code.
+  const planNameFor = (subscription: Subscription): string => {
+    const match = subscription.package_code
+      ? findByPackageCode(tariffs, subscription.package_code)
+      : null;
+    if (match?.tariff) return match.tariff.name;
+    if (subscription.configuration) return t.subscriptions.customPlan;
+    return subscription.package_code ?? t.subscriptions.unknownPlan;
+  };
 
   const activeCount = subscriptions.filter((s) => s.status === 'active').length;
   // Earliest upcoming renewal among active subscriptions — the next date the user
@@ -155,10 +179,14 @@ export function DashboardPage() {
                   subscription={subscription}
                   tariff={match?.tariff}
                   period={match?.period}
-                  onRenew={renew}
+                  onRenew={setRenewTarget}
                   isRenewing={renewingId === subscription.subscription_id}
                   renewError={
-                    errorSubscriptionId === subscription.subscription_id ? renewError : null
+                    // While the modal is open it shows the failure itself, so the
+                    // card stays quiet — otherwise the same message appears twice.
+                    renewTarget === null && errorSubscriptionId === subscription.subscription_id
+                      ? renewError
+                      : null
                   }
                 />
               );
@@ -166,6 +194,21 @@ export function DashboardPage() {
           )}
         </ServerList>
       </div>
+
+      {renewTarget && (
+        <RenewalConfirmModal
+          subscription={renewTarget}
+          planName={planNameFor(renewTarget)}
+          isSubmitting={renewingId === renewTarget.subscription_id}
+          submitError={
+            errorSubscriptionId === renewTarget.subscription_id
+              ? t.subscriptions.renewError
+              : null
+          }
+          onClose={closeRenewal}
+          onConfirm={(customerEmail) => void renew(renewTarget, customerEmail)}
+        />
+      )}
     </DashboardShell>
   );
 }

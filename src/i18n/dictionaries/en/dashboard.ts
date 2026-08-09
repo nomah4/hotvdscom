@@ -88,6 +88,21 @@ export const dashboard = {
     empty: "You don't have any servers yet.",
     emptyCta: 'Browse plans',
   },
+  renewal: {
+    title: 'Renew service',
+    server: 'Server',
+    currentlyValidUntil: 'Valid until now',
+    amount: 'Amount due',
+    amountLoading: 'calculating…',
+    amountUnavailable: 'unavailable',
+    // The address is prefilled from the account and editable: the receipt may
+    // need to go to accounting rather than to the person clicking.
+    emailLabel: 'Email for the receipt',
+    emailHint: 'The payment receipt goes to this address. Prefilled from your account — change it if you need the receipt somewhere else.',
+    previewFailed: 'Could not get the amount from billing. Please try again in a moment.',
+    cancel: 'Cancel',
+    confirm: 'Pay and renew',
+  },
   billing: {
     title: 'Balance',
     balance: 'Current balance',

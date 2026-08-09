@@ -68,6 +68,29 @@ const Row = styled.div`
   color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
+// The receipt address is a field rather than a Row: it is the one thing on this
+// page the customer can change, and it needs to look like it.
+const EmailField = styled.label`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: ${({ theme }) => theme.fontSizes.small};
+  color: ${({ theme }) => theme.colors.neutral[600]};
+`;
+
+const EmailInput = styled.input`
+  padding: 10px 12px;
+  border-radius: ${({ theme }) => theme.radii.md};
+  border: 1px solid ${({ theme }) => theme.colors.neutral[300]};
+  background: ${({ theme }) => theme.colors.background.primary};
+  color: ${({ theme }) => theme.colors.neutral[900]};
+  font-size: ${({ theme }) => theme.fontSizes.body};
+
+  &:disabled {
+    background: ${({ theme }) => theme.colors.neutral[100]};
+  }
+`;
+
 const TotalRow = styled(Row)`
   font-size: ${({ theme }) => theme.fontSizes.body};
   color: ${({ theme }) => theme.colors.neutral[900]};
@@ -185,6 +208,21 @@ export function CheckoutPage() {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  // Receipt address: prefilled from the account, editable, not persisted. A
+  // customer may need the receipt to reach accounting rather than themselves.
+  // Safe to edit — identity comes from the token subject, which Billing checks
+  // itself, so this can only redirect a receipt.
+  const [receiptEmail, setReceiptEmail] = useState('');
+
+  // Seed the receipt address from the verified profile once the session settles,
+  // which can happen after this page first renders. Kept up here with the other
+  // hooks: below the early returns it would run conditionally, which is not
+  // allowed and which lint catches. `current || profileEmail` means a value the
+  // customer has typed is never overwritten by a later profile update.
+  const profileEmail = user?.profile?.email;
+  useEffect(() => {
+    if (profileEmail) setReceiptEmail((current) => current || profileEmail);
+  }, [profileEmail]);
 
   const customConfiguration = useMemo(
     () => (customPeriod ? customConfigurationFromParams(params) : null),
@@ -271,7 +309,9 @@ export function CheckoutPage() {
         `${match!.tariff.ssd} ${lang === 'ru' ? 'ГБ NVMe' : 'GB NVMe'}`,
         `${match!.tariff.traffic} ${lang === 'ru' ? 'трафика' : 'traffic'}`,
       ];
-  const email = user?.profile?.email;
+  const trimmedReceiptEmail = receiptEmail.trim();
+  const receiptEmailLooksValid =
+    trimmedReceiptEmail.includes('@') && !trimmedReceiptEmail.includes(' ');
 
   return (
     <Section $background="secondary">
@@ -288,11 +328,18 @@ export function CheckoutPage() {
               <span>{t.checkout.billingCycleLabel}</span>
               <span>{period === 'annual' ? t.billingToggle.yearly : t.billingToggle.monthly}</span>
             </Row>
-            {isAuthenticated && email && (
-              <Row>
-                <span>{t.checkout.billedToLabel}</span>
-                <span>{email}</span>
-              </Row>
+            {isAuthenticated && (
+              <EmailField>
+                {t.checkout.billedToLabel}
+                <EmailInput
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  value={receiptEmail}
+                  disabled={isSubmitting}
+                  onChange={(event) => setReceiptEmail(event.target.value)}
+                />
+              </EmailField>
             )}
             <Divider />
             <TotalRow>
@@ -328,12 +375,16 @@ export function CheckoutPage() {
                 <Button
                   type="button"
                   $fullWidth
-                  disabled={!termsAccepted || isSubmitting}
+                  disabled={!termsAccepted || isSubmitting || !receiptEmailLooksValid}
                   onClick={() => {
                     if (customPeriod) {
-                      void confirmQuote(quote!, customVdsIntentKey(packageCode, quote!.configuration, quote!.currency));
+                      void confirmQuote(
+                        quote!,
+                        customVdsIntentKey(packageCode, quote!.configuration, quote!.currency),
+                        trimmedReceiptEmail,
+                      );
                     } else {
-                      void confirm(match!.tariff, period);
+                      void confirm(match!.tariff, period, trimmedReceiptEmail);
                     }
                   }}
                 >
