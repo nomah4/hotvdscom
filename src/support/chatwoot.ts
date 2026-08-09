@@ -1,18 +1,24 @@
 /**
- * Chatwoot live chat.
- *
- * Empty here on purpose: the Chatwoot install lives on its own machine that does
- * not exist yet. Fill both values in and the widget appears — on the marketing
- * pages and in the account — with no code change. Leave either blank and nothing
- * loads at all, which is why an unconfigured build ships no third-party script.
+ * Chatwoot live chat, running on its own VM at chat.hotvds.com (10.0.1.14),
+ * fronted by the gateway's SNI router like every other backend.
  *
  * Neither value is a secret. The website token identifies which inbox a message
- * belongs to, exactly like BILLING_API_BASE identifies a catalogue; it is visible
- * in every request the widget makes. The *HMAC* key used for identity validation
- * is a secret and must never appear here — see identifyInChat below.
+ * belongs to, exactly like BILLING_API_BASE identifies a catalogue, and it is
+ * visible in every request the widget makes.
+ *
+ * The inbox's *HMAC* key is a different thing and is a secret: it is what would
+ * let Chatwoot verify a claimed identity. It must never appear in this file or
+ * anywhere else the browser can read — see identifyInChat below. It lives in
+ * Chatwoot under Settings → Inboxes → hotvds.com.
+ *
+ * Blanking either constant switches the widget off completely, including the
+ * third-party script, which is the way to disable chat without a revert.
  */
-export const CHATWOOT_BASE_URL = '';
-export const CHATWOOT_WEBSITE_TOKEN = '';
+// Annotated `string` rather than left to inference on purpose: as literal types
+// these would narrow, and `isChatConfigured`'s comparison against '' would become
+// a compile error — taking the "blank them to switch chat off" path with it.
+export const CHATWOOT_BASE_URL: string = 'https://chat.hotvds.com';
+export const CHATWOOT_WEBSITE_TOKEN: string = 'B4yyYVime7EvnsUCA9wwoiz4';
 
 export function isChatConfigured(): boolean {
   return CHATWOOT_BASE_URL !== '' && CHATWOOT_WEBSITE_TOKEN !== '';
