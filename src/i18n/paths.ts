@@ -20,6 +20,10 @@ export const routePaths = {
   // never has to go back out to the storefront to buy another. Same configurator
   // and the same /checkout as the public pricing page — only the chrome differs.
   newServer: 'dashboard/new',
+  // Technical support inside the account. Chat lives in Chatwoot on its own
+  // machine; this page is the way in and the place that says what support
+  // covers.
+  support: 'dashboard/support',
   // Order confirmation. Nothing is charged and no invoice exists until the
   // customer confirms here.
   checkout: 'checkout',

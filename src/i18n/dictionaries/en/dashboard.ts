@@ -9,9 +9,23 @@ export const dashboard = {
   sidebar: {
     instances: 'Instances',
     newServer: 'New server',
+    support: 'Support',
     billing: 'Billing',
     settings: 'Settings',
     admin: 'Users',
+  },
+  support: {
+    title: 'Technical support',
+    subtitle: 'Describe the problem — we answer in chat.',
+    openChat: 'Open chat',
+    unavailableTitle: 'Chat is not connected yet',
+    unavailableBody: 'We are setting the support system up. For now write to us using the details on the Contact page — nothing gets lost.',
+    tipsTitle: 'To get an answer faster',
+    tips: [
+      'Say which server you mean — the plan name and expiry are on its card under Instances.',
+      'Describe what you did, and what happened instead of what you expected.',
+      'Paste the full error text rather than a summary.',
+    ],
   },
   newServer: {
     title: 'New server',

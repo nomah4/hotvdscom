@@ -3,6 +3,41 @@
 Known gaps, with enough context to pick them up cold. Security findings live in
 `SECURITY-TODO.md` (branch `security-backlog`).
 
+## Chatwoot is wired but not configured, and the chat is anonymous
+
+`src/support/chatwoot.ts` holds two empty constants. Fill in `CHATWOOT_BASE_URL`
+and `CHATWOOT_WEBSITE_TOKEN` and the widget appears on the marketing pages and
+in the account's Support section with no code change; leave either blank and no
+third-party script loads at all. Neither is a secret — the website token
+identifies an inbox, the way `BILLING_API_BASE` identifies a catalogue.
+
+Add the new route to `deploy/nginx/snippets-hotvds-spa-routes.conf` **and** the
+host whenever one is added here, or the page answers 404 to crawlers while
+rendering fine in a browser. `src/nginxRoutes.test.ts` catches it — it did,
+during this change.
+
+**The blocker for step two: the chat cannot say who the customer is.** Chatwoot
+only *validates* an identity when `setUser` carries an `identifier_hash`, an
+HMAC of the identifier signed with the inbox key. That key cannot be in the
+browser, and this storefront is a pure SPA with no backend of its own, so there
+is nowhere to sign it.
+
+Calling `setUser` without the hash is not a smaller version of the same thing:
+Chatwoot would accept whatever email the page claims, so a customer could open
+the console, claim someone else's address, and land in that person's
+conversation history in the agent inbox. Anonymous chat is strictly safer than
+that.
+
+**To finish:** put the signing somewhere server-side — Billing, or a small
+endpoint beside it — that takes the ZITADEL token and returns the identifier and
+its hash. Then `identifyInChat` in `chatwoot.ts` becomes real, and the
+conversation can carry `subscription_id` and package as custom attributes, which
+is what turns "my server is down" into a conversation that already knows which
+server.
+
+Also unresolved: chat transcripts are personal data under 152-ФЗ, and the terms
+covering that are still `__ТЕКСТ_ОТ_VICTOR__`.
+
 ## Ordering a fixed plan never asks for OS or datacenter
 
 Buying a catalogue plan (Start/Basic/Pro/…) posts only `package_code` to

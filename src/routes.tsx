@@ -6,6 +6,7 @@ import { PricingPage } from './pages/PricingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { AdminPage } from './pages/AdminPage';
 import { NewServerPage } from './pages/NewServerPage';
+import { SupportPage } from './pages/SupportPage';
 import { CallbackPage } from './pages/CallbackPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { CheckoutReturnPage } from './pages/CheckoutReturnPage';
@@ -77,6 +78,17 @@ export function AppRoutes() {
           element={
             <RequireAuth>
               <NewServerPage />
+            </RequireAuth>
+          }
+        />
+        {/* Technical support. Behind RequireAuth like the rest of the cabinet:
+            it is reached from the sidebar and the chat is about this customer's
+            own servers. */}
+        <Route
+          path={routePaths.support}
+          element={
+            <RequireAuth>
+              <SupportPage />
             </RequireAuth>
           }
         />
