@@ -2,6 +2,45 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-08-09
+
+### Added
+
+**Technical support in the account, and live chat on the marketing pages.** A "Поддержка" sidebar
+entry opens `/dashboard/support`; the Chatwoot widget mounts on the marketing layout and on that
+page. Chatwoot was chosen knowing what it is — an omnichannel *conversation* inbox, not a ticket
+system: there are no ticket numbers, no SLA timers and no customer-facing list of past requests. For
+conversational support that is the right shape, and it is self-hostable, which suits a hosting
+company. If tickets turn out to be the requirement, that is either a UI built on Chatwoot's API or a
+move to Zammad.
+
+- **Both are dormant until configured.** `src/support/chatwoot.ts` holds two empty constants; fill
+  in the base URL and website token and the widget appears with no code change. Leave either blank
+  and no third-party script loads at all — verified on the deployed site, not assumed. Neither value
+  is a secret: the website token identifies an inbox, the way `BILLING_API_BASE` identifies a
+  catalogue.
+- The support page has two states, and the difference is the point. Configured, it opens the chat.
+  Unconfigured, it says so and routes to the contact details — someone opening this page usually has
+  something broken *right now*, and "coming soon" is the least useful thing to tell them. It also
+  lists what to include (which server, what you did, the full error text), which saves a round trip
+  per conversation.
+- The widget stays off checkout and the payment return: a bubble overlapping the confirm button
+  while someone is deciding to pay is worse than no chat.
+
+**The chat is anonymous on purpose, and stays that way until there is somewhere to sign.** Chatwoot
+only *validates* an identity when `setUser` carries an `identifier_hash` — an HMAC of the identifier
+signed with the inbox key. That key cannot be in the browser, and this storefront is a pure SPA with
+no backend of its own. Calling `setUser` without the hash is not a lesser version of the same thing:
+Chatwoot would accept whatever email the page claims, so a customer could claim someone else's
+address from the console and land in that person's conversation history in the agent inbox.
+`identifyInChat` is an explicitly `null` export carrying that reasoning, so the next person meets it
+before writing the insecure version. Tracked in `TODO.md`, along with the 152-ФЗ point: transcripts
+are personal data and the terms covering that are still a placeholder.
+
+Adding the route also produced the first real catch by `src/nginxRoutes.test.ts`: `dashboard/support`
+went into `routePaths` without the nginx snippet, which would have shipped a page that renders
+perfectly in a browser and answers 404 to crawlers. Snippet updated and applied to both hosts.
+
 ## 2026-08-08
 
 ### Added
