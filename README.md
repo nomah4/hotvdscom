@@ -122,6 +122,10 @@ Two environments on one host (167.179.34.32), separate document roots, separate 
 An nginx `stream{}` SNI router (`/etc/nginx/stream.d/stream.conf`) sends both hostnames to
 127.0.0.1:8443, where the two vhosts are told apart by `server_name`.
 
+That host is a gateway, and the storefront is one of six things on it: the same nginx fronts
+Billing, the Payment Orchestrator, Provisioning and Chatwoot, each on its own VM on a private
+segment. `deploy/gateway/README.md` documents the machine, its NAT and what that means for us.
+
 ### Staging — dev.hotvds.com
 
 Every push to `main` deploys automatically (`.github/workflows/deploy-dev.yml`): build → rsync

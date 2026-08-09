@@ -16,9 +16,15 @@ record, and re-pull after any change made on the host.
 | `dev.hotvds.com.conf` | `/etc/nginx/sites-available/dev.hotvds.com` |
 | `snippets-hotvds-spa-routes.conf` | `/etc/nginx/snippets/hotvds-spa-routes.conf` |
 | `stream.conf` | `/etc/nginx/stream.d/stream.conf` |
+| `conf.d-admin-proxy.conf` | `/etc/nginx/conf.d/admin-proxy.conf` |
 
 Both vhosts listen on `127.0.0.1:8443`; the `stream{}` SNI router in
 `stream.conf` is what fronts them and tells them apart by `server_name`.
+
+The storefront is not the only thing this nginx serves. `conf.d-admin-proxy.conf`
+terminates TLS for `bl` / `po` / `pr` / `chat.hotvds.com` and proxies each to a
+VM on the private segment — see `../gateway/README.md` for the machine those
+names resolve to and what else it does.
 
 ## Applying a change
 
