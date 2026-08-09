@@ -35,34 +35,72 @@ be reconstructed after the fact.
 
 Handoff document: https://claude.ai/code/artifact/fe0f706e-4069-4f61-8c42-a501e42e7d74
 
-## Chatwoot: the chat is live, but anonymous
+## Chat identity: the signing endpoint
 
-Configured 2026-08-09. `chat.hotvds.com` (VM 1224, 10.0.1.14), account
-`hotvds.com`, one website inbox. The widget is on the marketing pages and in the
-account's Support section; `src/support/chatwoot.ts` carries the base URL and the
-website token, both public. Blanking either switches chat off entirely, script
-included.
+The chat is live and every visitor in it is anonymous. Making a signed-in
+customer recognisable needs one component that does not exist: somewhere
+server-side to compute an HMAC.
 
-**The chat cannot say who the customer is, and must not pretend to.** Chatwoot
-validates an identity only when `setUser` carries an `identifier_hash`, an HMAC
-of the identifier signed with the inbox key. That key cannot be in the browser,
-and this storefront is a pure SPA with no backend of its own.
+**Why it cannot be done in the browser.** Chatwoot treats an identity as
+verified only when `setUser` carries an `identifier_hash` — an HMAC-SHA256 of
+the identifier, keyed with the inbox's HMAC key. Put that key in the bundle and
+anyone can mint a signature for any identifier, which is the same as having no
+signature at all. This storefront is a pure SPA with no backend of its own.
 
-Calling `setUser` without the hash is not a smaller version of the same thing:
-Chatwoot would accept whatever email the page claims, so a customer could open
-the console, claim someone else's address, and land in that person's conversation
-history in the agent inbox.
+### What to build
 
-**To finish:** somewhere server-side that takes the ZITADEL token and returns the
-identifier with its hash — Billing, or a small endpoint beside it. Then
-`identifyInChat` becomes real and conversations can carry `subscription_id` and
-package as custom attributes, which is what turns "my server is down" into a
-conversation that already knows which server.
+An endpoint that takes the caller's ZITADEL access token and returns:
 
-Also outstanding on the Chatwoot install itself: **SMTP is not configured**, so
-there are no invitation or notification emails and no password recovery. And chat
-transcripts are personal data under 152-ФЗ, while the terms covering that are
-still `__ТЕКСТ_ОТ_VICTOR__`.
+```json
+{ "identifier": "<zitadel sub>", "identifier_hash": "<hex hmac-sha256>" }
+```
+
+Rules, in order of how badly each one breaks things:
+
+1. **The identifier comes from the verified token, never from the request
+   body.** An endpoint that signs whatever identifier it is handed produces
+   valid signatures for false identities — no better than the unsigned call it
+   replaces, and harder to notice because everything looks correct.
+2. The identifier must be stable per user and never reused across users. The
+   ZITADEL `sub` is that; email is not — addresses change hands.
+3. `identifier_hash = HMAC_SHA256(inbox_hmac_key, identifier)`, hex-encoded.
+4. The inbox HMAC key is a secret: it lives in Chatwoot under
+   Settings → Inboxes → hotvds.com, and belongs in the server's secret store —
+   never in this repo, never in a response body.
+
+**Where it belongs:** Billing. It already validates ZITADEL tokens, so rule 1
+comes for free. A small separate service is the alternative if adding a chat
+concern to a money service is unwelcome. `njs` on the gateway is possible and
+not advised — JWT validation there is easy to get subtly wrong and hard to see.
+
+### What changes on this side once it exists
+
+- `identifyInChat` in `src/support/chatwoot.ts` stops being an explanatory
+  `null` and calls `setUser(identifier, { identifier_hash, email, name })`.
+- `hotvds_identity` flips from `'unverified'` to `'verified'` — see
+  `setChatSource`. The attribute exists so agents can see which they are talking
+  to; it must not say `verified` until Chatwoot actually verified something.
+- Conversations can then carry `subscription_id`, package and datacenter as
+  custom attributes, which is what turns "my server is down" into a conversation
+  that already knows which server.
+
+### Already done, so nobody redoes it
+
+`hmac_mandatory` is **true** on the inbox (set 2026-08-09). It was `false`, which
+meant the widget's public API accepted `window.$chatwoot.setUser('anyone@example.com')`
+from any visitor's console and dropped them into that contact's history. Our code
+never called `setUser`, which protected nothing — the API is public regardless.
+
+The consequence to keep in mind: until the endpoint exists, **no customer can be
+identified at all**, because Chatwoot now rejects unsigned claims. That is the
+intended state, and it is safer than the alternative.
+
+### Also outstanding on the Chatwoot install
+
+- Chat transcripts are personal data under 152-ФЗ; the terms covering that are
+  still `__ТЕКСТ_ОТ_VICTOR__`.
+- Agents, teams and business hours are not configured — the inbox has one
+  administrator.
 
 ## Ordering a fixed plan never asks for OS or datacenter
 
