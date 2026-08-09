@@ -10,14 +10,53 @@ All notable changes to this project are documented in this file.
 `src/support/chatwoot.ts` are filled in, so the widget now appears on the marketing pages and in the
 account's Support section. Set up through the Rails console rather than the browser onboarding, so
 the result is reproducible: account `hotvds.com`, one administrator, one website inbox. SMTP is not
-configured on that install, so the administrator was confirmed explicitly — otherwise the account
-would have been created and immediately unusable, with no email able to rescue it.
+configured at first, so the administrator was confirmed explicitly — otherwise the account would
+have been created and immediately unusable, with no email able to rescue it. SMTP was wired to
+SMTP2GO the same day, sending as `noreply@ytnp.xyz`, and confirmed by an actual delivered message
+rather than by the config looking right; invitations, notifications and password recovery work.
 
 Only the website token is in the repo, and it is public by design: it names an inbox the way
 `BILLING_API_BASE` names a catalogue. The inbox's HMAC key stays in Chatwoot — it is what would
 verify a claimed identity, and everything in that file ships to every visitor's browser.
 `chatwoot.test.ts` guards against a second secret-shaped constant appearing beside the token. The
 chat is still anonymous, for the reason recorded in `TODO.md`.
+
+**A chat inbox per language.** An English visitor was being greeted «Чем помочь?». The widget's own
+chrome already followed the site language via `chatwootSettings.locale`, but the greeting is a fixed
+string stored on the inbox, so one inbox greets everyone in whichever language it was written in.
+`ru` and `en` now have separate inboxes and separate website tokens. That is the better shape
+regardless: an agent sees a conversation's language before opening it, and the two can be routed and
+staffed differently. Switching language mid-session re-locales the widget but keeps the conversation
+where it started — `run()` binds the token once, and moving a live conversation between inboxes
+would strand it away from the agent already reading it.
+
+**Conversations say which surface they came from.** `hotvds_source` is `website` or `dashboard`, set
+by whichever surface mounted the widget, so an agent can tell a pre-sales question from an existing
+customer's problem before reading a word. Conversation attributes need no HMAC — nothing here claims
+*who* the visitor is, only where they were.
+
+Alongside it, `hotvds_identity: 'unverified'`, which matters more. `dashboard` means the widget was
+mounted behind `RequireAuth` and nothing else; the browser sets both attributes, so anyone can forge
+them from the console. The risk is conversational rather than technical — an agent who reads
+"dashboard" as proof of identity may disclose one customer's account to another — so the caveat sits
+in the sidebar where the agent is actually looking. It flips to `verified` only once `setUser` can
+carry a valid `identifier_hash`.
+
+### Security
+
+**The chat widget accepted any identity claimed from a visitor's console.** `hmac_mandatory` was
+`false` on the inbox, so `window.$chatwoot.setUser('anyone@example.com')` typed into the console on
+hotvds.com would have been taken at face value, dropping the caller into that contact's conversation
+history. The storefront never called `setUser` — that protected nothing, because the widget's API is
+public regardless of what our code does.
+
+Now `true` on both inboxes: Chatwoot rejects every unsigned identity claim. Anonymous chat is
+unaffected, which was verified rather than assumed. The consequence is that no customer can be
+identified at all until the signing endpoint specified in `TODO.md` exists, and that is the intended
+state — an identity nobody checked is worse than none.
+
+Exposure was small only because the inbox was hours old and held almost no history. Found while
+answering a question about whether we sign chat messages, not by looking for it.
 
 ### Fixed
 
