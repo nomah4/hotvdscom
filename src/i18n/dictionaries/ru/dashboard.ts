@@ -47,7 +47,6 @@ export const dashboard = {
     term: { monthly: 'Ежемесячно', annual: 'Ежегодно' },
     validUntil: 'Действует до',
     autoRenew: 'Автопродление',
-    renew: 'Продлить',
     renewHint: 'Нажмите, чтобы продлить услугу',
     renewing: 'Открываем оплату…',
     renewError: 'Не удалось начать продление. Попробуйте ещё раз.',

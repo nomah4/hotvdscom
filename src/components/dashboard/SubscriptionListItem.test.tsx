@@ -24,9 +24,9 @@ const t = dictionaries.ru.dashboard.subscriptions;
 
 describe('SubscriptionListItem', () => {
   /**
-   * The valid-until chip is a second entrance to the same purchase as the Renew
-   * button. Two entry points to a money path is exactly where a gate gets
-   * applied to one and forgotten on the other, so these check they agree.
+   * The valid-until chip is the only way to start a renewal, so it carries the
+   * whole money path: it must fire, must advertise itself, and must disappear as
+   * a control the moment Billing would refuse.
    */
   describe('renewal', () => {
     it('renews when the valid-until chip is clicked', () => {
@@ -55,7 +55,8 @@ describe('SubscriptionListItem', () => {
         <SubscriptionListItem subscription={subscription({ status: 'expired' })} onRenew={vi.fn()} />,
       );
 
-      expect(screen.queryByRole('button', { name: t.renew })).toBeNull();
+      // The chip is the only renew control, so "not on offer" means it stops
+      // being a button — while still showing the date as plain text.
       expect(screen.queryByRole('button', { name: new RegExp(t.validUntil) })).toBeNull();
       expect(screen.getByText(new RegExp(t.validUntil))).toBeInTheDocument();
     });

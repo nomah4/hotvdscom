@@ -58,6 +58,39 @@ visitor's language. A splat inside the marketing layout now catches it with the 
 intact. It does not echo the requested address. Note this stays a *soft* 404 — nginx answers 200
 with the SPA shell for any path.
 
+**Ordering a server without leaving the account.** A customer with servers had to go back out to the
+storefront to buy another. A "Новый сервер" sidebar entry now opens `/dashboard/new`, which renders
+the same `PricingSlider` and the same `TariffCard` as `/pricing`, driven by the same order intents
+and handing off to the same `/checkout`. Reused rather than reimplemented on purpose: the money path
+stays single, so terms acceptance, quoting and the gateway hand-off cannot drift between "bought
+from the site" and "bought from the account".
+
+**Server controls and telemetry on the instance card** — power, reboot, delete, plus IP address, CPU
+load and network. All placeholders, and honest ones. Billing tracks a subscription, not a machine:
+there is no address, no metrics, no power API, and the provisioning adapter that would own them does
+not exist, so every subscription sits at `provisioning_status: pending`.
+
+- The buttons are styled as live controls, because that is the card's eventual shape, and pressing
+  one says the controls are not connected instead of reporting an action that did not happen. A
+  customer who believes a reboot happened waits for a server that never went down; one who believes
+  a delete happened keeps paying for a server they think is gone.
+- Telemetry shows labelled dashes, never a plausible number — invented load is a lie about the
+  customer's own machine. A test fails if a figure ever appears.
+- The power button states its state in its colour: mint to start a server that is down, neutral to
+  stop one that is up, so a green button in the list means something is not running. `isRunning` is
+  inferred from `status === 'active' && provisioning_status === 'succeeded'` because there is no
+  power state to read.
+
+**The valid-until date is the renew control.** Clicking it opens the renewal; there is no separate
+button. The chip therefore advertises itself — hover hint, pointer cursor, and an accent border that
+appears only when it is genuinely clickable — because a date that silently charges money is worse
+than an extra button. It renders as a plain span when Billing would refuse (anything but an active
+subscription), so no affordance ever appears on something that cannot be clicked.
+
+**A Balance tile on the dashboard**, deliberately empty. Billing exposes no balance endpoint, so the
+tile shows a dash and "not connected yet" rather than a number; a plausible figure there is a claim
+about the customer's own money. "Всего планов" is now "Всего услуг".
+
 ### Changed
 
 **Footer labels and destinations are matched by key, not by array position.** `footerLinkPaths` was
@@ -71,6 +104,19 @@ excess-property check. Verified by deleting a key and watching `tsc` reject it (
 The footer copyright drops "— дизайн-прототип" / "— design prototype"; the site sells real plans.
 
 ### Fixed
+
+**A deploy was invisible to anyone who had already visited.** `index.html` carried no
+`Cache-Control` at all, only `ETag`/`Last-Modified`, so browsers cached the shell heuristically and
+kept loading the bundle it named — yesterday's app, from a fresh release. Reported as "I don't see
+the changes on dev" and confirmed from outside: the new bundle was being served, the old shell was
+pointing away from it. The shell is now `no-cache` on both hosts; `/assets/*` keeps `immutable` for
+30 days, which is correct — those filenames are content-addressed.
+
+**OS and datacenter were invisible for any package still in the catalogue.** The instance card read
+them only in the branch for packages the catalogue no longer lists, so two cards for the same server
+described it differently depending on whether its plan was still offered. Note this does not make
+them appear for fixed plans: `createInvoice` posts only `package_code`, so those subscriptions carry
+no configuration at all. Recorded in `TODO.md`.
 
 **Unknown URLs answer a real 404 instead of 200.** Both vhosts served
 `try_files $uri $uri/ /index.html`, so every path — mistyped, retired, invented —
