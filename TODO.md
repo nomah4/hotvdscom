@@ -110,35 +110,39 @@ data. The file was left behind rather than deleted, so nothing renders it today.
 gives it real numbers to show. It is harmless while unreferenced and wrong the
 moment someone reuses it.
 
-## Repeat purchase of an identical server replays the first order
+## Repeat purchase: fixed, but Billing's side is unconfirmed
 
-Ordering a second identical server in the same browser tab can return the
-*first* invoice and subscription instead of creating a new one, so no second
-server appears. Reproduced on dev 2026-08-08; no data was lost.
+Fixed 2026-08-09. The order idempotency key is now retired as soon as Billing
+accepts the purchase — in `confirm`, `confirmQuote` and `renew` alike — rather
+than when `CheckoutReturnPage` observes the invoice settle. That closed all
+three situations which used to leave it alive: payment outlasting the 30s poll,
+the customer never reaching the return page, and `payment_url` coming back
+missing (which threw before the key could be tied to an invoice, orphaning it
+for the tab's lifetime).
 
-The idempotency key sent to Billing is built only from *what* is being bought —
-`PKG:CUR` for catalogue plans (`src/api/useCheckout.ts`), and
-`custom:PKG:CUR:cpu:ram:ssd:os:dc` for a configured one — with nothing per
-purchase. That is intentional, so backing out of the gateway and confirming
-again replays one invoice rather than opening two. The hole is *retirement*: the
-key is dropped only by `CheckoutReturnPage`, and only if it observes the invoice
-settle. It survives when
+`src/api/useCheckout.test.tsx` covers the *lifetime*, which is where the bug
+lived; the key-building functions alone would have tested green throughout.
+Verified by removing the fix and watching four of five fail, including a second
+identical order receiving the same key.
 
-- payment takes longer than `MAX_POLLS × POLL_INTERVAL_MS` (30s) and the poll
-  exits while the invoice is still `pending`, which skips the clearing branch;
-- the customer never reaches the return page but keeps the tab open;
-- `createInvoice` succeeds and `payment_url` is missing — the throw happens
-  after the key is minted, before `rememberPendingInvoice`, orphaning it beyond
-  the reach of `clearPendingInvoice`.
+**Cost accepted:** backing out of the gateway and confirming again now opens a
+second invoice instead of replaying the first. The unpaid one expires; the
+double-submit guard is the confirm button disabling while in flight. This was
+the deliberate trade for "two orders must always give two servers".
 
-Renewal is unaffected: it namespaces its key as `renewal:<subscription_id>`.
+**Still unconfirmed on Billing's side**, and worth answering before considering
+this closed:
 
-**To finish:** likely retire the key when the customer is handed to the gateway
-rather than on return, which closes all three cases because it no longer depends
-on the customer coming back. That trades away replay-on-Back protection, leaving
-the in-flight button disable as the double-submit guard — decide whether that is
-acceptable before changing a money path. Workaround meanwhile: a new tab gets a
-fresh `sessionStorage`, and therefore a fresh key.
+- Is the idempotency key scoped per customer or per installation? Global scoping
+  would make two customers' keys collide in principle.
+- How long does Billing remember a key? A short TTL changes how much of the
+  original damage was possible.
+- Does a replayed response return `payment_url` for an already-paid invoice?
+  That would send a customer to pay a bill that is settled.
+- From the logs of 2026-08-08: how many invoices and subscriptions were created,
+  and was there any attempt to capture payment twice against one invoice?
+
+Full write-up for handoff: https://claude.ai/code/artifact/fe0f706e-4069-4f61-8c42-a501e42e7d74
 
 ## nginx config is applied by hand
 
