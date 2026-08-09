@@ -84,7 +84,7 @@ export function SupportPage() {
 
   return (
     <DashboardShell>
-      <ChatWidget />
+      <ChatWidget source="dashboard" />
 
       <Head>
         <Title>{t.support.title}</Title>

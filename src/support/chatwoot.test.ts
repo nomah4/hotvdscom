@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { CHATWOOT_BASE_URL, CHATWOOT_WEBSITE_TOKEN, isChatConfigured } from './chatwoot';
+import { describe, expect, it, vi } from 'vitest';
+import { CHATWOOT_BASE_URL, CHATWOOT_WEBSITE_TOKEN, isChatConfigured, setChatSource } from './chatwoot';
 
 /**
  * The widget's config is two plain constants, which makes one mistake very easy
@@ -21,5 +21,22 @@ describe('chatwoot config', () => {
     // key must stay in Chatwoot's inbox settings and be used server-side only.
     expect(CHATWOOT_WEBSITE_TOKEN).toMatch(/^[A-Za-z0-9]+$/);
     expect(CHATWOOT_WEBSITE_TOKEN.length).toBeGreaterThan(10);
+  });
+});
+
+describe('conversation tagging', () => {
+  it('never claims the visitor is verified', () => {
+    const setCustomAttributes = vi.fn();
+    (window as unknown as { $chatwoot: unknown }).$chatwoot = { setCustomAttributes };
+
+    setChatSource('dashboard');
+
+    const attrs = setCustomAttributes.mock.calls[0][0];
+    // `dashboard` says the widget was mounted behind RequireAuth — not that
+    // Chatwoot checked anything. The browser sets these, so a console call can
+    // forge them. An agent reading "dashboard" as proof could hand one
+    // customer's account details to another.
+    expect(attrs.hotvds_source).toBe('dashboard');
+    expect(attrs.hotvds_identity).toBe('unverified');
   });
 });
