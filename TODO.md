@@ -1,7 +1,54 @@
 # TODO
 
 Known gaps, with enough context to pick them up cold. Security findings live in
-`SECURITY-TODO.md` (branch `security-backlog`).
+`SECURITY-TODO.md` (branch `security-backlog`); the first item below is one too,
+and sits here because it is infrastructure rather than application code.
+
+## Every service VM's SSH is open to the whole internet
+
+Found 2026-08-09 by reading the gateway, not by looking for it.
+
+`/etc/nftables.conf` on `gw` (167.179.34.32) DNATs four public ports straight to
+port 22 of each machine on the private segment:
+
+```
+2201 → 10.0.1.11:22   Billing
+2202 → 10.0.1.12:22   Payment Orchestrator
+2203 → 10.0.1.13:22   Provisioning
+2204 → 10.0.1.14:22   Chatwoot
+```
+
+There is no source restriction on any of them. `ufw` is inactive, and the
+gateway's own nft `input` chain is `policy accept` with no rules, so nothing
+else narrows it either. Every one of these is reachable from any address on the
+internet, Billing's included — the host that holds the invoices, the ledger and
+the payment records.
+
+**Why this is worse than an ordinary exposed SSH port.** These four are the only
+way in to those VMs, so they cannot simply be closed. They are also the only
+control the private segment has: once inside, `10.0.1.0/24` has no internal
+firewall, and the services talk to each other across it in the clear.
+
+What the billing infrastructure brief requires instead
+(`hosting/docs/billing/infrastructure.md`, §2.6) — written for exactly these
+services, and not applied here:
+
+- a non-standard port, keys only, `PermitRootLogin no`, `PasswordAuthentication no`
+- an IP whitelist for the administrator's address
+- `fail2ban`, 3 attempts per 10 minutes, 24-hour ban
+
+**To finish:** decide who needs to reach these hosts and from where, then
+restrict the four DNAT rules to those sources; confirm each VM's own `sshd`
+matches the brief; add `fail2ban` on the gateway. Before narrowing anything,
+make sure there is out-of-band console access to all four VMs — a firewall
+change that locks everyone out of a machine with no console is unrecoverable.
+
+Whoever does this should also settle the `ct status dnat accept` rule in the
+forward chain: it accepts whatever prerouting happens to redirect, so the next
+DNAT anyone adds is permitted without a separate decision.
+
+`deploy/gateway/README.md` documents the machine and carries a copy of the
+ruleset.
 
 ## Paid invoices are not becoming subscriptions
 

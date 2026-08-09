@@ -63,9 +63,14 @@ Billing's. There is no source restriction, no `ufw` (it is inactive), and the ga
 input chain is `policy accept` with no rules — so the host firewall permits everything that
 reaches it.
 
-**Unknown SNI lands on Billing.** `default 127.0.0.1:8444` in `stream.conf` means a connection
-with no recognised server name — a scanner walking the IP range, a stale DNS entry — is handed
-to the money service instead of being refused.
+**Unknown SNI used to land on Billing.** `default` in `stream.conf` was `127.0.0.1:8444`, so a
+connection with no recognised server name — a scanner walking the IP range, a stale DNS entry, a
+client sending no SNI at all — was handed to the money service. Fixed 2026-08-09: it goes to
+`127.0.0.1:8448` now and is answered 502 (`../nginx/conf.d-default-sni-reject.conf`). Verified
+against both an unknown name and the bare IP; all six real hostnames still serve.
+
+`stream{}` matches below HTTP and has no status codes of its own, which is why refusing with a
+502 takes a real http server and a terminated handshake rather than one line in the map.
 
 ## Reading it back
 

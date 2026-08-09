@@ -17,6 +17,7 @@ record, and re-pull after any change made on the host.
 | `snippets-hotvds-spa-routes.conf` | `/etc/nginx/snippets/hotvds-spa-routes.conf` |
 | `stream.conf` | `/etc/nginx/stream.d/stream.conf` |
 | `conf.d-admin-proxy.conf` | `/etc/nginx/conf.d/admin-proxy.conf` |
+| `conf.d-default-sni-reject.conf` | `/etc/nginx/conf.d/default-sni-reject.conf` |
 
 Both vhosts listen on `127.0.0.1:8443`; the `stream{}` SNI router in
 `stream.conf` is what fronts them and tells them apart by `server_name`.
