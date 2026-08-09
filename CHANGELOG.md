@@ -98,6 +98,14 @@ Worth stating plainly because it changed how the first diagnosis should be read:
 reading code, which established that the defect *existed*, and was then attributed to a symptom it
 did not cause. The database settled it; the code could not have.
 
+**A second correction, later the same day.** That finding was first written up with the note "X1 has
+no application logs" — checked via `journalctl` and a search of `/opt`, `/srv`, `/home`. The logs
+were in `/var/www/bl/shared/logs/` all along: access, error, worker and beat, with `error.log` in
+structured JSON carrying `request_id` and `correlation_id`. Reading them produced a far better lead
+than the database alone: `billing.reconcile_recent_final_payments` reports `issue: 7` with
+`auto_recovered: 0`, and the count rose by exactly the three purchases made that morning. Billing
+detects the mismatch every fifteen minutes and does nothing about it.
+
 **A second fix the same day:** the key retirement above only helped purchases made from then on.
 Keys already stranded in customers' `sessionStorage` kept replaying their first invoice until the tab
 was closed, so "fixed" was untrue for exactly the people who had hit the bug. Any key present when

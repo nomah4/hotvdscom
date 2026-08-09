@@ -27,11 +27,21 @@ distinct ids. No replay happened, before or after the fix.
 **To finish:** the payment-capture path in Billing — why `paid` does not produce
 a subscription. Not fixable from this repo.
 
-**Blocking that investigation: X1 has no application logs.** `journalctl -u
-bl-api` holds only gunicorn start/stop lines, and there are no file logs. The
-findings above came from querying Postgres directly because there was nothing
-else to read. For a money path that is its own defect: no individual failure can
-be reconstructed after the fact.
+**Billing's own reconciliation already flags this, and does not act on it.**
+`billing.reconcile_recent_final_payments` runs every 15 minutes and reported
+`{'checked': 10, 'in_sync': 3, 'auto_recovered': 0, 'state_updated': 0,
+'issue': 7}` — it was `issue: 4` before the three purchases on 9 August and
+`issue: 7` after, exactly +3. So the payments are detected as out of sync with
+Billing's own state, and nothing recovers them.
+
+That is the thread to pull: what `issue` means in that task, and why
+`auto_recovered` is always 0.
+
+Logs are at `/var/www/bl/shared/logs/` on X1 — `access.log`, `error.log`
+(structured JSON with `request_id` and `correlation_id`), `worker.log`,
+`beat.log`. An earlier version of this entry claimed there were none; that was
+wrong, and came from checking `journalctl` and `/opt`, `/srv`, `/home` without
+looking in `/var/www`.
 
 Handoff document: https://claude.ai/code/artifact/fe0f706e-4069-4f61-8c42-a501e42e7d74
 
