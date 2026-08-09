@@ -126,6 +126,34 @@ export function clearOrderIdempotencyKey(idempotencyScope: string): void {
   }
 }
 
+/**
+ * Drops every checkout idempotency key left in storage. Call once on app start.
+ *
+ * Since 2026-08-09 a key is minted and retired inside a single `confirm()` call,
+ * with no navigation in between — the hand-off to the gateway happens after the
+ * key is already gone. So a key still present when the app boots cannot belong
+ * to an attempt in progress: it is either from a build that predates that change
+ * and has been stranding purchases ever since, or from an attempt whose tab was
+ * reloaded mid-request.
+ *
+ * This is what makes the fix reach customers who already have a stuck key.
+ * Without it they keep replaying their first invoice until they close the tab,
+ * and "we fixed it" is not true for exactly the people who hit the bug.
+ */
+export function purgeStaleCheckoutKeys(): void {
+  try {
+    const stale: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i += 1) {
+      const key = sessionStorage.key(i);
+      if (key?.startsWith(IDEMPOTENCY_KEY_PREFIX)) stale.push(key);
+    }
+    // Collected first: removing while iterating shifts the indices underneath.
+    stale.forEach((key) => sessionStorage.removeItem(key));
+  } catch {
+    // Storage unavailable; there is nothing stranded to clear either.
+  }
+}
+
 export function customVdsIntentKey(packageCode: string, configuration: CustomVdsConfiguration, currency: string): string {
   return [
     'custom',

@@ -16,7 +16,7 @@ vi.mock('./checkout', () => ({
 }));
 
 const { createInvoice } = await import('./checkout');
-const { useCheckout, orderIdempotencyKey } = await import('./useCheckout');
+const { useCheckout, orderIdempotencyKey, purgeStaleCheckoutKeys } = await import('./useCheckout');
 const { LanguageProvider } = await import('../i18n/LanguageContext');
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -147,6 +147,21 @@ describe('useCheckout — idempotency key lifetime', () => {
     });
 
     expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it('purges keys stranded by an older build', () => {
+    // A key never legitimately survives a page load now, so anything present at
+    // startup is stranded — including keys written before 2026-08-09, which is
+    // how someone already stuck gets out without closing the tab.
+    sessionStorage.setItem('hotvds.checkoutKey.VDS_PRO_MONTHLY:RUB', 'stranded-uuid');
+    sessionStorage.setItem('hotvds.pendingInvoiceId', '{"invoiceId":"inv_1"}');
+
+    purgeStaleCheckoutKeys();
+
+    expect(sessionStorage.getItem('hotvds.checkoutKey.VDS_PRO_MONTHLY:RUB')).toBeNull();
+    // Only the keys — the pending-invoice record is what the return page reads
+    // to show an outcome, and it is not an idempotency key.
+    expect(sessionStorage.getItem('hotvds.pendingInvoiceId')).not.toBeNull();
   });
 
   it('reuses the key within one attempt', () => {
