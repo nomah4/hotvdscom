@@ -72,17 +72,26 @@ export function clearPendingInvoice(): void {
 }
 
 /**
- * One idempotency key per intent to buy a given package/currency/configuration,
- * not per click.
+ * One idempotency key per in-flight attempt to open a purchase — not per click,
+ * and deliberately NOT per plan for longer than that attempt.
  *
- * Billing replays the original response for a repeated key, so reusing it is
- * what makes a double-click — or a browser Back out of the gateway followed by
- * another Confirm — return the invoice that already exists instead of opening a
- * second one and registering a second payment. A fresh uuid per call would
- * defeat the mechanism entirely.
+ * Billing replays the original response for a repeated key, so the key is what
+ * stops a retry after a dropped connection from registering a second payment.
+ * It is retired the moment Billing has accepted the purchase, because the key
+ * must never outlive the attempt that created it: ordering the same server twice
+ * has to produce two servers.
  *
- * sessionStorage rather than a ref: the key has to survive a page reload and the
- * round trip through the gateway, both of which remount the component.
+ * That is not how it worked until 2026-08-09. The key was scoped to
+ * package/currency/configuration and retired only when CheckoutReturnPage saw
+ * the invoice settle, so a customer buying a second identical server in the same
+ * tab sent the same key and Billing replayed the first invoice — no second
+ * server. Three separate situations left the key alive: payment taking longer
+ * than the return page's 30s poll, the customer never reaching the return page,
+ * and `payment_url` coming back missing (which threw before the key could be
+ * associated with an invoice at all, orphaning it for the tab's lifetime).
+ *
+ * sessionStorage rather than a ref because the confirm page can remount
+ * mid-attempt.
  */
 const IDEMPOTENCY_KEY_PREFIX = 'hotvds.checkoutKey.';
 
@@ -101,8 +110,14 @@ export function orderIdempotencyKey(packageCode: string): string {
   }
 }
 
-/** Drops the key once a purchase has been handed to the gateway, so a later,
- * genuinely new purchase of the same plan is not replayed as the old one. */
+/**
+ * Retires the key. Call as soon as Billing has accepted the purchase — before
+ * anything that can throw — so the next purchase of the same plan can never be
+ * replayed as this one.
+ *
+ * Safe to call twice: CheckoutReturnPage still calls it via clearPendingInvoice
+ * when a purchase settles, which by then is a no-op.
+ */
 export function clearOrderIdempotencyKey(idempotencyScope: string): void {
   try {
     sessionStorage.removeItem(`${IDEMPOTENCY_KEY_PREFIX}${idempotencyScope}`);
@@ -231,13 +246,17 @@ export function useCheckout(): UseCheckoutResult {
           idempotencyKey: orderIdempotencyKey(idempotencyScope),
         });
 
+        // Billing has the purchase; the key has done its job and must not
+        // outlive it. Retired here rather than on the return page because the
+        // return page is not guaranteed to run — and before the payment_url
+        // check below, which can throw and would otherwise strand the key with
+        // no invoice record to find it by.
+        clearOrderIdempotencyKey(idempotencyScope);
+
         if (!invoice.payment_url) {
           throw new Error('no_payment_url');
         }
         rememberPendingInvoice(invoice.invoice_id, idempotencyScope);
-        // The key is deliberately NOT cleared here. Backing out of the gateway
-        // and confirming again must replay this same invoice, not open a second
-        // one; CheckoutReturnPage retires it when the purchase settles.
         // Leaves the SPA for the gateway's hosted page; the customer comes back
         // to returnUrl, where CheckoutReturnPage reads the outcome.
         window.location.assign(invoice.payment_url);
@@ -282,6 +301,9 @@ export function useCheckout(): UseCheckoutResult {
           customerEmail: email,
           idempotencyKey: orderIdempotencyKey(idempotencyScope),
         });
+
+        // See confirm(): retired as soon as Billing accepts, before the throw.
+        clearOrderIdempotencyKey(idempotencyScope);
 
         if (!invoice.payment_url) {
           throw new Error('no_payment_url');
@@ -384,6 +406,13 @@ export function useRenewal(): UseRenewalResult {
           currency,
           idempotencyKey: orderIdempotencyKey(idempotencyScope),
         });
+
+        // Same treatment, though renewal was never exposed to the original bug:
+        // its key is scoped to one subscription, and Billing itself returns an
+        // existing unpaid renewal rather than duplicating. Retiring it here keeps
+        // one rule for all three purchase paths instead of an exception someone
+        // has to remember.
+        clearOrderIdempotencyKey(idempotencyScope);
 
         if (!renewal.payment_url || !renewal.invoice_id) {
           throw new Error('no_payment_url');

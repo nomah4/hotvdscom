@@ -4,6 +4,35 @@ All notable changes to this project are documented in this file.
 
 ## 2026-08-09
 
+### Fixed
+
+**Ordering a second identical server now creates a second server.** It did not: the idempotency key
+sent to Billing was scoped to package/currency/configuration with nothing per purchase, and was
+retired only when `CheckoutReturnPage` saw the invoice settle. Billing replays the original response
+for a repeated key — correctly — so a customer buying the same server again in the same tab was
+handed the first invoice back and no second server appeared. Reproduced on dev 2026-08-08; no data
+was lost.
+
+The key is now retired the moment Billing accepts the purchase, before anything that can throw. That
+closes all three situations which used to leave it alive: payment outlasting the return page's 30s
+poll, the customer never reaching that page at all, and `payment_url` coming back missing — which
+threw after the key was minted but before it was tied to an invoice, orphaning it for the tab's
+lifetime with nothing able to find it again.
+
+- Applied to all three purchase paths, including renewal. Renewal was never exposed to the bug —
+  its key is scoped to one subscription and Billing returns an existing unpaid renewal rather than
+  duplicating — but one rule across all three beats an exception someone has to remember.
+- **The trade, accepted deliberately:** backing out of the gateway and confirming again now opens a
+  second invoice instead of replaying the first. The unpaid one expires, and the confirm button
+  disabling while in flight remains the double-submit guard. Two orders must always produce two
+  servers; that requirement outranks the convenience the old behaviour bought.
+- `src/api/useCheckout.test.tsx` tests the key's *lifetime* rather than how it is built, since the
+  latter would have passed throughout. Verified by removing the fix and watching four of five fail —
+  including a second identical order receiving the same key.
+
+Billing's half is still unconfirmed: key scoping, TTL, and whether a replayed response hands back a
+payment URL for an already-paid invoice. Listed in `TODO.md`.
+
 ### Added
 
 **Technical support in the account, and live chat on the marketing pages.** A "Поддержка" sidebar
