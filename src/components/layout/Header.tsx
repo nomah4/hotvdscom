@@ -5,6 +5,7 @@ import { PageContainer } from './PageContainer';
 import { Logo } from '../ui/Logo';
 import { LanguageSwitcher } from '../ui/LanguageSwitcher';
 import { Button } from '../ui/Button';
+import { UserChip } from '../ui/UserChip';
 import { MobileNav } from './MobileNav';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
 import { useAuth } from '../../auth/AuthContext';
@@ -67,6 +68,13 @@ const DesktopOnly = styled.div`
   `}
 `;
 
+// The signed-in identity doubles as the way into the account: on the storefront
+// the name is the most obvious thing to click when you want your servers.
+const AccountLink = styled(Link)`
+  display: inline-flex;
+  min-width: 0;
+`;
+
 const HamburgerButton = styled.button`
   display: inline-flex;
   align-items: center;
@@ -123,6 +131,14 @@ export function Header() {
               ))}
             </Nav>
             <Actions>
+              {/* Outside DesktopOnly: below the laptop breakpoint the nav collapses
+                  into the hamburger, and the chip is then the only thing on the
+                  storefront that says the visitor is signed in at all. */}
+              {isAuthenticated && (
+                <AccountLink to={dashboardPath} aria-label={t.nav.dashboard}>
+                  <UserChip />
+                </AccountLink>
+              )}
               <DesktopOnly>
                 <LanguageSwitcher />
               </DesktopOnly>
@@ -131,7 +147,10 @@ export function Header() {
                   type="button"
                   $variant="ghost"
                   $size="sm"
-                  onClick={() => void (isAuthenticated ? logout() : login())}
+                  // Signing in from the storefront means "take me to my account":
+                  // returning to the marketing page they happened to be on leaves
+                  // them one more click from the thing they signed in for.
+                  onClick={() => void (isAuthenticated ? logout() : login(dashboardPath))}
                 >
                   {isAuthenticated ? t.buttons.logout : t.buttons.login}
                 </Button>
