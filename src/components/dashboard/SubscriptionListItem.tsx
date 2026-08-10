@@ -301,6 +301,7 @@ export function SubscriptionListItem({
   const { lang } = useLang();
   const [controlsPressed, setControlsPressed] = useState(false);
   const configuration = subscription.configuration ?? null;
+  const machine = subscription.server?.machine ?? null;
 
   /**
    * Whether the server is up — as far as anything here can tell.
@@ -419,11 +420,18 @@ export function SubscriptionListItem({
       </CornerCell>
 
       <TelemetryCell>
-        {/* IP приходит от движка провижининга через Billing. Пока Billing его не
-            проксирует, поля нет и остаётся прочерк — это честный ответ, а не
-            заглушка: показать выдуманный адрес хуже, чем не показать никакого.
-            CPU и сеть остаются прочерками и после: это измерения, а не
-            состояние сервера, и они относятся к следующему этапу. */}
+        {/* Всё в этом блоке приходит от движка провижининга через Billing. Пока
+            Billing не проксирует данные, полей нет и остаются прочерки — честный
+            ответ, а не заглушка: выдуманный адрес или выдуманная загрузка это
+            ложь о чужой машине. */}
+        <TelemetryItem>
+          {t.subscriptions.machine.title}:{' '}
+          <TelemetryValue>
+            {machine?.status && machine.status !== 'unknown'
+              ? t.subscriptions.machine[machine.status]
+              : t.subscriptions.telemetry.noData}
+          </TelemetryValue>
+        </TelemetryItem>
         <TelemetryItem>
           {t.subscriptions.telemetry.ip}:{' '}
           <TelemetryValue>
@@ -431,7 +439,14 @@ export function SubscriptionListItem({
           </TelemetryValue>
         </TelemetryItem>
         <TelemetryItem>
-          {t.subscriptions.telemetry.cpu}: <TelemetryValue>{t.subscriptions.telemetry.noData}</TelemetryValue>
+          {t.subscriptions.telemetry.cpu}:{' '}
+          <TelemetryValue>
+            {/* cpu_load — доля одного ядра, 0..1. Показываем процентами, но
+                считаем от того, что прислали, а не подгоняем под красивое. */}
+            {typeof machine?.cpu_load === 'number'
+              ? `${Math.round(machine.cpu_load * 100)}%`
+              : t.subscriptions.telemetry.noData}
+          </TelemetryValue>
         </TelemetryItem>
         <TelemetryItem>
           {t.subscriptions.telemetry.network}: <TelemetryValue>{t.subscriptions.telemetry.noData}</TelemetryValue>

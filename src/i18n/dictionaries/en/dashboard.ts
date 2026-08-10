@@ -69,6 +69,17 @@ export const dashboard = {
     renewError: 'Could not start the renewal. Please try again.',
     unknownPlan: 'Unknown plan',
     customPlan: 'Custom VDS',
+    // The machine's own state, distinct from the service status above the
+    // card. A service can be active while the machine is down — that case is
+    // why this line exists separately.
+    machine: {
+      title: 'Machine status',
+      running: 'Running',
+      stopped: 'Stopped',
+      paused: 'Paused',
+      rebooting: 'Rebooting',
+      unknown: 'Unknown',
+    },
     telemetry: {
       ip: 'IP address',
       cpu: 'CPU load',

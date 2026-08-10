@@ -35,6 +35,19 @@ export interface SubscriptionConfiguration {
  *
  * Contract on the engine's side: provisioning-engine/docs/billing-integration.md
  */
+/** What the hypervisor reports about the machine right now. */
+export type MachineStatus = 'running' | 'stopped' | 'paused' | 'rebooting' | 'unknown';
+
+export interface SubscriptionMachine {
+  status?: MachineStatus | null;
+  /** Share of one core, 0..1 — not a percentage. */
+  cpu_load?: number | null;
+  mem_bytes?: number | null;
+  /** The address the machine reports about itself via the guest agent. */
+  agent_ipv4?: string | null;
+  observed_at?: string | null;
+}
+
 export interface SubscriptionServer {
   /** The white IPv4 the customer connects to. */
   public_ip?: string | null;
@@ -42,8 +55,16 @@ export interface SubscriptionServer {
   state?: string | null;
   /** What the customer asked for: `on` or `off`. Not the same as the state above. */
   power_intent?: string | null;
-  /** Derived from state and intent together — the machine runs only when both agree. */
+  /** Derived from state and intent — what *should* be true, not what is. */
   running?: boolean | null;
+  /**
+   * What the hypervisor actually reports. Deliberately separate from `running`
+   * and from the subscription's own status: the service can be active, the
+   * customer can want the machine on, and the machine can still be down. That
+   * case is exactly why this exists, and collapsing the three into one status
+   * would hide it.
+   */
+  machine?: SubscriptionMachine | null;
   hostname?: string | null;
 }
 
