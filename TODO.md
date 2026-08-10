@@ -153,6 +153,129 @@ monitoring lands alongside. `isRunning` in `SubscriptionListItem` is currently
 inferred from `status === 'active' && provisioning_status === 'succeeded'`
 because there is no power state to read; replace it with the real one.
 
+## A customer cannot name their own servers
+
+The dashboard titles every card with the **plan** name — `SubscriptionListItem.tsx`
+computes `tariff?.name ?? customPlan ?? package_code ?? unknownPlan` and renders
+it as the heading. Two servers on the same plan are therefore identical on
+screen apart from their expiry date, and there is no way to tell "prod" from
+"staging". The design always assumed per-server names: `src/data/instances.ts`
+still carries the mock `prod-api-01`, `staging-web`, `db-replica-02` it was
+prototyped with. The real data model never got the field.
+
+Decided: the name is stored in Billing, not in the browser. A name kept in
+`localStorage` disappears on the customer's second device and after a cache
+clear, which for a hosting panel reads as lost data. Decided too: the customer's
+name becomes the card title and the plan moves to a secondary line under it —
+the plan name is a separate thing, not something the name replaces.
+
+### What to build in Billing
+
+A nullable `display_name` (`varchar(64)`) on Subscription. **It holds the string
+the customer typed.** It is never derived from the package, never defaulted from
+`Package.display_name`, and never written by anything but the endpoint below —
+`ApiPackage.display_name` already exists and means "the plan's name", so a
+denormalised copy of the plan name would look right in every response and be a
+read-only field that does nothing.
+
+Not inside `configuration`: that object is *priced* — `createQuote` sends it and
+Billing computes money from it. Free customer text does not belong on the object
+a price is derived from.
+
+```
+PUT /api/v1/subscriptions/{subscription_id}/display-name
+Authorization: Bearer <access token>
+
+{ "tenant_id": "vivi23", "project_code": "hotvds", "display_name": "prod-api-01" }
+```
+
+A dedicated sub-resource rather than `PATCH /subscriptions/{id}`: a generic
+PATCH opens a write surface onto a money object, and the next caller sends
+`valid_until` or `package_code` in the same body. This route has one
+authorization rule — the token subject owns the subscription — and no field
+allowlist to maintain. `tenant_id` / `project_code` are redundant but every
+existing write sends them; validate them against the subscription so a
+cross-tenant id fails loudly rather than passing quietly.
+
+**Do not require `X-Idempotency-Key`.** A PUT of one scalar is idempotent
+already, and a stale key on an idempotent write is actively harmful: Billing
+replays the stored response, so the customer's *second* rename returns 200 with
+the *first* name and the dashboard shows a save that did not happen. If the
+idempotency middleware is global, exempt this route.
+
+Validation, in order: reject a non-string, non-null body (400
+`invalid_display_name`); trim; **empty after trim stores `NULL`** — an emptied
+box is how a person says "remove the name", which is also why there is no
+`DELETE` route; normalise to NFC, or composed and decomposed `й` are two names
+that render identically; cap at **64 code points** (DNS-label convention, fits
+the card's 240px name cell, and `prod-api-01` is 11). Reject control characters
+(`U+0000–001F`, `U+007F–009F`), `U+2028`/`U+2029`, and bidi controls
+(`U+202A–202E`, `U+2066–2069`) — the last let a stored name render as something
+other than what it is, on a page that also renders money. Allow everything else:
+this is a bilingual storefront and «Прод-база» is normal input, not an edge
+case. Do not reject `<`, `>`, `&` — React escapes on render; the matching
+obligation is that Billing escapes the value if it ever reaches an HTML email or
+the admin panel. No uniqueness constraint: this is a personal label,
+`subscription_id` stays the identifier.
+
+**Return the stored, normalised value** — `{subscription_id, display_name}` —
+not an echo and not `204`. Trimming and NFC happen server-side, so an echo
+leaves the browser showing a string the server does not have. This is what lets
+the storefront patch its one row instead of refetching the list; choosing `204`
+costs a refetch.
+
+Errors in the usual `{"error": {code, message}}` envelope: 400
+`invalid_display_name`, 404 `subscription_not_found`, 422 `user_mismatch`, 422
+`tenant_mismatch` / `project_mismatch`. `user_mismatch` at 422 matches what
+`createRenewal` already returns for the same condition, so one mapping covers
+both paths.
+
+`GET /api/v1/subscriptions` must return `display_name` on **every** row, `null`
+when unset — serialised as `null`, not omitted, because the storefront detects
+support by the key's presence (below). **The field must not appear in `GET`
+before `PUT` is live**, or the rename control switches itself on against an
+endpoint that 404s.
+
+Out of scope, stated so it is not added helpfully: `display_name` does not go on
+invoices, receipts or `renewal-preview` — an invoice is a legal document and a
+customer-editable string does not belong on one. Renewal extends the existing
+subscription row, so the name survives on its own; but if any capture path
+*recreates* a subscription rather than extending it, the name has to be carried
+across. Worth checking, given the top item in this file.
+
+### What changes on this side once it exists
+
+Nothing needs to be redeployed to turn it on — the storefront should read the
+capability off the response shape (`rows.every(r => 'display_name' in r)`,
+checked on the raw JSON before it is narrowed to `Subscription`) and gate the
+control the way renewal is already gated: `useSubscriptions` exposes
+`canRename`, `DashboardPage` passes `onRename` only when it is true, and
+`SubscriptionListItem` renders the pencil only when `onRename` is present. On
+today's Billing that means no pencil, no note, no disabled affordance — the card
+renders exactly as it does now. Unlike the balance tile, there is nothing here
+the customer is owed an explanation for.
+
+Two things are worth doing in the same change:
+
+- The `planName` fallback chain is duplicated in `SubscriptionListItem.tsx` and
+  `DashboardPage.tsx`, with a comment on each saying the two must never
+  disagree. Adding a second rule on top of a duplicated chain triples the
+  exposure — resolve title and secondary line in one pure module.
+- `RenewalConfirmModal` names the server by its plan. Once a card can be titled
+  "prod-api-01", the confirm step for a **charge** would stop showing which plan
+  is being paid for unless the modal gains a separate plan row.
+
+No optimistic update: the title changes only from the 200 response body.
+A rename that failed must not leave a name on screen the server does not have.
+
+**Unconfirmed, and not checkable from this repo:** whether `PUT` survives CORS
+and the reverse proxy on `bl.hotvds.com` — every request today is GET or POST,
+and a preflight missing `PUT` surfaces in the browser as a network error with no
+body rather than a clean 405 (fallback: `POST` on the same path); whether the
+idempotency middleware is global; whether `GET /api/v1/subscriptions/{id}`
+exists and needs the field too. The 64-character cap is a reasoned convention,
+not a measurement.
+
 ## Account balance is not connected
 
 The dashboard shows a **Balance** tile with a dash and "not connected yet"
