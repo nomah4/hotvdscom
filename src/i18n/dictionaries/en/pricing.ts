@@ -40,6 +40,11 @@ export const pricing = {
     billingCycleLabel: 'Billing cycle',
     billedToLabel: 'Receipt sent to',
     totalLabel: 'Total',
+    // Introduces the secondary figure `displayPrice` renders beneath the
+    // primary one on marketing surfaces (e.g. "~$11" above "billed RUB 990") —
+    // never the primary itself, and never on a payment surface, where the
+    // roubles figure already leads and needs no introduction.
+    secondaryLabel: 'billed',
     renewalNoteMonthly: 'Renews automatically every month. Cancel any time from your dashboard.',
     renewalNoteAnnual: 'Renews automatically every year. Cancel any time from your dashboard.',
     termsPrefix: 'I accept the',

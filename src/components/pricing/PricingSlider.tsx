@@ -10,7 +10,7 @@ import { createQuote } from '../../api/checkout';
 import type { CustomVdsConfiguration } from '../../api/checkout';
 import { useCustomOrderIntent } from '../../api/useCheckout';
 import { DEFAULT_CURRENCY } from '../../api/config';
-import { formatMoneyMinor } from '../../utils/money';
+import { displayPrice } from '../../utils/money';
 
 const Card = styled.div`
   display: grid;
@@ -98,6 +98,13 @@ const PriceCard = styled.div`
 `;
 
 const PriceLabel = styled.span`
+  font-size: ${({ theme }) => theme.fontSizes.small};
+  color: ${({ theme }) => theme.colors.indigo[200]};
+`;
+
+// The live quote leads with USD; this is the RUB figure underneath it — what
+// actually gets charged. Same muted treatment as `PriceLabel`.
+const PriceSecondary = styled.span`
   font-size: ${({ theme }) => theme.fontSizes.small};
   color: ${({ theme }) => theme.colors.indigo[200]};
 `;
@@ -250,9 +257,14 @@ export function PricingSlider({ currency = DEFAULT_CURRENCY }: PricingSliderProp
     };
   }, [packageCode, customPackage, configuration]);
 
-  const priceText = quoteMinor === null
-    ? '—'
-    : formatMoneyMinor(quoteMinor, customPackage?.currency ?? currency, lang);
+  const price = quoteMinor === null
+    ? null
+    : displayPrice(quoteMinor, customPackage?.currency ?? currency, lang, 'marketing');
+  const priceText = price === null ? '—' : price.primary;
+  // Only show the secondary figure once the primary one settles — while
+  // loading, `quoteMinor` (and therefore `price`) can still hold the previous
+  // configuration's value, and the two must never disagree on screen.
+  const showSecondary = !isLoading && !quoteLoading && Boolean(price?.secondary);
   const canOrder = Boolean(packageCode && quoteMinor !== null && !quoteLoading && !quoteError);
 
   return (
@@ -339,6 +351,11 @@ export function PricingSlider({ currency = DEFAULT_CURRENCY }: PricingSliderProp
         </PeriodToggle>
         <PriceLabel>{period === 'annual' ? t.configurator.priceLabelAnnual : t.configurator.priceLabel}</PriceLabel>
         <PriceValue>{isLoading || quoteLoading ? t.configurator.loadingPrice : priceText}</PriceValue>
+        {showSecondary && (
+          <PriceSecondary>
+            {t.checkout.secondaryLabel} {price!.secondary}
+          </PriceSecondary>
+        )}
         <PriceStatus $tone={error || quoteError ? 'error' : undefined}>
           {error || (!isLoading && !customPackage) ? t.configurator.priceUnavailable : quoteError ? t.configurator.priceUnavailable : ''}
         </PriceStatus>

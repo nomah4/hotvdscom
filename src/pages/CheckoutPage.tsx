@@ -14,7 +14,7 @@ import type { CustomVdsConfiguration, Quote } from '../api/checkout';
 import { customVdsIntentKey, useCheckout } from '../api/useCheckout';
 import { normalizeCurrency } from '../api/config';
 import { datacenters } from '../data/datacenters';
-import { formatMoneyMajor } from '../utils/money';
+import { displayPrice } from '../utils/money';
 
 const Panel = styled.div`
   max-width: 520px;
@@ -100,6 +100,21 @@ const TotalAmount = styled.span`
   font-family: ${({ theme }) => theme.fonts.heading};
   font-size: 1.5rem;
   font-weight: ${({ theme }) => theme.fontWeights.extrabold};
+`;
+
+// Stacks the RUB total (primary, what's charged) above the informational USD
+// figure and keeps both right-aligned against `TotalRow`'s label.
+const TotalAmountBlock = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+`;
+
+// Same muted treatment as `Note` below — this is informational, not the charge.
+const TotalSecondary = styled.span`
+  font-size: ${({ theme }) => theme.fontSizes.small};
+  color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
 const Note = styled.p`
@@ -292,6 +307,9 @@ export function CheckoutPage() {
   const period = customPeriod ?? match!.period;
   const total = customPeriod ? quote!.amount_minor / 100 : period === 'annual' ? match!.tariff.priceYearly : match!.tariff.priceMonthly;
   const currency = customPeriod ? quote!.currency : match!.tariff.currency;
+  // Money is about to move here — RUB (what actually gets charged, and what
+  // the receipt states) leads. `total` is major units, `displayPrice` wants minor.
+  const price = displayPrice(Math.round(total * 100), currency, lang, 'charge');
   const planName = customPeriod ? t.checkout.customPlanName : match!.tariff.name;
   const dc = customConfiguration ? datacenters.find((item) => item.id === customConfiguration.datacenter) : null;
   const datacenterName = dc ? (lang === 'ru' ? dc.city : dc.cityEn) : customConfiguration?.datacenter;
@@ -344,7 +362,10 @@ export function CheckoutPage() {
             <Divider />
             <TotalRow>
               <span>{t.checkout.totalLabel}</span>
-              <TotalAmount>{formatMoneyMajor(total, currency, lang)}</TotalAmount>
+              <TotalAmountBlock>
+                <TotalAmount>{price.primary}</TotalAmount>
+                {price.secondary && <TotalSecondary>{price.secondary}</TotalSecondary>}
+              </TotalAmountBlock>
             </TotalRow>
           </Card>
 

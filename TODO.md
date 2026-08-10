@@ -153,6 +153,53 @@ monitoring lands alongside. `isRunning` in `SubscriptionListItem` is currently
 inferred from `status === 'active' && provisioning_status === 'succeeded'`
 because there is no power state to read; replace it with the real one.
 
+## A customer cannot name their own servers
+
+Every server card is titled by its **plan**, never by the machine. `planName` in
+`SubscriptionListItem` reads `tariff?.name`, falling back to "Custom VDS", then
+to `package_code`. Nothing in that chain is per-server, so a customer who owns
+several machines on one plan sees several identical cards.
+
+This is not hypothetical and it is live today. `support@bot-t.com` has eight
+servers, three of them identical 2 vCPU / 4 GB / 20 GB boxes — the operator
+spreadsheet calls them "VPN-1", "VPN-2" and "VPN-3 for vpn.telegram.com", and
+their dashboard renders three cards reading "Custom VDS · 2 vCPU / 4 GB / 20 GB"
+with nothing whatsoever to tell them apart. `annadtd1@yandex.ru` has the same
+problem across her three. Neither customer can answer "which one do I reboot?"
+
+**The names already exist on our side and are unreachable.** The import recorded
+`vm`, `ip`, `host` and `note` into `Subscription.operational_snapshot_json`, and
+the spreadsheet's labels (`freeapi.bot-t.com`, `api.bot-t.com`, …) went into the
+audit reason. But `subscription_summary()` in Billing's `services.py` returns
+only `subscription_id`, `status`, `package_code`, `scope_type`, `valid_from`,
+`valid_until`, `provisioning_status`, `auto_renew` and `configuration` —
+`operational_snapshot_json` is **not serialized at all**. So the storefront could
+not display a name today even if one were set, and there is no field a customer
+could write to in the first place.
+
+**To finish:** decide who owns the name, because the two answers are very
+different amounts of work.
+
+- *Read-only, admin-set.* Add a chosen **subset** of `operational_snapshot_json`
+  to `subscription_summary()` and render it above the plan name. Smallest
+  possible change. ⚠️ Serialize named keys, never the whole blob — it holds
+  internal Proxmox identifiers (`vm2-167-179-34-8`) that are our infrastructure
+  naming, not the customer's. The customer still cannot rename anything.
+- *Customer-editable.* A real label needs a field, a `PATCH` endpoint on a money
+  service, ownership enforcement (only the token subject may rename their own
+  subscription — the same `external_user_id` check `subscriptions_view` already
+  does), an audit entry, and a length/content limit. This is the first
+  customer-originated **write** into Billing; every existing storefront call is a
+  read or a purchase.
+
+Until one of the two lands, do not invent a name client-side. A label derived
+from position or from the specs would reorder itself whenever `list_user_subscriptions`
+re-sorts (it orders by `-valid_until`), and a customer who reboots "server 2"
+expecting yesterday's server 2 is the exact failure the placeholder controls
+above are written to avoid.
+
+Requested by Mikhail on 2026-08-10.
+
 ## Account balance is not connected
 
 The dashboard shows a **Balance** tile with a dash and "not connected yet"

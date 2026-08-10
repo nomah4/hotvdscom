@@ -17,6 +17,11 @@ export type BillingCurrency = (typeof SUPPORTED_CURRENCIES)[number];
 export const STOREFRONT_CURRENCIES = ['RUB'] as const satisfies readonly BillingCurrency[];
 export const DEFAULT_CURRENCY: BillingCurrency = 'RUB';
 
+// Fixed business rate, approved 2026-08-10. USD is display-only — it is derived
+// from the RUB amount actually charged (YooKassa cannot take USD), so the two
+// figures can never drift apart.
+export const RUB_PER_USD = 90;
+
 export function normalizeCurrency(
   value: string | null | undefined,
   allowedCurrencies: readonly BillingCurrency[] = STOREFRONT_CURRENCIES,
