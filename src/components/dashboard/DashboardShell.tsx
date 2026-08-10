@@ -5,6 +5,7 @@ import { Logo } from '../ui/Logo';
 import { LanguageSwitcher } from '../ui/LanguageSwitcher';
 import { Button } from '../ui/Button';
 import { BuildStamp } from '../ui/BuildStamp';
+import { UserChip } from '../ui/UserChip';
 import { Sidebar } from './Sidebar';
 import { useTranslation, interpolate } from '../../i18n/LanguageContext';
 import { useAuth } from '../../auth/AuthContext';
@@ -32,45 +33,10 @@ const TopBar = styled.header`
   border-bottom: 1px solid ${({ theme }) => theme.colors.neutral[200]};
 `;
 
-const UserChip = styled.div`
+const Account = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
-`;
-
-const Avatar = styled.div`
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: ${({ theme }) => theme.colors.accent[500]};
-  color: ${({ theme }) => theme.colors.neutral[0]};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: ${({ theme }) => theme.fonts.heading};
-  font-weight: ${({ theme }) => theme.fontWeights.bold};
-`;
-
-const WelcomeText = styled.span`
-  display: none;
-  font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.neutral[700]};
-
-  ${media.mobile`
-    display: inline;
-  `}
-`;
-
-const AdminBadge = styled.span`
-  font-family: ${({ theme }) => theme.fonts.heading};
-  font-size: 0.6875rem;
-  font-weight: ${({ theme }) => theme.fontWeights.bold};
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 4px 8px;
-  border-radius: ${({ theme }) => theme.radii.pill};
-  color: ${({ theme }) => theme.colors.accent[600]};
-  background: ${({ theme }) => theme.colors.accent[50]};
 `;
 
 const Body = styled.div`
@@ -107,11 +73,7 @@ const FooterNote = styled.div`
 export function DashboardShell({ children }: { children: ReactNode }) {
   const t = useTranslation('dashboard');
   const tc = useTranslation('common');
-  // Reached only via RequireAuth, so `user` is always populated here — but the
-  // fallbacks keep this safe to render standalone (e.g. in a test).
-  const { displayName, isAdmin, logout } = useAuth();
-  const name = displayName || 'User';
-  const initial = name.charAt(0).toUpperCase();
+  const { logout } = useAuth();
 
   return (
     <Page>
@@ -119,17 +81,13 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         <PageContainer>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Logo />
-            <UserChip>
-              <WelcomeText>
-                {t.topbar.welcome}, {name}
-              </WelcomeText>
-              {isAdmin && <AdminBadge>{t.topbar.admin}</AdminBadge>}
+            <Account>
+              <UserChip />
               <LanguageSwitcher />
-              <Avatar>{initial}</Avatar>
               <Button type="button" $variant="ghost" $size="sm" onClick={() => void logout()}>
                 {tc.buttons.logout}
               </Button>
-            </UserChip>
+            </Account>
           </div>
         </PageContainer>
       </TopBar>

@@ -108,9 +108,11 @@ export function MobileNav({ open, onClose, links }: MobileNavProps) {
           type="button"
           $variant="secondary"
           $fullWidth
+          // Same destination as the desktop header's sign-in button: the account,
+          // not the marketing page the visitor happened to open the menu from.
           onClick={() => {
             onClose();
-            void (isAuthenticated ? logout() : login());
+            void (isAuthenticated ? logout() : login(dashboardPath));
           }}
         >
           {isAuthenticated ? t.buttons.logout : t.buttons.login}

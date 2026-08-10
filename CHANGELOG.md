@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-08-10
+
+### Changed
+
+**Signing in from the storefront lands in the account.** The header's "Log in" button (and the same
+entry in the mobile menu) now passes `/:lang/dashboard` as `returnTo` instead of defaulting to
+whichever marketing page the visitor happened to be reading. Coming back to the pricing page after
+authenticating leaves someone one more click from the thing they signed in for. The other sign-in
+entry points are unchanged and still return where they started: `RequireAuth` sends you to the route
+you were denied, the prompt modal to the link you clicked, and checkout back to the order you were
+confirming — there the current page *is* the destination.
+
+**The storefront header says who you are.** A signed-in visitor was greeted by a "Log in" button on
+the homepage while the dashboard knew their name — the site looked logged out on the side most
+people land on first. The dashboard's welcome text, admin badge and avatar moved into a shared
+`UserChip` (`src/components/ui/UserChip.tsx`) that both top bars render, so the two cannot drift
+apart, and in the header the chip links to the dashboard: the name is the obvious thing to click
+when you want your servers. It renders nothing without a session, and stays visible below the laptop
+breakpoint, where the nav collapses into the hamburger and it is otherwise the only sign on the
+storefront that there is a session at all. The dashboard's own top bar is unchanged apart from the
+language switcher now sitting to the right of the avatar rather than inside the name group.
+
 ## 2026-08-09
 
 ### Added
