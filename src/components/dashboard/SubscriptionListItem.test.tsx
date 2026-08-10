@@ -94,5 +94,30 @@ describe('SubscriptionListItem', () => {
       // machine. Nothing here has a source yet.
       expect(screen.queryByText(/\d+([.,]\d+)?\s*(%|Мбит|Mbps|GB\/s)/)).toBeNull();
     });
+
+    /**
+     * The IP is the one telemetry line with a real source behind it — the
+     * provisioning engine, relayed by Billing. It appears only when Billing
+     * actually sends it; the dash has to survive until then, because a blank or
+     * a guessed address reads as a fact about the customer's machine.
+     */
+    it('shows the address once Billing relays it', () => {
+      renderWithProviders(
+        <SubscriptionListItem
+          subscription={subscription({
+            server: { public_ip: '167.179.34.101', state: 'active', running: true },
+          })}
+        />,
+      );
+
+      expect(screen.getByText('167.179.34.101')).toBeInTheDocument();
+    });
+
+    it('keeps the dash while Billing sends no server block', () => {
+      renderWithProviders(<SubscriptionListItem subscription={subscription({ server: null })} />);
+
+      const ipLine = screen.getByText(new RegExp(`^${t.telemetry.ip}:`));
+      expect(ipLine.textContent).toContain(t.telemetry.noData);
+    });
   });
 });

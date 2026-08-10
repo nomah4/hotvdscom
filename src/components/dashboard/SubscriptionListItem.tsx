@@ -419,8 +419,16 @@ export function SubscriptionListItem({
       </CornerCell>
 
       <TelemetryCell>
+        {/* IP приходит от движка провижининга через Billing. Пока Billing его не
+            проксирует, поля нет и остаётся прочерк — это честный ответ, а не
+            заглушка: показать выдуманный адрес хуже, чем не показать никакого.
+            CPU и сеть остаются прочерками и после: это измерения, а не
+            состояние сервера, и они относятся к следующему этапу. */}
         <TelemetryItem>
-          {t.subscriptions.telemetry.ip}: <TelemetryValue>{t.subscriptions.telemetry.noData}</TelemetryValue>
+          {t.subscriptions.telemetry.ip}:{' '}
+          <TelemetryValue>
+            {subscription.server?.public_ip ?? t.subscriptions.telemetry.noData}
+          </TelemetryValue>
         </TelemetryItem>
         <TelemetryItem>
           {t.subscriptions.telemetry.cpu}: <TelemetryValue>{t.subscriptions.telemetry.noData}</TelemetryValue>

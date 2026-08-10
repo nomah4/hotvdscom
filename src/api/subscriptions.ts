@@ -25,6 +25,28 @@ export interface SubscriptionConfiguration {
   datacenter?: string;
 }
 
+/**
+ * The machine behind a subscription, as the provisioning engine knows it.
+ *
+ * Optional because Billing does not send it yet: the engine exposes
+ * `GET /api/v1/servers/{source_subscription_id}` and Billing has to proxy it
+ * into this response. Until it does, every field here is absent and the
+ * dashboard keeps showing a dash — which is the honest answer, not a bug.
+ *
+ * Contract on the engine's side: provisioning-engine/docs/billing-integration.md
+ */
+export interface SubscriptionServer {
+  /** The white IPv4 the customer connects to. */
+  public_ip?: string | null;
+  /** Engine-side service state: pending | provisioning | active | suspended | failed | deleted. */
+  state?: string | null;
+  /** What the customer asked for: `on` or `off`. Not the same as the state above. */
+  power_intent?: string | null;
+  /** Derived from state and intent together — the machine runs only when both agree. */
+  running?: boolean | null;
+  hostname?: string | null;
+}
+
 /** One row of GET /api/v1/subscriptions. Read-only: no money or ledger data —
  * Billing deliberately keeps those off this endpoint. */
 export interface Subscription {
@@ -38,6 +60,7 @@ export interface Subscription {
   provisioning_status: ProvisioningStatus;
   auto_renew: boolean;
   configuration?: SubscriptionConfiguration | null;
+  server?: SubscriptionServer | null;
 }
 
 interface SubscriptionsResponse {
