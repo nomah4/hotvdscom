@@ -5,7 +5,7 @@ import { Button } from './Button';
 import { Badge } from './Badge';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
 import { orderPath } from '../../i18n/paths';
-import { formatMoneyMajor } from '../../utils/money';
+import { displayPrice } from '../../utils/money';
 
 const Card = styled.div<{ $highlighted?: boolean }>`
   display: flex;
@@ -44,6 +44,13 @@ const Price = styled.span`
 `;
 
 const Period = styled.span<{ $highlighted?: boolean }>`
+  font-size: ${({ theme }) => theme.fontSizes.small};
+  color: ${({ theme, $highlighted }) => ($highlighted ? theme.colors.indigo[200] : theme.colors.neutral[600])};
+`;
+
+// Marketing leads with the USD figure; this is the RUB one underneath it —
+// what actually gets charged. Same muted treatment as `Period`.
+const SecondaryPrice = styled.div<{ $highlighted?: boolean }>`
   font-size: ${({ theme }) => theme.fontSizes.small};
   color: ${({ theme, $highlighted }) => ($highlighted ? theme.colors.indigo[200] : theme.colors.neutral[600])};
 `;
@@ -87,6 +94,7 @@ interface TariffCardProps {
 export function TariffCard({ tariff, period = 'monthly', onOrder, isPending = false }: TariffCardProps) {
   const t = useTranslation('pricing');
   const { lang } = useLang();
+  const price = displayPrice(Math.round(tariff.priceMonthly * 100), tariff.currency, lang, 'marketing');
 
   return (
     <Card $highlighted={tariff.highlighted}>
@@ -97,9 +105,14 @@ export function TariffCard({ tariff, period = 'monthly', onOrder, isPending = fa
       )}
       <Name>{tariff.name}</Name>
       <PriceRow>
-        <Price>{formatMoneyMajor(tariff.priceMonthly, tariff.currency, lang)}</Price>
+        <Price>{price.primary}</Price>
         <Period $highlighted={tariff.highlighted}>{lang === 'ru' ? '/мес' : '/mo'}</Period>
       </PriceRow>
+      {price.secondary && (
+        <SecondaryPrice $highlighted={tariff.highlighted}>
+          {t.checkout.secondaryLabel} {price.secondary}
+        </SecondaryPrice>
+      )}
       <SpecList>
         <SpecItem $highlighted={tariff.highlighted}>{tariff.cpu} vCPU</SpecItem>
         <SpecItem $highlighted={tariff.highlighted}>{tariff.ram} {lang === 'ru' ? 'ГБ RAM' : 'GB RAM'}</SpecItem>

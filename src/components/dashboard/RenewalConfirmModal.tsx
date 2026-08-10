@@ -6,7 +6,7 @@ import { useLang, useTranslation } from '../../i18n/LanguageContext';
 import { fetchRenewalPreview, type RenewalPreview } from '../../api/checkout';
 import { DEFAULT_CURRENCY } from '../../api/config';
 import type { Subscription } from '../../api/subscriptions';
-import { formatMoneyMinor } from '../../utils/money';
+import { displayPrice } from '../../utils/money';
 
 const Backdrop = styled.div`
   position: fixed;
@@ -80,9 +80,23 @@ const TotalRow = styled(Row)`
 `;
 
 const TotalValue = styled(Value)`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
   font-family: ${({ theme }) => theme.fonts.heading};
   font-weight: ${({ theme }) => theme.fontWeights.extrabold};
   color: ${({ theme }) => theme.colors.indigo[900]};
+`;
+
+// Same muted treatment as `Note` below — this is informational, not the
+// charge. Overrides the bold heading font it would otherwise inherit from
+// `TotalValue`.
+const TotalSecondary = styled.span`
+  font-family: ${({ theme }) => theme.fonts.body};
+  font-size: ${({ theme }) => theme.fontSizes.small};
+  font-weight: ${({ theme }) => theme.fontWeights.regular};
+  color: ${({ theme }) => theme.colors.neutral[500]};
 `;
 
 const Field = styled.label`
@@ -199,6 +213,10 @@ export function RenewalConfirmModal({
     };
   }, [accessToken, subscription.subscription_id]);
 
+  // Money is about to move here — RUB (what actually gets charged, and what
+  // the receipt states) leads.
+  const price = preview ? displayPrice(preview.amount_minor, preview.currency, lang, 'charge') : null;
+
   const trimmedEmail = email.trim();
   // Deliberately shallow: the gateway and the mail server are the real judges of
   // an address, and a stricter pattern here would reject valid ones. This only
@@ -240,11 +258,16 @@ export function RenewalConfirmModal({
           <TotalRow>
             <Key>{t.renewal.amount}</Key>
             <TotalValue>
-              {previewError
-                ? t.renewal.amountUnavailable
-                : preview
-                  ? formatMoneyMinor(preview.amount_minor, preview.currency, lang)
-                  : t.renewal.amountLoading}
+              {previewError ? (
+                t.renewal.amountUnavailable
+              ) : price ? (
+                <>
+                  <span>{price.primary}</span>
+                  {price.secondary && <TotalSecondary>{price.secondary}</TotalSecondary>}
+                </>
+              ) : (
+                t.renewal.amountLoading
+              )}
             </TotalValue>
           </TotalRow>
         </Rows>

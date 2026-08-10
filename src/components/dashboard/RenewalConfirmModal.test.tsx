@@ -23,7 +23,7 @@ const subscription = {
 function renderModal(overrides: Record<string, unknown> = {}) {
   const onConfirm = vi.fn();
   const onClose = vi.fn();
-  renderWithProviders(
+  const { container } = renderWithProviders(
     <RenewalConfirmModal
       subscription={subscription}
       planName="Custom VDS"
@@ -35,7 +35,7 @@ function renderModal(overrides: Record<string, unknown> = {}) {
     />,
     { lang: 'en' },
   );
-  return { onConfirm, onClose };
+  return { onConfirm, onClose, container };
 }
 
 describe('RenewalConfirmModal', () => {
@@ -108,5 +108,42 @@ describe('RenewalConfirmModal', () => {
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Renewal calls displayPrice with `emphasis: 'charge'` — roubles lead
+   * because that is what the card is actually debited in and what the 54-ФЗ
+   * fiscal receipt states. This is the opposite ordering from a marketing
+   * surface like TariffCard, and it is the one regression that would slip
+   * past every other test here: they all assert the amount is *present*
+   * (`/1,800/`), not which figure is the headline. If someone later flips
+   * this component to 'marketing', those tests would keep passing while a
+   * customer authorised a real charge reading a dollar figure as the total.
+   */
+  describe('price emphasis (charge — money is about to move here)', () => {
+    it('shows the roubles amount as the headline, ahead of the USD figure', async () => {
+      const { container } = renderModal();
+      await waitFor(() => expect(screen.getByText(/1,800/)).toBeInTheDocument());
+
+      const text = container.textContent ?? '';
+      const rubIndex = text.indexOf('1,800');
+      const dollarIndex = text.indexOf('$');
+
+      expect(rubIndex).toBeGreaterThan(-1);
+      expect(dollarIndex).toBeGreaterThan(-1);
+      expect(rubIndex).toBeLessThan(dollarIndex);
+    });
+
+    it('leaves the roubles figure exact and marks the USD figure approximate', async () => {
+      renderModal();
+      await waitFor(() => expect(screen.getByText(/1,800/)).toBeInTheDocument());
+
+      // The primary (roubles) figure carries no approximation marker — it is
+      // exact, and it is what the receipt states.
+      expect(screen.getByText(/1,800/).textContent ?? '').not.toContain('~');
+      // Any $ figure present must carry the '~' that marks it as derived,
+      // never presented as an exact amount.
+      expect(screen.getByText(/~\$/)).toBeInTheDocument();
+    });
   });
 });
