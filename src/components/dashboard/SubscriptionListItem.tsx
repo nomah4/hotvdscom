@@ -361,8 +361,15 @@ export function SubscriptionListItem({
     ? server.power_intent === 'on'
     : subscription.status === 'active' && subscription.provisioning_status === 'succeeded';
 
-  /** The engine has a machine for this subscription — otherwise nothing to control. */
-  const hasServer = server !== null;
+  /**
+   * The engine has a machine for this subscription — otherwise nothing to control.
+   *
+   * A destroyed one counts as absent. Billing stops sending those, but the card
+   * must not depend on that: a row of power and password buttons over a machine
+   * that exists on no hypervisor is worse than the plain statement that there
+   * is no server, and every one of them would fail.
+   */
+  const hasServer = server !== null && server.state !== 'deleted';
 
   /**
    * The customer pressed delete and an operator has not confirmed it yet.

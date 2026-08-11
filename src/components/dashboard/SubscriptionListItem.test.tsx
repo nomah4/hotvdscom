@@ -109,6 +109,15 @@ describe('SubscriptionListItem', () => {
       expect(screen.queryByRole('button', { name: new RegExp(t.controls.reboot) })).toBeNull();
     });
 
+    it('treats a destroyed machine as no machine', () => {
+      // Buttons over something that exists on no hypervisor would all fail.
+      // Billing stops sending these, but the card must not rely on that.
+      renderWithProviders(<SubscriptionListItem subscription={withServer({ state: 'deleted' })} />);
+
+      expect(screen.getByText(t.controls.noServer)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: new RegExp(t.controls.reboot) })).toBeNull();
+    });
+
     it('offers to stop a machine the customer wants running', () => {
       renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
 
