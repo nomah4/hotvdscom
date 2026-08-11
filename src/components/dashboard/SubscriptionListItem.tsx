@@ -7,6 +7,7 @@ import { datacenters } from '../../data/datacenters';
 import { StatusDot } from '../ui/StatusDot';
 import { SpecBadge } from '../ui/SpecBadge';
 import { useServerControls } from '../../api/useServerControls';
+import { formatMoneyMinor } from '../../utils/money';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
 
 const Row = styled.div`
@@ -57,6 +58,17 @@ const AutoRenew = styled.span`
 // a resting control on every card, not an alarm. A bright red row of them would
 // read as five broken servers.
 const DELETE_BORDEAUX = '#7C3239';
+
+/**
+ * Биты в секунду — в мегабиты, как их называют в тарифах и в договорах.
+ *
+ * Один знак после запятой ниже десяти и целые выше: «0.4» о чём-то говорит,
+ * «12.7» на фоне сотни мегабит — уже нет.
+ */
+function formatMbits(bps: number): string {
+  const mbits = bps / 1_000_000;
+  return mbits < 10 ? mbits.toFixed(1) : String(Math.round(mbits));
+}
 
 /**
  * Top-right of the card: when the service runs out, and where the server lives.
@@ -342,6 +354,7 @@ export function SubscriptionListItem({
   const { lang } = useLang();
   const configuration = subscription.configuration ?? null;
   const server = subscription.server ?? null;
+  const price = subscription.price ?? null;
   const machine = server?.machine ?? null;
   const controls = useServerControls(subscription.subscription_id, onServerChanged);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -433,7 +446,16 @@ export function SubscriptionListItem({
       <NameCell>
         <StatusDot status={tone} label={t.subscriptions.statusLabels[subscription.status]} />
         <Name>{planName}</Name>
-        {resolvedPeriod && <Term>{t.subscriptions.term[resolvedPeriod]}</Term>}
+        {/* Цена рядом со сроком, а не в углу: «Ежемесячно» без суммы —
+            половина ответа на вопрос «сколько я плачу». Отсутствует, когда
+            биллинг тариф оценить не может; тогда остаётся один срок, и это
+            честнее выдуманного числа. */}
+        {resolvedPeriod && (
+          <Term>
+            {t.subscriptions.term[resolvedPeriod]}
+            {price && ` · ${formatMoneyMinor(price.amount_minor, price.currency, lang)}`}
+          </Term>
+        )}
       </NameCell>
 
       {/* Hardware only. OS and datacenter moved to the corner: they describe
@@ -529,7 +551,16 @@ export function SubscriptionListItem({
           </TelemetryValue>
         </TelemetryItem>
         <TelemetryItem>
-          {t.subscriptions.telemetry.network}: <TelemetryValue>{t.subscriptions.telemetry.noData}</TelemetryValue>
+          {t.subscriptions.telemetry.network}:{' '}
+          <TelemetryValue>
+            {/* Мгновенная скорость между двумя опросами, не расход за период.
+                Ноль — это измерение (машина простаивает), поэтому проверяем
+                тип, а не истинность: `0 || dash` показал бы прочерк там, где
+                ответ есть. */}
+            {typeof machine?.rx_bps === 'number' && typeof machine?.tx_bps === 'number'
+              ? `↓ ${formatMbits(machine.rx_bps)} ↑ ${formatMbits(machine.tx_bps)} ${t.subscriptions.telemetry.mbits}`
+              : t.subscriptions.telemetry.noData}
+          </TelemetryValue>
         </TelemetryItem>
         {/* Только когда показывать действительно нечего. Раньше подпись стояла
             безусловно и после появления телеметрии оказалась под живыми

@@ -84,6 +84,7 @@ export const dashboard = {
       ip: 'IP address',
       cpu: 'CPU load',
       network: 'Network',
+      mbits: 'Mbit/s',
       noData: '—',
       // Shown only before the engine has polled the machine for the first time.
       // Polling runs every two minutes, so the promise is specific, not "soon".

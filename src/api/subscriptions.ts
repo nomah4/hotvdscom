@@ -45,6 +45,15 @@ export interface SubscriptionMachine {
   mem_bytes?: number | null;
   /** The address the machine reports about itself via the guest agent. */
   agent_ipv4?: string | null;
+  /**
+   * Скорость между двумя последними опросами гипервизора, бит/с.
+   *
+   * `null` — не ноль: ноль значит «трафика не было», а `null` — «сказать
+   * нечего» (первый замер после создания или после перезагрузки, обнулившей
+   * счётчик гостя).
+   */
+  rx_bps?: number | null;
+  tx_bps?: number | null;
   observed_at?: string | null;
 }
 
@@ -68,8 +77,29 @@ export interface SubscriptionServer {
   hostname?: string | null;
 }
 
-/** One row of GET /api/v1/subscriptions. Read-only: no money or ledger data —
- * Billing deliberately keeps those off this endpoint. */
+/**
+ * What this plan costs per billing period.
+ *
+ * The only money on this endpoint, and deliberately narrow: a recurring price
+ * is not a charge. When money actually moves the renewal preview prices it
+ * again and is the authority — it may legitimately differ if the catalogue was
+ * repriced between the page load and the click.
+ *
+ * Absent when Billing cannot price the plan (withdrawn from the catalogue) and
+ * for subscriptions that are no longer live.
+ */
+export interface SubscriptionPrice {
+  amount_minor: number;
+  currency: string;
+  billing_period: string;
+}
+
+/**
+ * One row of GET /api/v1/subscriptions. Read-only, and almost money-free:
+ * `price` is the recurring cost of the plan, which the dashboard needs to
+ * answer "how much am I paying". No ledger, no invoices, no payments — Billing
+ * keeps those off this endpoint.
+ */
 export interface Subscription {
   subscription_id: string;
   status: SubscriptionStatus;
@@ -82,6 +112,7 @@ export interface Subscription {
   auto_renew: boolean;
   configuration?: SubscriptionConfiguration | null;
   server?: SubscriptionServer | null;
+  price?: SubscriptionPrice | null;
 }
 
 interface SubscriptionsResponse {

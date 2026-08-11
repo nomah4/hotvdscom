@@ -316,6 +316,45 @@ describe('SubscriptionListItem', () => {
       });
     });
 
+    describe('network', () => {
+      it('shows throughput in both directions', () => {
+        renderWithProviders(
+          <SubscriptionListItem
+            subscription={withServer({
+              machine: { status: 'running', rx_bps: 12_400_000, tx_bps: 400_000 },
+            })}
+          />,
+        );
+
+        expect(screen.getByText(/12/)).toBeInTheDocument();
+        expect(screen.getByText(new RegExp(t.telemetry.mbits))).toBeInTheDocument();
+      });
+
+      it('treats an idle machine as measured, not unmeasured', () => {
+        // Zero is a reading. `0 || dash` would have hidden it, and an idle
+        // server is the common case, not the edge one.
+        renderWithProviders(
+          <SubscriptionListItem
+            subscription={withServer({ machine: { status: 'running', rx_bps: 0, tx_bps: 0 } })}
+          />,
+        );
+
+        expect(screen.getByText(new RegExp(t.telemetry.mbits))).toBeInTheDocument();
+      });
+
+      it('keeps the dash when the engine has no rate to give', () => {
+        // First sample, or a reboot that reset the guest's counters.
+        renderWithProviders(
+          <SubscriptionListItem
+            subscription={withServer({ machine: { status: 'running', rx_bps: null, tx_bps: null } })}
+          />,
+        );
+
+        const line = screen.getByText(new RegExp(`^${t.telemetry.network}:`));
+        expect(line.textContent).toContain(t.telemetry.noData);
+      });
+    });
+
     it('never shows a telemetry figure, only dashes', () => {
       renderWithProviders(<SubscriptionListItem subscription={subscription()} />);
 
@@ -350,4 +389,31 @@ describe('SubscriptionListItem', () => {
       expect(ipLine.textContent).toContain(t.telemetry.noData);
     });
   });
+  describe('price', () => {
+  const t2 = dictionaries.ru.dashboard.subscriptions;
+
+  it('shows what the plan costs next to how often it is charged', () => {
+    // "Ежемесячно" on its own is half an answer to "how much am I paying".
+    renderWithProviders(
+      <SubscriptionListItem
+        subscription={subscription({
+          package_code: 'VDS_PRO_MONTHLY',
+          price: { amount_minor: 180000, currency: 'RUB', billing_period: 'monthly' },
+        })}
+      />,
+    );
+
+    expect(screen.getByText(new RegExp(t2.term.monthly))).toHaveTextContent('1');
+  });
+
+  it('shows the term alone when Billing cannot price the plan', () => {
+    // A plan withdrawn from the catalogue has no price to show, and inventing
+    // one would be a claim about the customer's money.
+    renderWithProviders(
+      <SubscriptionListItem subscription={subscription({ package_code: 'VDS_PRO_MONTHLY' })} />,
+    );
+
+    expect(screen.getByText(t2.term.monthly)).toBeInTheDocument();
+  });
+});
 });
