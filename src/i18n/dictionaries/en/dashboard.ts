@@ -92,7 +92,21 @@ export const dashboard = {
       powerOff: 'Power off',
       reboot: 'Reboot',
       delete: 'Delete server',
-      unavailable: 'Server controls are not connected yet. These become live once provisioning works.',
+      // Deletion takes a second press: it is the only action on this card the
+      // customer cannot undo by themselves.
+      deleteConfirm: 'Confirm delete',
+      deleteCancel: 'Cancel',
+      restore: 'Restore',
+      showPassword: 'Show password',
+      hidePassword: 'Hide password',
+      username: 'User',
+      password: 'Password',
+      // Machines built by hand before the engine existed have no password
+      // stored in it. That is an answer, not a fault.
+      noPassword: 'We do not hold a password for this server — use the access you were given.',
+      noServer: 'The server has not been built yet.',
+      pendingDeletion: 'Marked for deletion. Your data is kept until an operator confirms it.',
+      failed: 'That did not go through. Please try again.',
     },
     loading: 'Loading your servers…',
     error: 'Could not load your servers.',

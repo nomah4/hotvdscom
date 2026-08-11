@@ -86,7 +86,7 @@ export function DashboardPage() {
   const t = useTranslation('dashboard');
   const { lang } = useLang();
 
-  const { subscriptions, isLoading, error } = useSubscriptions();
+  const { subscriptions, isLoading, error, refetch } = useSubscriptions();
   // Catalogue is enrichment only: it turns a package_code into a plan name and
   // specs. A failure here must not blank the dashboard, so its error is ignored —
   // subscriptions still render, just with the raw code and no spec badges.
@@ -181,6 +181,7 @@ export function DashboardPage() {
                   period={match?.period}
                   onRenew={setRenewTarget}
                   isRenewing={renewingId === subscription.subscription_id}
+                  onServerChanged={refetch}
                   renewError={
                     // While the modal is open it shows the failure itself, so the
                     // card stays quiet — otherwise the same message appears twice.

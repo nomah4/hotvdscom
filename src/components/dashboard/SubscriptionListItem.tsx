@@ -6,6 +6,7 @@ import type { Tariff } from '../../data/tariffs';
 import { datacenters } from '../../data/datacenters';
 import { StatusDot } from '../ui/StatusDot';
 import { SpecBadge } from '../ui/SpecBadge';
+import { useServerControls } from '../../api/useServerControls';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
 
 const Row = styled.div`
@@ -144,9 +145,14 @@ const DeleteButton = styled.button`
   line-height: 1;
   cursor: pointer;
 
-  &:hover {
+  &:hover:not(:disabled) {
     border-color: ${DELETE_BORDEAUX};
     background: rgba(124, 50, 57, 0.06);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
   }
 `;
 
@@ -186,11 +192,43 @@ const ControlButton = styled.button<{ $tone?: 'go' }>`
   cursor: pointer;
   white-space: nowrap;
 
-  &:hover {
+  &:hover:not(:disabled) {
     border-color: ${({ theme, $tone }) =>
       $tone === 'go' ? theme.colors.mint[600] : theme.colors.indigo[400]};
     color: ${({ theme, $tone }) => ($tone === 'go' ? theme.colors.mint[700] : theme.colors.indigo[900])};
   }
+
+  /* The whole row goes flat while any control is travelling. One request at a
+     time per machine: a customer who can queue three reboots gets three. */
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+`;
+
+// Shown only after the customer asks for it, and only until they close the
+// card's reveal. The password is not rendered into the list by default — a
+// dashboard left open on a screen should not be a credential on a screen.
+const CredentialsBox = styled.div`
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  padding: 10px 12px;
+  border-radius: ${({ theme }) => theme.radii.md};
+  background: ${({ theme }) => theme.colors.neutral[100]};
+  font-family: ${({ theme }) => theme.fonts.mono};
+  font-size: ${({ theme }) => theme.fontSizes.small};
+  color: ${({ theme }) => theme.colors.neutral[800]};
+  word-break: break-all;
+`;
+
+// A failed control names the server it belongs to by sitting on its card, for
+// the same reason renewal errors do.
+const ControlError = styled.div`
+  flex-basis: 100%;
+  font-size: ${({ theme }) => theme.fontSizes.small};
+  color: ${({ theme }) => theme.colors.semantic.error};
 `;
 
 // Telemetry the storefront does not have. Rendered as labelled dashes rather
@@ -287,6 +325,8 @@ interface SubscriptionListItemProps {
   isRenewing?: boolean;
   /** Shown on this card only — see RenewError. */
   renewError?: string | null;
+  /** Re-read the subscription list after a control changes the machine. */
+  onServerChanged?: () => void;
 }
 
 export function SubscriptionListItem({
@@ -296,23 +336,44 @@ export function SubscriptionListItem({
   onRenew,
   isRenewing = false,
   renewError = null,
+  onServerChanged,
 }: SubscriptionListItemProps) {
   const t = useTranslation('dashboard');
   const { lang } = useLang();
-  const [controlsPressed, setControlsPressed] = useState(false);
   const configuration = subscription.configuration ?? null;
-  const machine = subscription.server?.machine ?? null;
+  const server = subscription.server ?? null;
+  const machine = server?.machine ?? null;
+  const controls = useServerControls(subscription.subscription_id, onServerChanged);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   /**
-   * Whether the server is up — as far as anything here can tell.
+   * Whether the customer wants the machine up.
    *
-   * There is no power state to read: Billing tracks a subscription, not a
-   * machine, and the provisioning adapter that would own start/stop does not
-   * exist yet. So this is inferred from the two flags we do have, which is why
-   * every real subscription currently reads as "not running": provisioning sits
-   * at `pending` for all of them.
+   * Their wish, not the machine's state — the two are separate on purpose, and
+   * the button has to name what pressing it would do. A machine that is down
+   * because the service is suspended still has a standing wish of "on", and
+   * offering "Start" there would be a button that cannot work.
+   *
+   * With no server block yet there is nothing to read, so this falls back to
+   * the old inference from the subscription's own flags.
    */
-  const isRunning = subscription.status === 'active' && subscription.provisioning_status === 'succeeded';
+  const powerIsOn = server?.power_intent
+    ? server.power_intent === 'on'
+    : subscription.status === 'active' && subscription.provisioning_status === 'succeeded';
+
+  /** The engine has a machine for this subscription — otherwise nothing to control. */
+  const hasServer = server !== null;
+
+  /**
+   * The customer pressed delete and an operator has not confirmed it yet.
+   *
+   * The only state where the controls change shape rather than just going flat:
+   * a machine on its way out offers "Restore" and nothing else, because every
+   * other button would be asking it to come back to life halfway.
+   */
+  const isPendingDeletion = server?.state === 'pending_deletion';
+
+  const busy = controls.pending !== null;
 
   /**
    * Active subscriptions only: Billing answers `subscription_not_renewable` for
@@ -457,34 +518,107 @@ export function SubscriptionListItem({
       {/* Bottom row: actions left to right by how often they are wanted, with
           the irreversible one pushed to the far corner away from the rest. */}
       <ActionRow>
-        {/* Power and reboot. Styled as live controls, and they are — they just
-            cannot reach a machine yet, so pressing one says so instead of
-            reporting an action that did not happen. The power icon and label
-            follow `isRunning`. */}
-        <ControlButton
-          type="button"
-          onClick={() => setControlsPressed(true)}
-          $tone={isRunning ? undefined : 'go'}
-        >
-          <span aria-hidden>{isRunning ? '⏹' : '▶'}</span>
-          {isRunning ? t.subscriptions.controls.powerOff : t.subscriptions.controls.powerOn}
-        </ControlButton>
-        <ControlButton type="button" onClick={() => setControlsPressed(true)}>
-          <span aria-hidden>⟳</span>
-          {t.subscriptions.controls.reboot}
-        </ControlButton>
+        {!hasServer ? (
+          // Nothing to control until the engine has built the machine. Saying so
+          // beats offering buttons that can only fail.
+          <ControlNotice>{t.subscriptions.controls.noServer}</ControlNotice>
+        ) : isPendingDeletion ? (
+          // On its way out: one way back, and no other control that would ask a
+          // half-deleted machine to do something.
+          <>
+            <ControlButton
+              type="button"
+              onClick={() => void controls.restore()}
+              disabled={busy}
+              $tone="go"
+            >
+              <span aria-hidden>↩</span>
+              {t.subscriptions.controls.restore}
+            </ControlButton>
+            <ControlNotice>{t.subscriptions.controls.pendingDeletion}</ControlNotice>
+          </>
+        ) : (
+          <>
+            {/* The power button's colour states what pressing it would do: green
+                to start a machine that is down, grey to stop one that is up. */}
+            <ControlButton
+              type="button"
+              onClick={() => void controls.setPower(powerIsOn ? 'off' : 'on')}
+              disabled={busy}
+              $tone={powerIsOn ? undefined : 'go'}
+            >
+              <span aria-hidden>{powerIsOn ? '⏹' : '▶'}</span>
+              {powerIsOn ? t.subscriptions.controls.powerOff : t.subscriptions.controls.powerOn}
+            </ControlButton>
+            <ControlButton type="button" onClick={() => void controls.reboot()} disabled={busy}>
+              <span aria-hidden>⟳</span>
+              {t.subscriptions.controls.reboot}
+            </ControlButton>
+            <ControlButton
+              type="button"
+              onClick={() =>
+                controls.credentials || controls.credentialsMissing
+                  ? controls.hideCredentials()
+                  : void controls.revealCredentials()
+              }
+              disabled={busy}
+            >
+              <span aria-hidden>🔑</span>
+              {controls.credentials || controls.credentialsMissing
+                ? t.subscriptions.controls.hidePassword
+                : t.subscriptions.controls.showPassword}
+            </ControlButton>
 
-        <DeleteButton
-          type="button"
-          onClick={() => setControlsPressed(true)}
-          aria-label={t.subscriptions.controls.delete}
-          title={t.subscriptions.controls.delete}
-        >
-          🗑
-        </DeleteButton>
+            {/* Two presses, not one. Deletion is the only action on this card
+                the customer cannot take back by themselves, and the cost of an
+                accidental click is not symmetric with the cost of an extra one. */}
+            {confirmingDelete ? (
+              <>
+                <ControlButton
+                  type="button"
+                  onClick={() => {
+                    setConfirmingDelete(false);
+                    void controls.remove();
+                  }}
+                  disabled={busy}
+                >
+                  {t.subscriptions.controls.deleteConfirm}
+                </ControlButton>
+                <ControlButton type="button" onClick={() => setConfirmingDelete(false)} disabled={busy}>
+                  {t.subscriptions.controls.deleteCancel}
+                </ControlButton>
+              </>
+            ) : (
+              <DeleteButton
+                type="button"
+                onClick={() => setConfirmingDelete(true)}
+                disabled={busy}
+                aria-label={t.subscriptions.controls.delete}
+                title={t.subscriptions.controls.delete}
+              >
+                🗑
+              </DeleteButton>
+            )}
+          </>
+        )}
       </ActionRow>
 
-      {controlsPressed && <ControlNotice>{t.subscriptions.controls.unavailable}</ControlNotice>}
+      {controls.credentials && (
+        <CredentialsBox>
+          <span>
+            {t.subscriptions.controls.username}: {controls.credentials.username ?? '—'}
+          </span>
+          <span>
+            {t.subscriptions.controls.password}: {controls.credentials.password ?? '—'}
+          </span>
+        </CredentialsBox>
+      )}
+      {/* An imported machine has no stored password. That is an answer, not a
+          fault: the customer keeps using the access they already have. */}
+      {controls.credentialsMissing && (
+        <ControlNotice>{t.subscriptions.controls.noPassword}</ControlNotice>
+      )}
+      {controls.error && <ControlError>{t.subscriptions.controls.failed}</ControlError>}
       {provisioningNote && <ProvisioningNote>{provisioningNote}</ProvisioningNote>}
       {renewError && <RenewError>{t.subscriptions.renewError}</RenewError>}
     </Row>

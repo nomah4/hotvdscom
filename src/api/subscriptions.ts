@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { BILLING_API_BASE, PROJECT_CODE, TENANT_ID, toApiError } from './config';
 
@@ -114,10 +114,113 @@ export async function fetchSubscriptions(accessToken: string): Promise<Subscript
   return data.subscriptions;
 }
 
+/**
+ * What the customer can do to their own machine.
+ *
+ * Billing settles who owns the subscription and relays the rest through
+ * Provisioning to the engine, so the browser never addresses a machine
+ * directly — it names a subscription and asks for an action.
+ */
+export type ServerAction = 'power' | 'reboot' | 'delete' | 'restore';
+
+/** Root's password, held encrypted by the engine and handed to its owner. */
+export interface ServerCredentials {
+  username?: string | null;
+  password?: string | null;
+  ipv4?: string | null;
+}
+
+async function postServerAction<T>(
+  accessToken: string,
+  subscriptionId: string,
+  path: string,
+  body: Record<string, unknown>,
+  fallbackMessage: string,
+): Promise<T> {
+  const response = await fetch(
+    `${BILLING_API_BASE}/api/v1/subscriptions/${subscriptionId}/server/${path}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    throw await toApiError(response, fallbackMessage);
+  }
+  return (await response.json()) as T;
+}
+
+/**
+ * Turn the machine on or off.
+ *
+ * This records a wish, not a switch: the engine keeps what the customer wants
+ * separate from what the service allows, and a suspended service stays down
+ * whatever the wish says.
+ */
+export function setServerPower(
+  accessToken: string,
+  subscriptionId: string,
+  powerIntent: 'on' | 'off',
+): Promise<SubscriptionServer> {
+  return postServerAction(
+    accessToken,
+    subscriptionId,
+    'power',
+    { power_intent: powerIntent },
+    'Could not change the power state',
+  );
+}
+
+export function rebootServer(accessToken: string, subscriptionId: string): Promise<SubscriptionServer> {
+  return postServerAction(accessToken, subscriptionId, 'reboot', {}, 'Could not reboot the server');
+}
+
+/**
+ * Mark the machine for deletion — an operator still has to confirm it.
+ *
+ * Nothing is destroyed by this call and nothing is destroyed on a timer: the
+ * machine stops and leaves the list, and the disk waits for a human. That is
+ * what makes the undo below meaningful.
+ */
+export function deleteServer(accessToken: string, subscriptionId: string): Promise<SubscriptionServer> {
+  return postServerAction(accessToken, subscriptionId, 'delete', {}, 'Could not delete the server');
+}
+
+/** The customer changed their mind, which is what the delay is for. */
+export function restoreServer(accessToken: string, subscriptionId: string): Promise<SubscriptionServer> {
+  return postServerAction(accessToken, subscriptionId, 'restore', {}, 'Could not restore the server');
+}
+
+/**
+ * Reveal the machine's password.
+ *
+ * A 404 is an ordinary answer, not a fault: machines adopted from the
+ * hypervisor were built by hand and the engine never held their password. The
+ * caller has to say so rather than showing an error.
+ */
+export function fetchServerCredentials(
+  accessToken: string,
+  subscriptionId: string,
+): Promise<ServerCredentials> {
+  return postServerAction(
+    accessToken,
+    subscriptionId,
+    'credentials',
+    {},
+    'Could not read the credentials',
+  );
+}
+
 interface UseSubscriptionsResult {
   subscriptions: Subscription[];
   isLoading: boolean;
   error: string | null;
+  /** Re-read the list — used after an action changes a machine's state. */
+  refetch: () => void;
 }
 
 /**
@@ -131,6 +234,10 @@ export function useSubscriptions(): UseSubscriptionsResult {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Bumped by refetch. A machine's state changes as a result of a button, and
+  // the card that owns the button cannot re-read the list on its own.
+  const [reloadCount, setReloadCount] = useState(0);
+  const refetch = useCallback(() => setReloadCount((count) => count + 1), []);
 
   useEffect(() => {
     if (!accessToken) {
@@ -158,7 +265,7 @@ export function useSubscriptions(): UseSubscriptionsResult {
     return () => {
       active = false;
     };
-  }, [accessToken]);
+  }, [accessToken, reloadCount]);
 
-  return { subscriptions, isLoading, error };
+  return { subscriptions, isLoading, error, refetch };
 }

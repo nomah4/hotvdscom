@@ -1,9 +1,41 @@
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { SubscriptionListItem } from './SubscriptionListItem';
 import { renderWithProviders } from '../../test/renderWithProviders';
 import { dictionaries } from '../../i18n/dictionaries';
 import type { Subscription } from '../../api/subscriptions';
+import {
+  deleteServer,
+  fetchServerCredentials,
+  rebootServer,
+  restoreServer,
+  setServerPower,
+} from '../../api/subscriptions';
+
+// renderWithProviders deliberately omits AuthProvider — it would construct an
+// oidc UserManager and touch session storage on mount.
+vi.mock('../../auth/AuthContext', () => ({
+  useAuth: () => ({ accessToken: 'token-1' }),
+}));
+
+// The controls are the point of these tests, not the transport underneath them.
+vi.mock('../../api/subscriptions', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/subscriptions')>()),
+  setServerPower: vi.fn().mockResolvedValue({}),
+  rebootServer: vi.fn().mockResolvedValue({}),
+  deleteServer: vi.fn().mockResolvedValue({}),
+  restoreServer: vi.fn().mockResolvedValue({}),
+  fetchServerCredentials: vi.fn().mockResolvedValue({}),
+}));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(setServerPower).mockResolvedValue({});
+  vi.mocked(rebootServer).mockResolvedValue({});
+  vi.mocked(deleteServer).mockResolvedValue({});
+  vi.mocked(restoreServer).mockResolvedValue({});
+  vi.mocked(fetchServerCredentials).mockResolvedValue({});
+});
 
 function subscription(overrides: Partial<Subscription> = {}): Subscription {
   return {
@@ -63,28 +95,176 @@ describe('SubscriptionListItem', () => {
   });
 
   describe('controls', () => {
-    it('reports that nothing happened rather than a success it did not achieve', () => {
-      renderWithProviders(<SubscriptionListItem subscription={subscription()} />);
+    const withServer = (overrides: Partial<NonNullable<Subscription['server']>> = {}) =>
+      subscription({
+        provisioning_status: 'succeeded',
+        server: { state: 'active', power_intent: 'on', running: true, ...overrides },
+      });
 
-      fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.reboot) }));
+    it('offers nothing to press until the machine exists', () => {
+      // Buttons that can only fail are worse than an explanation.
+      renderWithProviders(<SubscriptionListItem subscription={subscription({ server: null })} />);
 
-      // A customer who believes a reboot happened waits for a server that never
-      // went down. Until provisioning exists, the only honest answer is this.
-      expect(screen.getByText(t.controls.unavailable)).toBeInTheDocument();
+      expect(screen.getByText(t.controls.noServer)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: new RegExp(t.controls.reboot) })).toBeNull();
     });
 
-    it('offers to start a server that is not running', () => {
-      renderWithProviders(<SubscriptionListItem subscription={subscription()} />);
+    it('offers to stop a machine the customer wants running', () => {
+      renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
+
+      expect(screen.getByRole('button', { name: new RegExp(t.controls.powerOff) })).toBeInTheDocument();
+    });
+
+    it('offers to start one they have turned off', () => {
+      renderWithProviders(
+        <SubscriptionListItem subscription={withServer({ power_intent: 'off', running: false })} />,
+      );
 
       expect(screen.getByRole('button', { name: new RegExp(t.controls.powerOn) })).toBeInTheDocument();
     });
 
-    it('offers to stop one that is', () => {
+    it('reads the wish, not the machine, when the two disagree', () => {
+      /**
+       * A suspended service leaves the machine down while the customer's wish
+       * is still "on". Offering "Power on" there would be a button that cannot
+       * work — the service, not the wish, is what is holding it down.
+       */
       renderWithProviders(
-        <SubscriptionListItem subscription={subscription({ provisioning_status: 'succeeded' })} />,
+        <SubscriptionListItem
+          subscription={withServer({
+            state: 'suspended',
+            power_intent: 'on',
+            running: false,
+            machine: { status: 'stopped' },
+          })}
+        />,
       );
 
       expect(screen.getByRole('button', { name: new RegExp(t.controls.powerOff) })).toBeInTheDocument();
+    });
+
+    it('sends the customer to the engine when reboot is pressed', async () => {
+      renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
+
+      fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.reboot) }));
+
+      await waitFor(() => expect(rebootServer).toHaveBeenCalledWith('token-1', 'sub_1'));
+    });
+
+    it('re-reads the list once an action lands', async () => {
+      // The card cannot know the new power state on its own, and a stale card
+      // after a successful press is how a customer presses again.
+      const onServerChanged = vi.fn();
+      renderWithProviders(
+        <SubscriptionListItem subscription={withServer()} onServerChanged={onServerChanged} />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.reboot) }));
+
+      await waitFor(() => expect(onServerChanged).toHaveBeenCalled());
+    });
+
+    it('asks the power endpoint for the opposite of the current wish', async () => {
+      renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
+
+      fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.powerOff) }));
+
+      await waitFor(() => expect(setServerPower).toHaveBeenCalledWith('token-1', 'sub_1', 'off'));
+    });
+
+    it('says plainly that an action failed', async () => {
+      vi.mocked(rebootServer).mockRejectedValueOnce(new Error('server_is_being_deleted: no'));
+      renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
+
+      fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.reboot) }));
+
+      expect(await screen.findByText(t.controls.failed)).toBeInTheDocument();
+    });
+
+    describe('deletion', () => {
+      it('takes two presses', async () => {
+        /**
+         * The only action on this card the customer cannot take back on their
+         * own. An accidental click and a deliberate one should not cost the
+         * same.
+         */
+        renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: t.controls.delete }));
+        expect(deleteServer).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole('button', { name: t.controls.deleteConfirm }));
+        await waitFor(() => expect(deleteServer).toHaveBeenCalledWith('token-1', 'sub_1'));
+      });
+
+      it('can be backed out of', () => {
+        renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: t.controls.delete }));
+        fireEvent.click(screen.getByRole('button', { name: t.controls.deleteCancel }));
+
+        expect(deleteServer).not.toHaveBeenCalled();
+        expect(screen.queryByRole('button', { name: t.controls.deleteConfirm })).toBeNull();
+      });
+
+      it('offers only the way back once the machine is marked', () => {
+        // Every other button would be asking a half-deleted machine to work.
+        renderWithProviders(
+          <SubscriptionListItem subscription={withServer({ state: 'pending_deletion' })} />,
+        );
+
+        expect(screen.getByRole('button', { name: new RegExp(t.controls.restore) })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: new RegExp(t.controls.reboot) })).toBeNull();
+        expect(screen.getByText(t.controls.pendingDeletion)).toBeInTheDocument();
+      });
+
+      it('restores when asked', async () => {
+        renderWithProviders(
+          <SubscriptionListItem subscription={withServer({ state: 'pending_deletion' })} />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.restore) }));
+
+        await waitFor(() => expect(restoreServer).toHaveBeenCalledWith('token-1', 'sub_1'));
+      });
+    });
+
+    describe('credentials', () => {
+      it('keeps the password off the card until asked', () => {
+        // A dashboard left open on a screen should not be a password on a screen.
+        renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
+
+        expect(screen.queryByText(/hunter2/)).toBeNull();
+      });
+
+      it('reveals it on request', async () => {
+        vi.mocked(fetchServerCredentials).mockResolvedValueOnce({
+          username: 'root',
+          password: 'hunter2',
+        });
+        renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.showPassword) }));
+
+        expect(await screen.findByText(/hunter2/)).toBeInTheDocument();
+      });
+
+      it('treats an imported machine without one as an answer, not a fault', async () => {
+        /**
+         * Machines adopted from the hypervisor were built by hand and the
+         * engine never held their password. An error here would tell the
+         * customer something is broken when nothing is.
+         */
+        vi.mocked(fetchServerCredentials).mockRejectedValueOnce(
+          new Error('no_credentials: nothing stored'),
+        );
+        renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.showPassword) }));
+
+        expect(await screen.findByText(t.controls.noPassword)).toBeInTheDocument();
+        expect(screen.queryByText(t.controls.failed)).toBeNull();
+      });
     });
 
     it('never shows a telemetry figure, only dashes', () => {
