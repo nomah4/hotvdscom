@@ -267,11 +267,52 @@ describe('SubscriptionListItem', () => {
       });
     });
 
+    describe('the "no data yet" note', () => {
+      it('explains an empty table before the engine has polled', () => {
+        // `status: 'unknown'` is "not asked yet", not a machine state.
+        renderWithProviders(
+          <SubscriptionListItem
+            subscription={withServer({ machine: { status: 'unknown', cpu_load: null } })}
+          />,
+        );
+
+        expect(screen.getByText(t.telemetry.note)).toBeInTheDocument();
+      });
+
+      it('gets out of the way once figures arrive', () => {
+        /**
+         * It used to render unconditionally, so once telemetry started flowing
+         * the card showed "running / 0%" with "no data yet" underneath —
+         * contradicting the line above it.
+         */
+        renderWithProviders(
+          <SubscriptionListItem
+            subscription={withServer({ machine: { status: 'running', cpu_load: 0 } })}
+          />,
+        );
+
+        expect(screen.queryByText(t.telemetry.note)).toBeNull();
+      });
+
+      it('treats a zero reading as a reading', () => {
+        // 0% load is a measurement, not a missing one — and it is the value an
+        // idle machine reports, so it is the common case, not the edge one.
+        renderWithProviders(
+          <SubscriptionListItem
+            subscription={withServer({ machine: { status: 'running', cpu_load: 0 } })}
+          />,
+        );
+
+        expect(screen.getByText('0%')).toBeInTheDocument();
+      });
+    });
+
     it('never shows a telemetry figure, only dashes', () => {
       renderWithProviders(<SubscriptionListItem subscription={subscription()} />);
 
-      // Invented load or an invented address is a lie about the customer's own
-      // machine. Nothing here has a source yet.
+      // With no server block there is nothing to report. An invented load or
+      // address is a lie about the customer's own machine, so the card shows
+      // dashes rather than plausible figures.
       expect(screen.queryByText(/\d+([.,]\d+)?\s*(%|Мбит|Mbps|GB\/s)/)).toBeNull();
     });
 

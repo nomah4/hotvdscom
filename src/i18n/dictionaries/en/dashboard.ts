@@ -85,7 +85,9 @@ export const dashboard = {
       cpu: 'CPU load',
       network: 'Network',
       noData: '—',
-      note: 'No data yet: monitoring arrives with server provisioning.',
+      // Shown only before the engine has polled the machine for the first time.
+      // Polling runs every two minutes, so the promise is specific, not "soon".
+      note: 'The engine has not polled this machine yet — figures appear in a couple of minutes.',
     },
     controls: {
       powerOn: 'Power on',

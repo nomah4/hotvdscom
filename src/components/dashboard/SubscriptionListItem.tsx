@@ -376,6 +376,18 @@ export function SubscriptionListItem({
   const busy = controls.pending !== null;
 
   /**
+   * Успел ли движок хоть раз опросить эту машину.
+   *
+   * `status: 'unknown'` — это ответ «ещё не спрашивали», а не состояние
+   * машины: движок ставит его до первого опроса. Отличать его от настоящего
+   * состояния нужно, иначе карточка либо объясняет очевидное, либо молчит там,
+   * где пустая таблица требует объяснения.
+   */
+  const hasTelemetry = Boolean(
+    machine && ((machine.status && machine.status !== 'unknown') || typeof machine.cpu_load === 'number'),
+  );
+
+  /**
    * Active subscriptions only: Billing answers `subscription_not_renewable` for
    * every other state, so offering renewal there would be a promise the server
    * breaks. Works for Custom VDS as well as fixed plans — Billing prices a
@@ -512,7 +524,12 @@ export function SubscriptionListItem({
         <TelemetryItem>
           {t.subscriptions.telemetry.network}: <TelemetryValue>{t.subscriptions.telemetry.noData}</TelemetryValue>
         </TelemetryItem>
-        <TelemetryNote>{t.subscriptions.telemetry.note}</TelemetryNote>
+        {/* Только когда показывать действительно нечего. Раньше подпись стояла
+            безусловно и после появления телеметрии оказалась под живыми
+            цифрами, сообщая, что данных нет. Прочерк в отдельной строке и так
+            читается как «нет данных» — объяснять нужно лишь пустую таблицу
+            целиком. */}
+        {!hasTelemetry && <TelemetryNote>{t.subscriptions.telemetry.note}</TelemetryNote>}
       </TelemetryCell>
 
       {/* Bottom row: actions left to right by how often they are wanted, with
