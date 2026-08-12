@@ -16,6 +16,16 @@ record, and re-pull after any change made on the host.
 | `dev.hotvds.com.conf` | `/etc/nginx/sites-available/dev.hotvds.com` |
 | `snippets-hotvds-spa-routes.conf` | `/etc/nginx/snippets/hotvds-spa-routes.conf` |
 | `stream.conf` | `/etc/nginx/stream.d/stream.conf` |
+| `admin-proxy.conf` | `/etc/nginx/conf.d/admin-proxy.conf` |
+| `default-sni-reject.conf` | `/etc/nginx/conf.d/default-sni-reject.conf` |
+
+`admin-proxy.conf` — все служебные имена: `bl`, `po`, `pr`, `chat`, `pv` и
+`console`. Витрины среди них нет, она в `sites-available`. Файл жил только на
+хосте до 2026-08-12 и попал сюда вместе с консолью.
+
+`default-sni-reject.conf` — куда уходит соединение с неузнанным именем. Раньше
+это был Billing: всё неопознанное — сканер по диапазону, протухшая запись DNS —
+попадало на денежный сервис.
 
 Both vhosts listen on `127.0.0.1:8443`; the `stream{}` SNI router in
 `stream.conf` is what fronts them and tells them apart by `server_name`.
@@ -26,6 +36,12 @@ Both vhosts listen on `127.0.0.1:8443`; the `stream{}` SNI router in
 scp deploy/nginx/hotvds.com.conf root@167.179.34.32:/etc/nginx/sites-available/hotvds.com
 ssh root@167.179.34.32 'nginx -t && systemctl reload nginx'
 ```
+
+Сертификаты — не отсюда: на шлюзе стоит certbot с `webroot` (`/var/www/html`),
+таймером `certbot.timer` и deploy-hook, который сам перезагружает nginx. Новое
+имя стоит одного `certbot certonly --webroot -w /var/www/html -d <имя>`; дальше
+продление автоматическое. Блок на `:80` с `.well-known/acme-challenge` должен
+существовать **до** выпуска — он есть у каждого имени в `admin-proxy.conf`.
 
 `nginx -t` before every reload, not after. A config that fails to parse leaves
 the running nginx untouched, so a failed test costs nothing and a skipped one
