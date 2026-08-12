@@ -46,9 +46,17 @@ const NameRow = styled.span`
   min-width: 0;
 `;
 
-// Карандаш проявляется на наведении, но остаётся доступным с клавиатуры:
-// affordance, о которой нельзя догадаться, хуже её отсутствия, а невидимая для
-// screen reader кнопка — просто отсутствующая.
+/**
+ * Карандаш видно всегда.
+ *
+ * Сначала он проявлялся по наведению — и это ровно та ошибка, о которой в этом
+ * же файле написано у кнопки продления: affordance, о которой нельзя
+ * догадаться, хуже её отсутствия. На сенсорном экране наведения нет вовсе,
+ * так что функции там просто не существовало бы.
+ *
+ * Приглушённый серый, а не акцентный: это второстепенное действие рядом с
+ * названием, а не то, ради чего открывают страницу.
+ */
 const RenameButton = styled.button`
   border: none;
   background: none;
@@ -56,17 +64,11 @@ const RenameButton = styled.button`
   cursor: pointer;
   font-size: ${({ theme }) => theme.fontSizes.small};
   color: ${({ theme }) => theme.colors.neutral[400]};
-  opacity: 0;
-  transition: opacity 120ms;
+  transition: color 120ms;
 
   &:hover,
   &:focus-visible {
-    opacity: 1;
     color: ${({ theme }) => theme.colors.indigo[600]};
-  }
-
-  ${NameRow}:hover & {
-    opacity: 1;
   }
 `;
 
