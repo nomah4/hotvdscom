@@ -68,6 +68,7 @@ export const dashboard = {
     renewing: 'Opening payment…',
     renewError: 'Could not start the renewal. Please try again.',
     unknownPlan: 'Unknown plan',
+    serviceId: 'Service ID',
     customPlan: 'Custom VDS',
     // The machine's own state, distinct from the service status above the
     // card. A service can be active while the machine is down — that case is

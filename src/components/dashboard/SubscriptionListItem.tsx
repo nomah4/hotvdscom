@@ -88,6 +88,25 @@ const Term = styled.span`
   color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
+/**
+ * Идентификатор услуги.
+ *
+ * Появился вместе с переименованием и по его вине: имя клиента уникальности не
+ * имеет — это личная метка, и две машины можно назвать одинаково. Когда клиент
+ * пишет в поддержку «prod-api-01 не отвечает», найти сервер по имени нельзя, а
+ * по этому — можно.
+ *
+ * Показываем восемь символов, полный — в подсказке и в выделении: строка из
+ * тридцати шести знаков на карточке спорит за внимание с тем, ради чего
+ * карточку открыли.
+ */
+const ServiceId = styled.span`
+  font-family: ${({ theme }) => theme.fonts.mono};
+  font-size: ${({ theme }) => theme.fontSizes.h6};
+  color: ${({ theme }) => theme.colors.neutral[400]};
+  user-select: all;
+`;
+
 const SpecsCell = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -562,6 +581,9 @@ export function SubscriptionListItem({
         {/* Тариф второй строкой — только когда имя клиента вытеснило его из
             заголовка. Иначе он повторял бы сам себя. */}
         {planUnderTitle && <Term>{planUnderTitle}</Term>}
+        <ServiceId title={subscription.subscription_id}>
+          {t.subscriptions.serviceId}: {subscription.subscription_id.slice(0, 8)}
+        </ServiceId>
         {/* Цена рядом со сроком, а не в углу: «Ежемесячно» без суммы —
             половина ответа на вопрос «сколько я плачу». Отсутствует, когда
             биллинг тариф оценить не может; тогда остаётся один срок, и это

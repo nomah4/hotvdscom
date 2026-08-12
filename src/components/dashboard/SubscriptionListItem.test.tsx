@@ -174,6 +174,17 @@ describe('SubscriptionListItem', () => {
     });
   });
 
+  it('shows the service id, because a customer name is not unique', () => {
+    // Две машины можно назвать одинаково — это личная метка. Когда клиент
+    // пишет «prod-api-01 не отвечает», найти сервер поддержка может только по
+    // идентификатору.
+    renderWithProviders(
+      <SubscriptionListItem subscription={subscription({ subscription_id: '6e776df2-8849-4a81' })} />,
+    );
+
+    expect(screen.getByText(new RegExp(`${t.serviceId}: 6e776df2`))).toBeInTheDocument();
+  });
+
   describe('controls', () => {
     const withServer = (overrides: Partial<NonNullable<Subscription['server']>> = {}) =>
       subscription({
