@@ -747,6 +747,12 @@ export function SubscriptionListItem({
               <span aria-hidden>⟳</span>
               {t.subscriptions.controls.reboot}
             </ControlButton>
+            {/* Рядом с перезагрузкой: к консоли идут ровно тогда, когда
+                перезагрузка не помогла и по сети машина не отвечает. */}
+            <ControlButton type="button" onClick={() => void controls.openConsole()} disabled={busy}>
+              <span aria-hidden>🖥</span>
+              {t.subscriptions.controls.console}
+            </ControlButton>
             <ControlButton
               type="button"
               onClick={() =>
@@ -812,7 +818,17 @@ export function SubscriptionListItem({
         <ControlNotice>{t.subscriptions.controls.noPassword}</ControlNotice>
       )}
       {renameFailed && <ControlError>{t.subscriptions.rename.failed}</ControlError>}
-      {controls.error && <ControlError>{t.subscriptions.controls.failed}</ControlError>}
+      {/* Две причины отказа стоят объяснения: обе исправляет клиент, а общее
+          «попробуйте ещё раз» отправило бы его нажимать ту же кнопку. */}
+      {controls.error && (
+        <ControlError>
+          {controls.error === 'popup_blocked'
+            ? t.subscriptions.controls.popupBlocked
+            : controls.error.startsWith('console_rate_limited')
+              ? t.subscriptions.controls.consoleRateLimited
+              : t.subscriptions.controls.failed}
+        </ControlError>
+      )}
       {provisioningNote && <ProvisioningNote>{provisioningNote}</ProvisioningNote>}
       {renewError && <RenewError>{t.subscriptions.renewError}</RenewError>}
     </Row>

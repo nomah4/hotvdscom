@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { SubscriptionListItem } from './SubscriptionListItem';
 import { renderWithProviders } from '../../test/renderWithProviders';
@@ -8,6 +8,7 @@ import {
   deleteServer,
   fetchServerCredentials,
   rebootServer,
+  requestServerConsole,
   restoreServer,
   setServerPower,
 } from '../../api/subscriptions';
@@ -26,6 +27,10 @@ vi.mock('../../api/subscriptions', async (importOriginal) => ({
   deleteServer: vi.fn().mockResolvedValue({}),
   restoreServer: vi.fn().mockResolvedValue({}),
   fetchServerCredentials: vi.fn().mockResolvedValue({}),
+  requestServerConsole: vi.fn().mockResolvedValue({
+    url: 'https://console.hotvds.com/c/ticket-1',
+    expires_at: '2026-08-12T00:01:00Z',
+  }),
 }));
 
 beforeEach(() => {
@@ -35,6 +40,10 @@ beforeEach(() => {
   vi.mocked(deleteServer).mockResolvedValue({});
   vi.mocked(restoreServer).mockResolvedValue({});
   vi.mocked(fetchServerCredentials).mockResolvedValue({});
+  vi.mocked(requestServerConsole).mockResolvedValue({
+    url: 'https://console.hotvds.com/c/ticket-1',
+    expires_at: '2026-08-12T00:01:00Z',
+  });
 });
 
 function subscription(overrides: Partial<Subscription> = {}): Subscription {
@@ -326,6 +335,95 @@ describe('SubscriptionListItem', () => {
         fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.restore) }));
 
         await waitFor(() => expect(restoreServer).toHaveBeenCalledWith('token-1', 'sub_1'));
+      });
+    });
+
+    /**
+     * Консоль обходит и пароль, и SSH-ключи, а ссылка на неё одноразовая и
+     * живёт минуту. Поэтому проверяется не «открылось», а то, как именно
+     * открывается: вкладка заранее, `noopener`, и внятный отказ вместо
+     * молчания, когда вкладку не дали.
+     */
+    describe('console', () => {
+      // Подменённый `window.open` иначе остаётся у соседних тестов в файле.
+      afterEach(() => vi.unstubAllGlobals());
+
+      function stubWindowOpen(result: Window | null) {
+        const tab = result as unknown as { location: { href: string }; close: () => void } | null;
+        const open = vi.fn().mockReturnValue(tab);
+        vi.stubGlobal('open', open);
+        return open;
+      }
+
+      function fakeTab() {
+        return { location: { href: '' }, close: vi.fn() } as unknown as Window;
+      }
+
+      it('asks for a link and sends the new tab to it', async () => {
+        const tab = fakeTab();
+        stubWindowOpen(tab);
+        renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.console) }));
+
+        await waitFor(() => expect(requestServerConsole).toHaveBeenCalledWith('token-1', 'sub_1'));
+        await waitFor(() =>
+          expect(tab.location.href).toBe('https://console.hotvds.com/c/ticket-1'),
+        );
+      });
+
+      it('opens the tab before awaiting, and without an opener', async () => {
+        // После `await` браузер уже не считает открытие следствием нажатия и
+        // гасит его; `noopener` не даёт консоли добраться до вкладки кабинета.
+        const open = stubWindowOpen(fakeTab());
+        renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.console) }));
+
+        expect(open).toHaveBeenCalledWith('', '_blank', 'noopener,noreferrer');
+        await waitFor(() => expect(requestServerConsole).toHaveBeenCalled());
+      });
+
+      it('says what is wrong when the browser blocks the tab', async () => {
+        // Ссылка одноразовая — показать её текстом нельзя, остаётся объяснить.
+        stubWindowOpen(null);
+        renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.console) }));
+
+        expect(await screen.findByText(t.controls.popupBlocked)).toBeInTheDocument();
+      });
+
+      it('closes the empty tab when no link comes back', async () => {
+        const tab = fakeTab();
+        stubWindowOpen(tab);
+        vi.mocked(requestServerConsole).mockRejectedValue(new Error('not_found: no machine'));
+        renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.console) }));
+
+        await waitFor(() => expect(tab.close).toHaveBeenCalled());
+        expect(await screen.findByText(t.controls.failed)).toBeInTheDocument();
+      });
+
+      it('names the limit rather than inviting another press', async () => {
+        stubWindowOpen(fakeTab());
+        vi.mocked(requestServerConsole).mockRejectedValue(
+          new Error('console_rate_limited: too many'),
+        );
+        renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.console) }));
+
+        expect(await screen.findByText(t.controls.consoleRateLimited)).toBeInTheDocument();
+      });
+
+      it('is not offered for a machine on its way out', () => {
+        renderWithProviders(
+          <SubscriptionListItem subscription={withServer({ state: 'pending_deletion' })} />,
+        );
+
+        expect(screen.queryByRole('button', { name: new RegExp(t.controls.console) })).toBeNull();
       });
     });
 

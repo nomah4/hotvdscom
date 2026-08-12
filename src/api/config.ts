@@ -28,7 +28,13 @@ export function normalizeCurrency(
 }
 
 export interface ApiErrorBody {
-  error?: { code?: string; message?: string };
+  /**
+   * Биллинг присылает конверт, движок — голую строку кода.
+   *
+   * Ошибки машины биллинг ретранслирует как есть, не переписывая под свой
+   * словарь, так что обе формы приходят на один и тот же вызов.
+   */
+  error?: { code?: string; message?: string } | string;
 }
 
 /** Turns Billing's `{"error": {...}}` envelope into a throwable Error. */
@@ -39,7 +45,8 @@ export async function toApiError(response: Response, fallback: string): Promise<
   } catch {
     // Non-JSON error (proxy timeout, HTML error page) — fall through.
   }
-  const code = body?.error?.code;
-  const message = body?.error?.message;
+  const envelope = typeof body?.error === 'string' ? { code: body.error } : body?.error;
+  const code = envelope?.code;
+  const message = typeof envelope === 'object' ? envelope.message : undefined;
   return new Error(code ? `${code}: ${message ?? fallback}` : `${fallback} (HTTP ${response.status})`);
 }

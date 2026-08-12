@@ -285,6 +285,32 @@ export function restoreServer(accessToken: string, subscriptionId: string): Prom
   return postServerAction(accessToken, subscriptionId, 'restore', {}, 'Could not restore the server');
 }
 
+/** Разовая ссылка на консоль и момент, после которого она мертва. */
+export interface ConsoleLink {
+  url: string;
+  expires_at: string;
+}
+
+/**
+ * Попросить разовую ссылку на консоль машины.
+ *
+ * Ссылка живёт около минуты и открывается один раз, поэтому запрашивается в
+ * момент нажатия, а не заранее вместе со списком: выданная впрок, она к нажатию
+ * уже недействительна.
+ */
+export function requestServerConsole(
+  accessToken: string,
+  subscriptionId: string,
+): Promise<ConsoleLink> {
+  return postServerAction(
+    accessToken,
+    subscriptionId,
+    'console',
+    {},
+    'Could not open the console',
+  );
+}
+
 /**
  * Reveal the machine's password.
  *

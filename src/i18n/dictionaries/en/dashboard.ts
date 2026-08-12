@@ -102,6 +102,8 @@ export const dashboard = {
       powerOn: 'Power on',
       powerOff: 'Power off',
       reboot: 'Reboot',
+      // The machine's screen — what is left when both the network and sshd are gone.
+      console: 'Console',
       delete: 'Delete server',
       // Deletion takes a second press: it is the only action on this card the
       // customer cannot undo by themselves.
@@ -118,6 +120,10 @@ export const dashboard = {
       noServer: 'The server has not been built yet.',
       pendingDeletion: 'Marked for deletion. Your data is kept until an operator confirms it.',
       failed: 'That did not go through. Please try again.',
+      // The console link lasts a minute and opens once, so there is no showing
+      // it as text — only saying what is in the way.
+      popupBlocked: 'Your browser blocked the new window. Allow pop-ups for this site and press again.',
+      consoleRateLimited: 'Too many console attempts. Please wait a minute.',
     },
     loading: 'Loading your servers…',
     error: 'Could not load your servers.',

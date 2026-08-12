@@ -4,6 +4,7 @@ import {
   deleteServer,
   fetchServerCredentials,
   rebootServer,
+  requestServerConsole,
   restoreServer,
   setServerPower,
   type ServerCredentials,
@@ -13,7 +14,13 @@ import {
  * Which control is mid-flight, so the card can disable the row rather than let
  * a customer queue three reboots while the first is still travelling.
  */
-export type PendingControl = 'power' | 'reboot' | 'delete' | 'restore' | 'credentials';
+export type PendingControl =
+  | 'power'
+  | 'reboot'
+  | 'delete'
+  | 'restore'
+  | 'credentials'
+  | 'console';
 
 export interface UseServerControlsResult {
   pending: PendingControl | null;
@@ -26,6 +33,7 @@ export interface UseServerControlsResult {
   reboot: () => Promise<void>;
   remove: () => Promise<void>;
   restore: () => Promise<void>;
+  openConsole: () => Promise<void>;
   revealCredentials: () => Promise<void>;
   hideCredentials: () => void;
   clearError: () => void;
@@ -94,6 +102,42 @@ export function useServerControls(
   );
 
   /**
+   * Открыть консоль в новой вкладке.
+   *
+   * Вкладка открывается **до** запроса, пустой, и потом ей подставляется адрес.
+   * После `await` браузер уже не считает открытие следствием нажатия и гасит
+   * его как всплывающее окно — а ссылка одноразовая, второй раз по ней не
+   * зайти.
+   *
+   * `noopener` обязателен: без него открытая страница получает `window.opener`
+   * и вместе с ним доступ к вкладке кабинета.
+   */
+  const openConsole = useCallback(async () => {
+    if (!accessToken) {
+      setError('not_signed_in');
+      return;
+    }
+    const tab = window.open('', '_blank', 'noopener,noreferrer');
+    setPending('console');
+    setError(null);
+    try {
+      const link = await requestServerConsole(accessToken, subscriptionId);
+      if (tab) {
+        tab.location.href = link.url;
+      } else {
+        // Всплывающие окна запрещены. Ссылка одноразовая и живёт минуту, так
+        // что показать её текстом бессмысленно — честнее сказать, что мешает.
+        setError('popup_blocked');
+      }
+    } catch (err: unknown) {
+      tab?.close();
+      setError(err instanceof Error ? err.message : 'console_failed');
+    } finally {
+      setPending(null);
+    }
+  }, [accessToken, subscriptionId]);
+
+  /**
    * Reveal the password, treating "there isn't one" as a normal outcome.
    *
    * Machines adopted from the hypervisor were built by hand and the engine
@@ -139,6 +183,7 @@ export function useServerControls(
     reboot,
     remove,
     restore,
+    openConsole,
     revealCredentials,
     hideCredentials,
     clearError,
