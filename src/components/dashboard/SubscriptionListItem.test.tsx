@@ -356,7 +356,7 @@ describe('SubscriptionListItem', () => {
       }
 
       function fakeTab() {
-        return { location: { href: '' }, close: vi.fn() } as unknown as Window;
+        return { location: { href: '' }, opener: {}, close: vi.fn() } as unknown as Window;
       }
 
       it('asks for a link and sends the new tab to it', async () => {
@@ -372,15 +372,22 @@ describe('SubscriptionListItem', () => {
         );
       });
 
-      it('opens the tab before awaiting, and without an opener', async () => {
-        // После `await` браузер уже не считает открытие следствием нажатия и
-        // гасит его; `noopener` не даёт консоли добраться до вкладки кабинета.
-        const open = stubWindowOpen(fakeTab());
+      it('opens the tab before awaiting, and severs the opener', async () => {
+        /**
+         * После `await` браузер уже не считает открытие следствием нажатия и
+         * гасит его. Связь разрывается вручную: с флагом `noopener` открытие
+         * возвращает `null`, и подставить адрес было бы некуда — на этом уже
+         * обожглись, кнопка сообщала о заблокированном окне при открытой
+         * пустой вкладке.
+         */
+        const tab = fakeTab();
+        const open = stubWindowOpen(tab);
         renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
 
         fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.console) }));
 
-        expect(open).toHaveBeenCalledWith('', '_blank', 'noopener,noreferrer');
+        expect(open).toHaveBeenCalledWith('about:blank', '_blank');
+        expect(tab.opener).toBeNull();
         await waitFor(() => expect(requestServerConsole).toHaveBeenCalled());
       });
 

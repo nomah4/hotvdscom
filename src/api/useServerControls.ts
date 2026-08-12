@@ -109,15 +109,20 @@ export function useServerControls(
    * его как всплывающее окно — а ссылка одноразовая, второй раз по ней не
    * зайти.
    *
-   * `noopener` обязателен: без него открытая страница получает `window.opener`
-   * и вместе с ним доступ к вкладке кабинета.
+   * Связь с открывшей вкладкой разрывается вручную, а не флагом `noopener`:
+   * с ним `window.open` по спецификации возвращает `null`, и ссылку на вкладку
+   * подставить уже некуда — выглядит это ровно как заблокированное окно.
+   * `opener = null` на пустой вкладке делает то же самое и оставляет ссылку.
    */
   const openConsole = useCallback(async () => {
     if (!accessToken) {
       setError('not_signed_in');
       return;
     }
-    const tab = window.open('', '_blank', 'noopener,noreferrer');
+    const tab = window.open('about:blank', '_blank');
+    if (tab) {
+      tab.opener = null;
+    }
     setPending('console');
     setError(null);
     try {
