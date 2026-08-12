@@ -155,6 +155,11 @@ because there is no power state to read; replace it with the real one.
 
 ## A customer cannot name their own servers
 
+**Сделано 2026-08-12.** `display_name` на подписке, `POST /server/display-name`,
+карандаш на карточке; заголовком стало имя клиента, тариф ушёл во вторую строку,
+а окно продления показывает и то и другое. Ниже — спецификация, по которой это
+строилось; оставлена как запись решений, а не как задача.
+
 The dashboard titles every card with the **plan** name — `SubscriptionListItem.tsx`
 computes `tariff?.name ?? customPlan ?? package_code ?? unknownPlan` and renders
 it as the heading. Two servers on the same plan are therefore identical on
@@ -356,3 +361,9 @@ the repo until someone pulls it back.
 `src/nginxRoutes.test.ts` keeps the route list in the snippet in step with
 `routePaths`, so at least that drift fails in CI. Nothing yet detects the repo
 copy and the host disagreeing in other ways.
+
+Расхождение и правда накопилось: к 2026-08-12 `stream.conf` отставал на три
+записи, а `admin-proxy.conf` — файл, обслуживающий `bl`, `po`, `pr`, `chat`,
+`pv` и теперь `console`, — не был здесь вовсе. Оба подтянуты с хоста. Это
+второй раз за четыре дня, и ручная сверка от третьего не спасёт: нужна либо
+роль в ansible, либо проверка в CI, которая ходит на шлюз и сравнивает.
