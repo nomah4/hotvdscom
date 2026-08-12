@@ -321,12 +321,19 @@ export function requestServerConsole(
 export function withLanguage(url: string, lang: string): string {
   try {
     const parsed = new URL(url);
+    // Схема проверяется, хотя ссылку строит наш же движок. По этому адресу
+    // отправляется вкладка, открытая нами и потому имеющая наш origin: адрес
+    // вида `javascript:` исполнился бы в нём. Доверять тут нечему — проверка
+    // стоит строку.
+    if (parsed.protocol !== 'https:') {
+      throw new Error('console link is not https');
+    }
     parsed.searchParams.set('lang', lang);
     return parsed.toString();
   } catch {
-    // Ссылку строит движок; если она однажды окажется не ссылкой, лучше отдать
-    // её как есть и дать браузеру сказать своё, чем упасть на кнопке.
-    return url;
+    // Ссылка не разобралась или оказалась не той схемы. Пустая строка уводит
+    // вкладку в никуда, а не туда, куда велел кто-то посторонний.
+    return '';
   }
 }
 

@@ -130,10 +130,15 @@ export function useServerControls(
     setError(null);
     try {
       const link = await requestServerConsole(accessToken, subscriptionId);
-      if (tab) {
-        // Язык — тот, на котором человек читает кабинет. Консоль на своём
-        // домене догадалась бы по системному, а он бывает другим.
-        tab.location.href = withLanguage(link.url, lang);
+      // Язык — тот, на котором человек читает кабинет. Консоль на своём домене
+      // догадалась бы по системному, а он бывает другим.
+      const target = withLanguage(link.url, lang);
+      if (!target) {
+        // Ссылка не https или не разобралась — вкладку никуда не отправляем.
+        tab?.close();
+        setError('console_failed');
+      } else if (tab) {
+        tab.location.href = target;
       } else {
         // Всплывающие окна запрещены. Ссылка одноразовая и живёт минуту, так
         // что показать её текстом бессмысленно — честнее сказать, что мешает.

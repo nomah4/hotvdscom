@@ -440,6 +440,27 @@ describe('SubscriptionListItem', () => {
         expect(await screen.findByText(t.controls.consoleRateLimited)).toBeInTheDocument();
       });
 
+      it('refuses a link that is not https', async () => {
+        /**
+         * По этому адресу отправляется вкладка, открытая нами и потому имеющая
+         * наш origin: адрес вида `javascript:` исполнился бы в нём. Ссылку
+         * строит наш же движок — и всё же проверка стоит строку.
+         */
+        const tab = fakeTab();
+        stubWindowOpen(tab);
+        vi.mocked(requestServerConsole).mockResolvedValue({
+          url: 'javascript:alert(document.domain)',
+          expires_at: '2026-08-12T00:01:00Z',
+        });
+        renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.console) }));
+
+        await waitFor(() => expect(tab.close).toHaveBeenCalled());
+        expect(tab.location.href).toBe('');
+        expect(await screen.findByText(t.controls.failed)).toBeInTheDocument();
+      });
+
       it('is not offered for a machine on its way out', () => {
         renderWithProviders(
           <SubscriptionListItem subscription={withServer({ state: 'pending_deletion' })} />,
