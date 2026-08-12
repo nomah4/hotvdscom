@@ -90,6 +90,13 @@ export const dashboard = {
       // Polling runs every two minutes, so the promise is specific, not "soon".
       note: 'The engine has not polled this machine yet — figures appear in a couple of minutes.',
     },
+    // The name a customer gives their service. Our plan name is not replaced:
+    // it moves to a second line so a charge still shows what is being paid for.
+    rename: {
+      label: 'Server name',
+      hint: 'Click to give this server your own name',
+      failed: 'Could not save the name. Please try again.',
+    },
     controls: {
       powerOn: 'Power on',
       powerOff: 'Power off',
@@ -119,6 +126,7 @@ export const dashboard = {
   renewal: {
     title: 'Renew service',
     server: 'Server',
+    plan: 'Plan',
     currentlyValidUntil: 'Valid until now',
     amount: 'Amount due',
     amountLoading: 'calculating…',

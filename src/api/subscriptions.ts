@@ -113,6 +113,30 @@ export interface Subscription {
   configuration?: SubscriptionConfiguration | null;
   server?: SubscriptionServer | null;
   price?: SubscriptionPrice | null;
+  /**
+   * Имя, которое клиент дал услуге. `null` — не давал.
+   *
+   * Необязательное в типе, потому что старый биллинг ключа не присылает вовсе,
+   * и по его наличию витрина понимает, поддерживается ли переименование.
+   */
+  display_name?: string | null;
+}
+
+/**
+ * Умеет ли этот биллинг переименование.
+ *
+ * Проверяется по сырому JSON до сужения к типу: `undefined` в поле
+ * необязательного свойства неотличим от `null`, а разница здесь существенна —
+ * `null` значит «имени нет», отсутствие ключа значит «эндпоинта нет».
+ * Карандаш, включённый против отсутствующего эндпоинта, отвечал бы клиенту
+ * ошибкой на каждое нажатие.
+ */
+function detectRenameSupport(rows: unknown): boolean {
+  return (
+    Array.isArray(rows) &&
+    rows.length > 0 &&
+    rows.every((row) => typeof row === 'object' && row !== null && 'display_name' in row)
+  );
 }
 
 interface SubscriptionsResponse {
@@ -130,7 +154,13 @@ interface SubscriptionsResponse {
  * browser can only ever read its own subscriptions — the id is not worth
  * guessing.
  */
-export async function fetchSubscriptions(accessToken: string): Promise<Subscription[]> {
+export interface SubscriptionsPage {
+  rows: Subscription[];
+  /** См. detectRenameSupport: отсутствие ключа — это «биллинг ещё не умеет». */
+  canRename: boolean;
+}
+
+export async function fetchSubscriptions(accessToken: string): Promise<SubscriptionsPage> {
   const url = new URL(`${BILLING_API_BASE}/api/v1/subscriptions`);
   url.searchParams.set('tenant_id', TENANT_ID);
   url.searchParams.set('project_code', PROJECT_CODE);
@@ -142,7 +172,36 @@ export async function fetchSubscriptions(accessToken: string): Promise<Subscript
     throw await toApiError(response, 'Could not load your subscriptions');
   }
   const data = (await response.json()) as SubscriptionsResponse;
-  return data.subscriptions;
+  return { rows: data.subscriptions, canRename: detectRenameSupport(data.subscriptions) };
+}
+
+/**
+ * Переименовать услугу.
+ *
+ * `POST`, а не `PUT`: биллинг отдаёт `GET, POST, OPTIONS`, и preflight на `PUT`
+ * умер бы в браузере сетевой ошибкой без тела.
+ *
+ * Возвращает **сохранённое** имя, а не отправленное: обрезка и нормализация
+ * происходят на сервере, и показать надо то, что там теперь лежит.
+ */
+export async function renameSubscription(
+  accessToken: string,
+  subscriptionId: string,
+  displayName: string,
+): Promise<string | null> {
+  const response = await fetch(
+    `${BILLING_API_BASE}/api/v1/subscriptions/${subscriptionId}/display-name`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenant_id: TENANT_ID, project_code: PROJECT_CODE, display_name: displayName }),
+    },
+  );
+  if (!response.ok) {
+    throw await toApiError(response, 'Could not rename the server');
+  }
+  const data = (await response.json()) as { display_name: string | null };
+  return data.display_name;
 }
 
 /**
@@ -250,6 +309,8 @@ interface UseSubscriptionsResult {
   subscriptions: Subscription[];
   isLoading: boolean;
   error: string | null;
+  /** Показывать ли карандаш. Пока биллинг не отдаёт ключ — не показывать. */
+  canRename: boolean;
   /** Re-read the list — used after an action changes a machine's state. */
   refetch: () => void;
 }
@@ -263,6 +324,7 @@ interface UseSubscriptionsResult {
 export function useSubscriptions(): UseSubscriptionsResult {
   const { accessToken } = useAuth();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [canRename, setCanRename] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Bumped by refetch. A machine's state changes as a result of a button, and
@@ -283,8 +345,10 @@ export function useSubscriptions(): UseSubscriptionsResult {
     setError(null);
 
     fetchSubscriptions(accessToken)
-      .then((rows) => {
-        if (active) setSubscriptions(rows);
+      .then((page) => {
+        if (!active) return;
+        setSubscriptions(page.rows);
+        setCanRename(page.canRename);
       })
       .catch((err: unknown) => {
         if (active) setError(err instanceof Error ? err.message : 'Failed to load subscriptions');
@@ -298,5 +362,5 @@ export function useSubscriptions(): UseSubscriptionsResult {
     };
   }, [accessToken, reloadCount]);
 
-  return { subscriptions, isLoading, error, refetch };
+  return { subscriptions, isLoading, error, canRename, refetch };
 }

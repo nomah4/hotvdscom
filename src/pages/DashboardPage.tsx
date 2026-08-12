@@ -6,7 +6,9 @@ import { RenewalConfirmModal } from '../components/dashboard/RenewalConfirmModal
 import { SubscriptionListItem } from '../components/dashboard/SubscriptionListItem';
 import { Button } from '../components/ui/Button';
 import { useLang, useTranslation } from '../i18n/LanguageContext';
-import { useSubscriptions, type Subscription } from '../api/subscriptions';
+import { renameSubscription, useSubscriptions, type Subscription } from '../api/subscriptions';
+import { resolvePlanName, resolveSubscriptionTitle } from '../components/dashboard/subscriptionTitle';
+import { useAuth } from '../auth/AuthContext';
 import { useRenewal } from '../api/useCheckout';
 import { findByPackageCode, useTariffs } from '../api/catalogue';
 import { localizePath, routePaths } from '../i18n/paths';
@@ -84,9 +86,10 @@ const ErrorMessage = styled(Message)`
 
 export function DashboardPage() {
   const t = useTranslation('dashboard');
+  const { accessToken } = useAuth();
   const { lang } = useLang();
 
-  const { subscriptions, isLoading, error, refetch } = useSubscriptions();
+  const { subscriptions, isLoading, error, canRename, refetch } = useSubscriptions();
   // Catalogue is enrichment only: it turns a package_code into a plan name and
   // specs. A failure here must not blank the dashboard, so its error is ignored —
   // subscriptions still render, just with the raw code and no spec badges.
@@ -103,16 +106,29 @@ export function DashboardPage() {
     clearError();
   };
 
-  // Same fallback chain SubscriptionListItem uses, so the card and the confirm
-  // dialog can never name the server differently: catalogue name, else "Custom
-  // VDS" when the subscription carries its own configuration, else the raw code.
-  const planNameFor = (subscription: Subscription): string => {
-    const match = subscription.package_code
-      ? findByPackageCode(tariffs, subscription.package_code)
-      : null;
-    if (match?.tariff) return match.tariff.name;
-    if (subscription.configuration) return t.subscriptions.customPlan;
-    return subscription.package_code ?? t.subscriptions.unknownPlan;
+  // Одна цепочка на всё приложение (см. subscriptionTitle.ts). Раньше она была
+  // написана здесь и в карточке, и обе копии сопровождал комментарий, что они
+  // не должны разойтись.
+  const titleLabels = {
+    customPlan: t.subscriptions.customPlan,
+    unknownPlan: t.subscriptions.unknownPlan,
+  };
+  const tariffFor = (subscription: Subscription) =>
+    (subscription.package_code ? findByPackageCode(tariffs, subscription.package_code) : null)?.tariff;
+  const planNameFor = (subscription: Subscription): string =>
+    resolvePlanName(subscription, tariffFor(subscription), titleLabels);
+  const titleFor = (subscription: Subscription): string =>
+    resolveSubscriptionTitle(subscription, tariffFor(subscription), titleLabels).title;
+
+  /**
+   * Переименование. Список перечитывается целиком, а не правится на месте:
+   * ответ содержит сохранённое имя, но соседние поля карточки за это время
+   * могли измениться, а перечитывание уже есть и стоит один запрос.
+   */
+  const rename = async (subscription: Subscription, displayName: string) => {
+    if (!accessToken) return;
+    await renameSubscription(accessToken, subscription.subscription_id, displayName);
+    refetch();
   };
 
   const activeCount = subscriptions.filter((s) => s.status === 'active').length;
@@ -182,6 +198,7 @@ export function DashboardPage() {
                   onRenew={setRenewTarget}
                   isRenewing={renewingId === subscription.subscription_id}
                   onServerChanged={refetch}
+                  onRename={canRename ? rename : undefined}
                   renewError={
                     // While the modal is open it shows the failure itself, so the
                     // card stays quiet — otherwise the same message appears twice.
@@ -200,6 +217,7 @@ export function DashboardPage() {
         <RenewalConfirmModal
           subscription={renewTarget}
           planName={planNameFor(renewTarget)}
+          serverTitle={titleFor(renewTarget)}
           isSubmitting={renewingId === renewTarget.subscription_id}
           submitError={
             errorSubscriptionId === renewTarget.subscription_id

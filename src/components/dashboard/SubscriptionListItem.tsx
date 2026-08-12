@@ -7,6 +7,7 @@ import { datacenters } from '../../data/datacenters';
 import { StatusDot } from '../ui/StatusDot';
 import { SpecBadge } from '../ui/SpecBadge';
 import { useServerControls } from '../../api/useServerControls';
+import { resolveSubscriptionTitle } from './subscriptionTitle';
 import { formatMoneyMinor } from '../../utils/money';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
 
@@ -36,6 +37,48 @@ const Name = styled.span`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+`;
+
+const NameRow = styled.span`
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+`;
+
+// Карандаш проявляется на наведении, но остаётся доступным с клавиатуры:
+// affordance, о которой нельзя догадаться, хуже её отсутствия, а невидимая для
+// screen reader кнопка — просто отсутствующая.
+const RenameButton = styled.button`
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: ${({ theme }) => theme.fontSizes.small};
+  color: ${({ theme }) => theme.colors.neutral[400]};
+  opacity: 0;
+  transition: opacity 120ms;
+
+  &:hover,
+  &:focus-visible {
+    opacity: 1;
+    color: ${({ theme }) => theme.colors.indigo[600]};
+  }
+
+  ${NameRow}:hover & {
+    opacity: 1;
+  }
+`;
+
+const NameInput = styled.input`
+  font-family: ${({ theme }) => theme.fonts.heading};
+  font-weight: ${({ theme }) => theme.fontWeights.bold};
+  color: ${({ theme }) => theme.colors.indigo[900]};
+  border: 1px solid ${({ theme }) => theme.colors.indigo[400]};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  padding: 2px 6px;
+  max-width: 100%;
+  min-width: 0;
 `;
 
 const Term = styled.span`
@@ -339,6 +382,11 @@ interface SubscriptionListItemProps {
   renewError?: string | null;
   /** Re-read the subscription list after a control changes the machine. */
   onServerChanged?: () => void;
+  /**
+   * Переименование. Передаётся только когда биллинг умеет — тогда и только
+   * тогда появляется карандаш. Без него карточка выглядит ровно как раньше.
+   */
+  onRename?: (subscription: Subscription, displayName: string) => Promise<void>;
 }
 
 export function SubscriptionListItem({
@@ -349,6 +397,7 @@ export function SubscriptionListItem({
   isRenewing = false,
   renewError = null,
   onServerChanged,
+  onRename,
 }: SubscriptionListItemProps) {
   const t = useTranslation('dashboard');
   const { lang } = useLang();
@@ -358,6 +407,31 @@ export function SubscriptionListItem({
   const machine = server?.machine ?? null;
   const controls = useServerControls(subscription.subscription_id, onServerChanged);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameSaving, setRenameSaving] = useState(false);
+
+  /**
+   * Сохранить имя и только потом показать его.
+   *
+   * Без оптимистичного обновления намеренно: имя, оставшееся на экране после
+   * неудачного сохранения, — это заголовок, которого у сервера нет. Клиент
+   * потом ищет сервер по имени, которого никто не сохранял.
+   */
+  const commitRename = async (value: string) => {
+    if (!onRename || renameSaving) return;
+    const next = value.trim();
+    if (next === (subscription.display_name ?? '')) {
+      setIsRenaming(false);
+      return;
+    }
+    setRenameSaving(true);
+    try {
+      await onRename(subscription, next);
+      setIsRenaming(false);
+    } finally {
+      setRenameSaving(false);
+    }
+  };
 
   /**
    * Whether the customer wants the machine up.
@@ -418,7 +492,10 @@ export function SubscriptionListItem({
    */
   const canRenew = Boolean(onRenew) && subscription.status === 'active';
 
-  const planName = tariff?.name ?? (configuration ? t.subscriptions.customPlan : subscription.package_code ?? t.subscriptions.unknownPlan);
+  const { title, planName: planUnderTitle } = resolveSubscriptionTitle(subscription, tariff, {
+    customPlan: t.subscriptions.customPlan,
+    unknownPlan: t.subscriptions.unknownPlan,
+  });
   const resolvedPeriod = period ?? periodFromPackageCode(subscription.package_code);
   const tone = STATUS_TONE[subscription.status];
   const validUntil = subscription.valid_until
@@ -445,7 +522,37 @@ export function SubscriptionListItem({
           look first. */}
       <NameCell>
         <StatusDot status={tone} label={t.subscriptions.statusLabels[subscription.status]} />
-        <Name>{planName}</Name>
+        {isRenaming ? (
+          <NameInput
+            autoFocus
+            defaultValue={subscription.display_name ?? ''}
+            maxLength={64}
+            aria-label={t.subscriptions.rename.label}
+            disabled={renameSaving}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') void commitRename(event.currentTarget.value);
+              if (event.key === 'Escape') setIsRenaming(false);
+            }}
+            onBlur={(event) => void commitRename(event.currentTarget.value)}
+          />
+        ) : (
+          <NameRow>
+            <Name>{title}</Name>
+            {onRename && (
+              <RenameButton
+                type="button"
+                onClick={() => setIsRenaming(true)}
+                aria-label={t.subscriptions.rename.label}
+                title={t.subscriptions.rename.hint}
+              >
+                ✎
+              </RenameButton>
+            )}
+          </NameRow>
+        )}
+        {/* Тариф второй строкой — только когда имя клиента вытеснило его из
+            заголовка. Иначе он повторял бы сам себя. */}
+        {planUnderTitle && <Term>{planUnderTitle}</Term>}
         {/* Цена рядом со сроком, а не в углу: «Ежемесячно» без суммы —
             половина ответа на вопрос «сколько я плачу». Отсутствует, когда
             биллинг тариф оценить не может; тогда остаётся один срок, и это

@@ -94,6 +94,84 @@ describe('SubscriptionListItem', () => {
     });
   });
 
+  describe('rename', () => {
+    it('shows no pencil while Billing does not support renaming', () => {
+      // Карандаш включается наличием onRename, а его передают только когда в
+      // ответе есть ключ display_name. Иначе каждое нажатие было бы ошибкой.
+      renderWithProviders(<SubscriptionListItem subscription={subscription()} />);
+
+      expect(screen.queryByRole('button', { name: t.rename.label })).toBeNull();
+    });
+
+    it('offers the pencil once it does', () => {
+      renderWithProviders(
+        <SubscriptionListItem subscription={subscription()} onRename={vi.fn()} />,
+      );
+
+      expect(screen.getByRole('button', { name: t.rename.label })).toBeInTheDocument();
+    });
+
+    it('shows the customer name and keeps the plan underneath', () => {
+      renderWithProviders(
+        <SubscriptionListItem
+          subscription={subscription({ display_name: 'prod-api-01' })}
+          onRename={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText('prod-api-01')).toBeInTheDocument();
+      expect(screen.getByText('VDS_PRO_MONTHLY')).toBeInTheDocument();
+    });
+
+    it('saves what was typed', async () => {
+      const onRename = vi.fn().mockResolvedValue(undefined);
+      renderWithProviders(
+        <SubscriptionListItem subscription={subscription()} onRename={onRename} />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: t.rename.label }));
+      const box = screen.getByRole('textbox', { name: t.rename.label });
+      fireEvent.change(box, { target: { value: '  prod-api-01  ' } });
+      fireEvent.keyDown(box, { key: 'Enter' });
+
+      await waitFor(() =>
+        expect(onRename).toHaveBeenCalledWith(expect.objectContaining({ subscription_id: 'sub_1' }), 'prod-api-01'),
+      );
+    });
+
+    it('does not show a name the server never accepted', async () => {
+      /**
+       * Без оптимистичного обновления намеренно. Имя, оставшееся на экране
+       * после неудачного сохранения, — это заголовок, которого у сервера нет, и
+       * клиент потом ищет сервер по имени, которого никто не сохранял.
+       */
+      const onRename = vi.fn().mockRejectedValue(new Error('invalid_display_name: no'));
+      renderWithProviders(
+        <SubscriptionListItem subscription={subscription()} onRename={onRename} />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: t.rename.label }));
+      const box = screen.getByRole('textbox', { name: t.rename.label });
+      fireEvent.change(box, { target: { value: 'не сохранится' } });
+      fireEvent.keyDown(box, { key: 'Enter' }).valueOf();
+
+      await waitFor(() => expect(onRename).toHaveBeenCalled());
+      expect(screen.queryByText('не сохранится')).toBeNull();
+    });
+
+    it('escape leaves the name alone', () => {
+      const onRename = vi.fn();
+      renderWithProviders(
+        <SubscriptionListItem subscription={subscription()} onRename={onRename} />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: t.rename.label }));
+      fireEvent.keyDown(screen.getByRole('textbox', { name: t.rename.label }), { key: 'Escape' });
+
+      expect(onRename).not.toHaveBeenCalled();
+    });
+  });
+
   describe('controls', () => {
     const withServer = (overrides: Partial<NonNullable<Subscription['server']>> = {}) =>
       subscription({
