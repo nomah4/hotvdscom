@@ -153,9 +153,11 @@ describe('SubscriptionListItem', () => {
       fireEvent.click(screen.getByRole('button', { name: t.rename.label }));
       const box = screen.getByRole('textbox', { name: t.rename.label });
       fireEvent.change(box, { target: { value: 'не сохранится' } });
-      fireEvent.keyDown(box, { key: 'Enter' }).valueOf();
+      fireEvent.keyDown(box, { key: 'Enter' });
 
-      await waitFor(() => expect(onRename).toHaveBeenCalled());
+      // Отказ должен быть виден: молчание оставило бы клиента с открытым полем
+      // и без объяснения, а промис — необработанным.
+      expect(await screen.findByText(t.rename.failed)).toBeInTheDocument();
       expect(screen.queryByText('не сохранится')).toBeNull();
     });
 

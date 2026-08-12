@@ -409,6 +409,7 @@ export function SubscriptionListItem({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameSaving, setRenameSaving] = useState(false);
+  const [renameFailed, setRenameFailed] = useState(false);
 
   /**
    * Сохранить имя и только потом показать его.
@@ -425,9 +426,15 @@ export function SubscriptionListItem({
       return;
     }
     setRenameSaving(true);
+    setRenameFailed(false);
     try {
       await onRename(subscription, next);
       setIsRenaming(false);
+    } catch {
+      // Ловим здесь, а не выше: вызов идёт из обработчика события через `void`,
+      // и без этого отказ превращается в необработанное отклонение промиса —
+      // клиент не увидел бы ничего, а поле осталось бы открытым молча.
+      setRenameFailed(true);
     } finally {
       setRenameSaving(false);
     }
@@ -780,6 +787,7 @@ export function SubscriptionListItem({
       {controls.credentialsMissing && (
         <ControlNotice>{t.subscriptions.controls.noPassword}</ControlNotice>
       )}
+      {renameFailed && <ControlError>{t.subscriptions.rename.failed}</ControlError>}
       {controls.error && <ControlError>{t.subscriptions.controls.failed}</ControlError>}
       {provisioningNote && <ProvisioningNote>{provisioningNote}</ProvisioningNote>}
       {renewError && <RenewError>{t.subscriptions.renewError}</RenewError>}
