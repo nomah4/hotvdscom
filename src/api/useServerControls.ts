@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { useLang } from '../i18n/LanguageContext';
 import {
   deleteServer,
   fetchServerCredentials,
@@ -7,6 +8,7 @@ import {
   requestServerConsole,
   restoreServer,
   setServerPower,
+  withLanguage,
   type ServerCredentials,
 } from './subscriptions';
 
@@ -55,6 +57,7 @@ export function useServerControls(
   onChanged?: () => void,
 ): UseServerControlsResult {
   const { accessToken } = useAuth();
+  const { lang } = useLang();
   const [pending, setPending] = useState<PendingControl | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<ServerCredentials | null>(null);
@@ -128,7 +131,9 @@ export function useServerControls(
     try {
       const link = await requestServerConsole(accessToken, subscriptionId);
       if (tab) {
-        tab.location.href = link.url;
+        // Язык — тот, на котором человек читает кабинет. Консоль на своём
+        // домене догадалась бы по системному, а он бывает другим.
+        tab.location.href = withLanguage(link.url, lang);
       } else {
         // Всплывающие окна запрещены. Ссылка одноразовая и живёт минуту, так
         // что показать её текстом бессмысленно — честнее сказать, что мешает.
@@ -140,7 +145,7 @@ export function useServerControls(
     } finally {
       setPending(null);
     }
-  }, [accessToken, subscriptionId]);
+  }, [accessToken, lang, subscriptionId]);
 
   /**
    * Reveal the password, treating "there isn't one" as a normal outcome.

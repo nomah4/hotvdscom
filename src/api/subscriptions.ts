@@ -312,6 +312,25 @@ export function requestServerConsole(
 }
 
 /**
+ * Дописать к ссылке язык, на котором человек читает кабинет.
+ *
+ * Консоль живёт на своём домене и о нашем выборе языка ничего не знает; сама
+ * она догадывается по `Accept-Language`, а это язык системы, а не тот, что
+ * человек выбрал у нас. Выбранный точнее — поэтому передаём.
+ */
+export function withLanguage(url: string, lang: string): string {
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set('lang', lang);
+    return parsed.toString();
+  } catch {
+    // Ссылку строит движок; если она однажды окажется не ссылкой, лучше отдать
+    // её как есть и дать браузеру сказать своё, чем упасть на кнопке.
+    return url;
+  }
+}
+
+/**
  * Reveal the machine's password.
  *
  * A 404 is an ordinary answer, not a fault: machines adopted from the

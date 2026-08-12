@@ -368,8 +368,23 @@ describe('SubscriptionListItem', () => {
 
         await waitFor(() => expect(requestServerConsole).toHaveBeenCalledWith('token-1', 'sub_1'));
         await waitFor(() =>
-          expect(tab.location.href).toBe('https://console.hotvds.com/c/ticket-1'),
+          expect(tab.location.href).toBe('https://console.hotvds.com/c/ticket-1?lang=ru'),
         );
+      });
+
+      it('tells the console which language the customer reads in', async () => {
+        /**
+         * Консоль живёт на своём домене и о нашем выборе языка не знает. Сама
+         * она догадалась бы по `Accept-Language` — а это язык системы, а не
+         * тот, что человек выбрал у нас.
+         */
+        const tab = fakeTab();
+        stubWindowOpen(tab);
+        renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.console) }));
+
+        await waitFor(() => expect(tab.location.href).toContain('lang=ru'));
       });
 
       it('opens the tab before awaiting, and severs the opener', async () => {
