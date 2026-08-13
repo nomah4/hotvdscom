@@ -234,6 +234,11 @@ async function postServerAction<T>(
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
+        // Every click is a distinct intent: a stable subscription/action key
+        // would swallow a deliberate later reboot. There is no client retry,
+        // so this key only identifies a network-level replay of this request;
+        // the UI's busy state already disables double-submits while it runs.
+        'X-Idempotency-Key': crypto.randomUUID(),
       },
       body: JSON.stringify(body),
     },
