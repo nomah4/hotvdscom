@@ -68,20 +68,62 @@ export const dashboard = {
     renewing: 'Opening payment…',
     renewError: 'Could not start the renewal. Please try again.',
     unknownPlan: 'Unknown plan',
+    serviceId: 'Service ID',
     customPlan: 'Custom VDS',
+    // The machine's own state, distinct from the service status above the
+    // card. A service can be active while the machine is down — that case is
+    // why this line exists separately.
+    machine: {
+      title: 'Machine status',
+      running: 'Running',
+      stopped: 'Stopped',
+      paused: 'Paused',
+      rebooting: 'Rebooting',
+      unknown: 'Unknown',
+    },
     telemetry: {
       ip: 'IP address',
       cpu: 'CPU load',
       network: 'Network',
+      mbits: 'Mbit/s',
       noData: '—',
-      note: 'No data yet: monitoring arrives with server provisioning.',
+      // Shown only before the engine has polled the machine for the first time.
+      // Polling runs every two minutes, so the promise is specific, not "soon".
+      note: 'The engine has not polled this machine yet — figures appear in a couple of minutes.',
+    },
+    // The name a customer gives their service. Our plan name is not replaced:
+    // it moves to a second line so a charge still shows what is being paid for.
+    rename: {
+      label: 'Server name',
+      hint: 'Click to give this server your own name',
+      failed: 'Could not save the name. Please try again.',
     },
     controls: {
       powerOn: 'Power on',
       powerOff: 'Power off',
       reboot: 'Reboot',
+      // The machine's screen — what is left when both the network and sshd are gone.
+      console: 'Console',
       delete: 'Delete server',
-      unavailable: 'Server controls are not connected yet. These become live once provisioning works.',
+      // Deletion takes a second press: it is the only action on this card the
+      // customer cannot undo by themselves.
+      deleteConfirm: 'Confirm delete',
+      deleteCancel: 'Cancel',
+      restore: 'Restore',
+      showPassword: 'Show password',
+      hidePassword: 'Hide password',
+      username: 'User',
+      password: 'Password',
+      // Machines built by hand before the engine existed have no password
+      // stored in it. That is an answer, not a fault.
+      noPassword: 'We do not hold a password for this server — use the access you were given.',
+      noServer: 'The server has not been built yet.',
+      pendingDeletion: 'Marked for deletion. Your data is kept until an operator confirms it.',
+      failed: 'That did not go through. Please try again.',
+      // The console link lasts a minute and opens once, so there is no showing
+      // it as text — only saying what is in the way.
+      popupBlocked: 'Your browser blocked the new window. Allow pop-ups for this site and press again.',
+      consoleRateLimited: 'Too many console attempts. Please wait a minute.',
     },
     loading: 'Loading your servers…',
     error: 'Could not load your servers.',
@@ -91,6 +133,7 @@ export const dashboard = {
   renewal: {
     title: 'Renew service',
     server: 'Server',
+    plan: 'Plan',
     currentlyValidUntil: 'Valid until now',
     amount: 'Amount due',
     amountLoading: 'calculating…',
