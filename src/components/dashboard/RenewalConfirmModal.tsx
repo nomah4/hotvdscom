@@ -137,7 +137,14 @@ const Actions = styled.div`
 
 interface RenewalConfirmModalProps {
   subscription: Subscription;
+  /**
+   * Название тарифа. Всегда показывается отдельной строкой, даже когда сервер
+   * назван клиентом: это окно подтверждает **списание денег**, и «prod-api-01»
+   * в нём не отвечает на вопрос, за что платят.
+   */
   planName: string;
+  /** Имя клиента, если он его дал. Иначе строка не рисуется. */
+  serverTitle?: string | null;
   onClose: () => void;
   onConfirm: (customerEmail: string) => void;
   /** True from the moment the parent starts opening the invoice. */
@@ -170,6 +177,7 @@ interface RenewalConfirmModalProps {
 export function RenewalConfirmModal({
   subscription,
   planName,
+  serverTitle = null,
   onClose,
   onConfirm,
   isSubmitting,
@@ -247,8 +255,14 @@ export function RenewalConfirmModal({
         <Title>{t.renewal.title}</Title>
 
         <Rows>
+          {serverTitle && serverTitle !== planName && (
+            <Row>
+              <Key>{t.renewal.server}</Key>
+              <Value>{serverTitle}</Value>
+            </Row>
+          )}
           <Row>
-            <Key>{t.renewal.server}</Key>
+            <Key>{serverTitle && serverTitle !== planName ? t.renewal.plan : t.renewal.server}</Key>
             <Value>{planName}</Value>
           </Row>
           <Row>
