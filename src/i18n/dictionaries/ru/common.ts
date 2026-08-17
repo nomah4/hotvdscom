@@ -13,7 +13,7 @@ export const common = {
     seePricing: 'Смотреть тарифы',
   },
   footer: {
-    tagline: 'Мощный VDS-хостинг с честным аптаймом.',
+    tagline: 'Мощный VDS-хостинг.',
     // Keyed, not positional: Footer.tsx pairs each key with a route, so a label
     // without a destination is a compile error instead of a link that silently
     // borrows its neighbour's page. Keep the key order identical to en/common.ts —

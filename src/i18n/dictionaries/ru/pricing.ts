@@ -42,8 +42,8 @@ export const pricing = {
     // lang === 'ru', потому что рублёвая цена и есть единственная. Ключ нужен
     // для структурного паритета словарей (см. dictionaries.test.ts).
     secondaryLabel: 'к оплате',
-    renewalNoteMonthly: 'Подписка продлевается автоматически каждый месяц. Отменить можно в любой момент в личном кабинете.',
-    renewalNoteAnnual: 'Подписка продлевается автоматически каждый год. Отменить можно в любой момент в личном кабинете.',
+    renewalNoteMonthly: 'Подписка продлевается автоматически каждый месяц.',
+    renewalNoteAnnual: 'Подписка продлевается автоматически каждый год.',
     termsPrefix: 'Я принимаю',
     termsLink: 'условия обслуживания',
     proceedToPayment: 'Перейти к оплате',
@@ -68,19 +68,16 @@ export const pricing = {
   features: {
     title: 'Что входит в каждый тариф',
     items: [
-      { name: 'Ежедневные бэкапы', tiers: [false, true, true, true, true] },
       { name: 'DDoS-защита', tiers: [true, true, true, true, true] },
       { name: 'IPv6', tiers: [true, true, true, true, true] },
       { name: 'Приоритетная поддержка', tiers: [false, false, true, true, true] },
-      { name: 'Выделенный IP', tiers: [false, true, true, true, true] },
+      { name: 'Выделенный IP', tiers: [true, true, true, true, true] },
     ],
   },
   faq: {
     title: 'Вопросы по оплате',
     items: [
       { question: 'Можно ли оплатить картой другой страны?', answer: 'Да, принимаем международные карты Visa и Mastercard.' },
-      { question: 'Что будет, если не хватит средств на балансе?', answer: 'Мы предупредим за 3 дня и приостановим сервер только после письменного уведомления.' },
-      { question: 'Есть ли возврат средств?', answer: 'Да, в течение 7 дней с момента первой оплаты по любому тарифу.' },
     ],
   },
 } as const;

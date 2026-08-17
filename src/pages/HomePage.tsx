@@ -7,9 +7,6 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { TariffCard } from '../components/ui/TariffCard';
 import { DatacenterRow } from '../components/ui/DatacenterRow';
-import { TestimonialCard } from '../components/ui/TestimonialCard';
-import { LogoStrip } from '../components/ui/LogoStrip';
-import { FaqAccordionItem } from '../components/ui/FaqAccordionItem';
 import { useLang, useTranslation } from '../i18n/LanguageContext';
 import { localizePath, orderPath, routePaths } from '../i18n/paths';
 import { usePageMeta } from '../i18n/usePageMeta';
@@ -147,26 +144,6 @@ const CenterLink = styled.div`
   margin-top: 40px;
 `;
 
-const TestimonialGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 24px;
-  margin-top: 48px;
-
-  ${media.tablet`
-    grid-template-columns: repeat(3, 1fr);
-  `}
-`;
-
-const LogoStripWrap = styled.div`
-  margin-top: 48px;
-`;
-
-const FaqList = styled.div`
-  max-width: 720px;
-  margin: 40px auto 0;
-`;
-
 const CtaBanner = styled.div`
   display: flex;
   flex-direction: column;
@@ -212,8 +189,6 @@ export function HomePage() {
                 </Button>
               </HeroActions>
               <HeroTrust>
-                <Badge $tone="mint">{t.hero.trustBadge}</Badge>
-                <Badge $tone="indigo">{t.hero.trustNote}</Badge>
                 <Badge $tone="accent">{t.hero.trustPrice}</Badge>
               </HeroTrust>
             </HeroInner>
@@ -256,31 +231,6 @@ export function HomePage() {
         <PageContainer>
           <SectionHeading title={t.datacenters.title} subtitle={t.datacenters.subtitle} />
           <DatacenterRow />
-        </PageContainer>
-      </Section>
-
-      <Section $background="secondary">
-        <PageContainer>
-          <SectionHeading title={t.testimonials.title} subtitle={t.testimonials.subtitle} />
-          <TestimonialGrid>
-            {t.testimonials.items.map((item) => (
-              <TestimonialCard key={item.author} quote={item.quote} author={item.author} role={item.role} />
-            ))}
-          </TestimonialGrid>
-          <LogoStripWrap>
-            <LogoStrip />
-          </LogoStripWrap>
-        </PageContainer>
-      </Section>
-
-      <Section $background="primary">
-        <PageContainer>
-          <SectionHeading title={t.faq.title} />
-          <FaqList>
-            {t.faq.items.map((item) => (
-              <FaqAccordionItem key={item.question} question={item.question} answer={item.answer} />
-            ))}
-          </FaqList>
         </PageContainer>
       </Section>
 

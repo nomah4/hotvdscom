@@ -35,12 +35,11 @@ const FaqList = styled.div`
  */
 export function KnowledgeBasePage() {
   const t = useTranslation('docs');
-  const home = useTranslation('home');
   const pricing = useTranslation('pricing');
 
   usePageMeta(t.knowledgeBase.meta.title, t.knowledgeBase.meta.description);
 
-  const faq = [...home.faq.items, ...pricing.faq.items];
+  const faq = pricing.faq.items;
 
   return (
     <Section $background="primary">

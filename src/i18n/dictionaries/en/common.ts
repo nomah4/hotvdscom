@@ -16,7 +16,7 @@ export const common = {
     seePricing: 'View pricing',
   },
   footer: {
-    tagline: 'Powerful VDS hosting with an honest uptime.',
+    tagline: 'Powerful VDS hosting.',
     // Key order must match ru/common.ts — see the note there.
     columns: {
       product: {

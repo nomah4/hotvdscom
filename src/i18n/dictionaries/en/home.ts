@@ -3,19 +3,17 @@ import type { DeepWiden } from '../../deepWiden';
 
 export const home = {
   meta: {
-    title: 'hotvds — NVMe VDS Hosting, Live in 5 Minutes',
+    title: 'hotvds — NVMe VDS Hosting',
     description:
-      'Powerful NVMe VDS from $10/mo: 99.98% uptime, DDoS protection, and 24/7 support. Your server deploys within 5 minutes of payment.',
+      'Powerful NVMe VDS from $10/mo with DDoS protection and 24/7 support. Your server deploys automatically after payment.',
   },
   hero: {
     eyebrow: 'A new generation of VDS',
-    title: 'VDS hosting that launches in 5 minutes',
+    title: 'NVMe VDS hosting',
     subtitle:
-      'Powerful NVMe-backed servers with a real 99.98% uptime and support that actually answers. Spin up your project today — zero paperwork.',
+      'Powerful NVMe-backed servers with support that actually answers. Spin up your project today — zero paperwork.',
     ctaPrimary: 'Launch a server',
     ctaSecondary: 'View pricing',
-    trustBadge: '99.98% uptime',
-    trustNote: '5-minute setup',
     trustPrice: 'from $10/mo',
   },
   valueProps: {
@@ -25,7 +23,7 @@ export const home = {
       { title: 'NVMe speed', text: 'NVMe disks with plenty of headroom in IOPS for databases and high-load projects.' },
       { title: 'DDoS protection', text: 'Network-level filtering keeps your server reachable at all times.' },
       { title: '24/7 support', text: 'Real engineers respond in minutes, not hours.' },
-      { title: 'Instant deploy', text: 'Your server spins up automatically 5 minutes after payment.' },
+      { title: 'Automatic deployment', text: 'Your server deploys automatically after payment.' },
     ],
   },
   tariffTeaser: {
@@ -36,24 +34,6 @@ export const home = {
   datacenters: {
     title: 'Data center locations',
     subtitle: 'Place your server closer to your users',
-  },
-  testimonials: {
-    title: 'Trusted by teams',
-    subtitle: 'What customers say about hotvds',
-    items: [
-      { quote: 'We migrated from another host in one evening with zero downtime.', author: 'Igor Sokolov', role: 'CTO, Fintra' },
-      { quote: 'Support answers faster than I can finish typing the question.', author: 'Maria Lebedeva', role: 'DevOps Engineer' },
-      { quote: 'Honest pricing, no hidden bandwidth fees.', author: 'Dmitry Kovalev', role: 'Founder, ShopEasy' },
-    ],
-  },
-  faq: {
-    title: 'Frequently asked questions',
-    items: [
-      { question: 'How fast does the server activate?', answer: 'The server deploys automatically within 5 minutes of payment.' },
-      { question: 'Can I change my plan later?', answer: 'Yes, upgrades and downgrades are available anytime from the dashboard.' },
-      { question: 'Do you offer backups?', answer: 'Daily backups are included in every plan except the base tier.' },
-      { question: 'What payment methods do you accept?', answer: 'Bank cards, instant bank transfer, and cryptocurrency.' },
-    ],
   },
   finalCta: {
     title: 'Ready to launch your project?',

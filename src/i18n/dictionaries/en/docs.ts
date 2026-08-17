@@ -32,7 +32,6 @@ export const docs = {
     sections: [
       { heading: 'First steps after ordering', placeholder: TODO },
       { heading: 'Connecting over SSH', placeholder: TODO },
-      { heading: 'Backups', placeholder: TODO },
       { heading: 'Networking and DNS', placeholder: TODO },
       { heading: 'Payment and documents', placeholder: TODO },
     ],
