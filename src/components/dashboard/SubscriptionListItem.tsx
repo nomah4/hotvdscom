@@ -7,6 +7,7 @@ import { datacenters } from '../../data/datacenters';
 import { StatusDot } from '../ui/StatusDot';
 import { SpecBadge } from '../ui/SpecBadge';
 import { useServerControls } from '../../api/useServerControls';
+import { ChangeIpModal } from './ChangeIpModal';
 import { resolveSubscriptionTitle } from './subscriptionTitle';
 import { formatMoneyMinor } from '../../utils/money';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
@@ -428,6 +429,11 @@ export function SubscriptionListItem({
   const machine = server?.machine ?? null;
   const controls = useServerControls(subscription.subscription_id, onServerChanged);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [changingIp, setChangingIp] = useState(false);
+  // Итог последней смены: адрес и то, перезагрузил ли машину движок. Живёт на
+  // карточке, а не в окне, потому что окно к этому моменту закрыто, а прочитать
+  // новый адрес клиенту всё ещё нужно.
+  const [ipChanged, setIpChanged] = useState<{ address: string; rebooted: boolean } | null>(null);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameSaving, setRenameSaving] = useState(false);
   const [renameFailed, setRenameFailed] = useState(false);
@@ -496,6 +502,31 @@ export function SubscriptionListItem({
   const isPendingDeletion = server?.state === 'pending_deletion';
 
   const busy = controls.pending !== null;
+
+  /**
+   * Умеет ли этот биллинг смену адреса.
+   *
+   * Проверяется по наличию ключа, а не по его значению: `null` значит «менять
+   * можно прямо сейчас», а отсутствие ключа — «эндпоинта нет». Кнопка, включённая
+   * против отсутствующего эндпоинта, отвечала бы отказом на каждое нажатие — та
+   * же осторожность, что и у карандаша переименования.
+   */
+  const canChangeIp = server !== null && 'ip_change_allowed_at' in server;
+
+  /**
+   * Момент, с которого смена снова возможна. Дата в будущем — кнопка есть, но
+   * не нажимается, и подсказка называет день.
+   *
+   * Лимит считает движок; здесь он только показывается. Сравнение с часами
+   * браузера годится ровно на это: настоящий отказ всё равно придёт с сервера.
+   */
+  const ipChangeAllowedAt = server?.ip_change_allowed_at
+    ? new Date(server.ip_change_allowed_at)
+    : null;
+  const ipChangeBlockedUntil =
+    ipChangeAllowedAt && ipChangeAllowedAt.getTime() > Date.now()
+      ? ipChangeAllowedAt.toLocaleDateString(lang, { year: 'numeric', month: 'short', day: 'numeric' })
+      : null;
 
   /**
    * Успел ли движок хоть раз опросить эту машину.
@@ -753,6 +784,32 @@ export function SubscriptionListItem({
               <span aria-hidden>🖥</span>
               {t.subscriptions.controls.console}
             </ControlButton>
+            {/* Смена адреса не открывается одним нажатием: подтверждать нужно
+                конкретный адрес, а не намерение — за старым остаются записи
+                DNS и чужие белые списки. Пока действует недельный лимит,
+                кнопка на месте и не нажимается, а подсказка называет день:
+                исчезнувшая кнопка читается как поломка. */}
+            {canChangeIp && (
+              <ControlButton
+                type="button"
+                onClick={() => {
+                  // Отказ прошлого действия к этому окну отношения не имеет, а
+                  // прочитан был бы как отказ в смене.
+                  controls.clearError();
+                  setIpChanged(null);
+                  setChangingIp(true);
+                }}
+                disabled={busy || ipChangeBlockedUntil !== null}
+                title={
+                  ipChangeBlockedUntil
+                    ? t.subscriptions.controls.changeIpBlocked.replace('{date}', ipChangeBlockedUntil)
+                    : undefined
+                }
+              >
+                <span aria-hidden>🔀</span>
+                {t.subscriptions.controls.changeIp}
+              </ControlButton>
+            )}
             <ControlButton
               type="button"
               onClick={() =>
@@ -829,8 +886,53 @@ export function SubscriptionListItem({
               : t.subscriptions.controls.failed}
         </ControlError>
       )}
+      {/* Новый адрес остаётся на карточке после закрытия окна: его переписывают
+          в DNS и в доступы, и «перезагружается» тут — не украшение, а ответ на
+          вопрос, почему сервер сейчас не отвечает. */}
+      {ipChanged && (
+        <ControlNotice>
+          {(ipChanged.rebooted
+            ? t.subscriptions.controls.ipChanged
+            : t.subscriptions.controls.ipChangedNoReboot
+          ).replace('{ip}', ipChanged.address)}
+        </ControlNotice>
+      )}
       {provisioningNote && <ProvisioningNote>{provisioningNote}</ProvisioningNote>}
       {renewError && <RenewError>{t.subscriptions.renewError}</RenewError>}
+
+      {changingIp && (
+        <ChangeIpModal
+          subscriptionId={subscription.subscription_id}
+          currentIp={server?.public_ip ?? null}
+          onClose={() => setChangingIp(false)}
+          isSubmitting={controls.pending === 'ip'}
+          // Протухшее предложение — не «не вышло»: адрес больше не тот, что на
+          // экране, и повторять нажатие бессмысленно, окно надо открыть заново.
+          submitError={
+            !controls.error
+              ? null
+              : controls.error.startsWith('ip_offer_expired')
+                ? t.changeIp.offerExpired
+                : // Машина собрана без cloud-init — адрес задан внутри гостя, и
+                  // менять его снаружи движок не станет. Общее «не удалось»
+                  // отправило бы клиента нажимать кнопку, которая не сработает
+                  // никогда.
+                  controls.error.startsWith('no_cloudinit')
+                  ? t.changeIp.manualMachine
+                  : t.subscriptions.controls.failed
+          }
+          onConfirm={(address) => {
+            void controls.changeIp(address).then((result) => {
+              if (!result) return; // отказ уже показан в окне
+              setIpChanged({
+                address: result.public_ip ?? address,
+                rebooted: result.rebooted !== false,
+              });
+              setChangingIp(false);
+            });
+          }}
+        />
+      )}
     </Row>
   );
 }

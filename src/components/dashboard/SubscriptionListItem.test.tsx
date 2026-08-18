@@ -5,9 +5,11 @@ import { renderWithProviders } from '../../test/renderWithProviders';
 import { dictionaries } from '../../i18n/dictionaries';
 import type { Subscription } from '../../api/subscriptions';
 import {
+  changeServerIp,
   deleteServer,
   fetchServerCredentials,
   rebootServer,
+  requestIpChangeOffer,
   requestServerConsole,
   restoreServer,
   setServerPower,
@@ -31,6 +33,8 @@ vi.mock('../../api/subscriptions', async (importOriginal) => ({
     url: 'https://console.hotvds.com/c/ticket-1',
     expires_at: '2026-08-12T00:01:00Z',
   }),
+  requestIpChangeOffer: vi.fn(),
+  changeServerIp: vi.fn(),
 }));
 
 beforeEach(() => {
@@ -44,6 +48,12 @@ beforeEach(() => {
     url: 'https://console.hotvds.com/c/ticket-1',
     expires_at: '2026-08-12T00:01:00Z',
   });
+  vi.mocked(requestIpChangeOffer).mockResolvedValue({
+    current_ip: '167.179.34.101',
+    next_ip: '167.179.34.142',
+    expires_at: '2026-08-18T12:15:00Z',
+  });
+  vi.mocked(changeServerIp).mockResolvedValue({ public_ip: '167.179.34.142', rebooted: true });
 });
 
 function subscription(overrides: Partial<Subscription> = {}): Subscription {
@@ -467,6 +477,119 @@ describe('SubscriptionListItem', () => {
         );
 
         expect(screen.queryByRole('button', { name: new RegExp(t.controls.console) })).toBeNull();
+      });
+    });
+
+    /**
+     * Смена адреса — самое дорогое действие на карточке: она ломает всё, что
+     * указывает на старый адрес, забирает адрес из небольшого блока локации и
+     * не повторяется неделю. Поэтому проверяется не «сменилось», а то, что
+     * клиент видел конкретный адрес до нажатия и получил ровно его.
+     */
+    describe('changing the address', () => {
+      const ip = dictionaries.ru.dashboard.changeIp;
+
+      it('offers nothing while Billing does not support the change', () => {
+        // Ключа нет — эндпоинта нет, и кнопка отвечала бы отказом на каждое
+        // нажатие. Та же осторожность, что и у карандаша переименования.
+        renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
+
+        expect(screen.queryByRole('button', { name: new RegExp(t.controls.changeIp) })).toBeNull();
+      });
+
+      it('offers it once Billing sends the limit alongside the machine', () => {
+        renderWithProviders(
+          <SubscriptionListItem subscription={withServer({ ip_change_allowed_at: null })} />,
+        );
+
+        expect(
+          screen.getByRole('button', { name: new RegExp(t.controls.changeIp) }),
+        ).toBeInTheDocument();
+      });
+
+      it('names the day rather than removing the button while the week runs', () => {
+        // Исчезнувшая кнопка читается как поломка; дата отвечает на
+        // единственный вопрос, который тут возникает.
+        renderWithProviders(
+          <SubscriptionListItem
+            subscription={withServer({ ip_change_allowed_at: '2099-01-01T00:00:00Z' })}
+          />,
+        );
+
+        const button = screen.getByRole('button', { name: new RegExp(t.controls.changeIp) });
+        expect(button).toBeDisabled();
+        expect(button.getAttribute('title')).toContain('2099');
+      });
+
+      it('shows which address the machine will get before anything happens', async () => {
+        renderWithProviders(
+          <SubscriptionListItem subscription={withServer({ ip_change_allowed_at: null })} />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.changeIp) }));
+
+        expect(await screen.findByText('167.179.34.142')).toBeInTheDocument();
+        // И предупреждение о перезагрузке: узнать о ней после нажатия поздно.
+        expect(screen.getByText(ip.rebootWarning)).toBeInTheDocument();
+        expect(changeServerIp).not.toHaveBeenCalled();
+      });
+
+      it('changes to exactly the address it showed', async () => {
+        renderWithProviders(
+          <SubscriptionListItem subscription={withServer({ ip_change_allowed_at: null })} />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.changeIp) }));
+        fireEvent.click(await screen.findByRole('button', { name: ip.confirm }));
+
+        await waitFor(() =>
+          expect(changeServerIp).toHaveBeenCalledWith('token-1', 'sub_1', '167.179.34.142'),
+        );
+        // Новый адрес остаётся на карточке: его переписывают в DNS и в доступы.
+        expect(
+          await screen.findByText(t.controls.ipChanged.replace('{ip}', '167.179.34.142')),
+        ).toBeInTheDocument();
+      });
+
+      it('says who has to reboot when the engine could not', async () => {
+        // Иначе клиент ждёт адрес, который поднимут только его руки.
+        vi.mocked(changeServerIp).mockResolvedValue({
+          public_ip: '167.179.34.142',
+          rebooted: false,
+        });
+        renderWithProviders(
+          <SubscriptionListItem subscription={withServer({ ip_change_allowed_at: null })} />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.changeIp) }));
+        fireEvent.click(await screen.findByRole('button', { name: ip.confirm }));
+
+        expect(
+          await screen.findByText(t.controls.ipChangedNoReboot.replace('{ip}', '167.179.34.142')),
+        ).toBeInTheDocument();
+      });
+
+      it('does not offer a confirmation it cannot honour', async () => {
+        // Пул кончился — это не вина клиента и не лечится повтором.
+        vi.mocked(requestIpChangeOffer).mockRejectedValue(new Error('no_public_ip: exhausted'));
+        renderWithProviders(
+          <SubscriptionListItem subscription={withServer({ ip_change_allowed_at: null })} />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: new RegExp(t.controls.changeIp) }));
+
+        expect(await screen.findByText(ip.poolExhausted)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: ip.confirm })).toBeDisabled();
+      });
+
+      it('is not offered for a machine on its way out', () => {
+        renderWithProviders(
+          <SubscriptionListItem
+            subscription={withServer({ state: 'pending_deletion', ip_change_allowed_at: null })}
+          />,
+        );
+
+        expect(screen.queryByRole('button', { name: new RegExp(t.controls.changeIp) })).toBeNull();
       });
     });
 

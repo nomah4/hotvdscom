@@ -82,6 +82,28 @@ package code.
 per-unit rates it carries are what the configurator shows *while a quote is in flight*. Only
 `STOREFRONT_CURRENCIES` in `src/api/config.ts` is chargeable today (RUB); the catalogue holds more.
 
+## Machine controls
+
+The buttons on a dashboard card — power, reboot, console, password, change IP, delete — all go to
+Billing, which relays through Provisioning to the engine (`src/api/useServerControls.ts`). The
+browser never addresses a machine: it names a subscription and asks for an action, and Billing is
+the only service that checks who owns that subscription.
+
+**Every rule behind a button lives server-side, and the card only renders what it is told.** The
+weekly limit on changing an IP is the clearest case: the engine owns the address pool and the
+limit, sends `ip_change_allowed_at` with each machine, and the card greys the button out and names
+the day. A limit checked in the browser is not a limit.
+
+Each control is gated on a key being present rather than on a value, so a Billing that predates
+the feature simply shows no button — the same rule as the rename pencil. `SubscriptionListItem`
+reads `'ip_change_allowed_at' in server`, because `null` means "you may change it now" while a
+missing key means "this Billing has no such endpoint".
+
+Changing an IP takes a dialog rather than a second press (`ChangeIpModal`): what is confirmed is a
+specific address, not an intent — DNS records and other people's allowlists still point at the old
+one — and the engine holds the offered address until the customer confirms it. See
+`provisioning-engine/docs/ip-change.md` for the chain and its failure codes.
+
 ## Datacenters
 
 `src/data/datacenters.ts` — Amsterdam is the only `live` location; the rest are `comingSoon`
