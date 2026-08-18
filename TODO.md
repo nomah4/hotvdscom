@@ -202,24 +202,26 @@ has said what to install or where.
 
 ## Server telemetry and controls are placeholders
 
-The instance card shows IP address, CPU load and network as dashes, and its
-power / reboot / delete buttons answer "not connected yet" rather than acting.
-Both are deliberate: `Subscription` carries no address and no metrics, there is
-no power API, and the provisioning adapter (Phase 4) that would own all of it
-does not exist — every real subscription sits at `provisioning_status: pending`.
+**Сделано.** Раздел описывал состояние, когда за карточкой не было ни машины, ни
+API к ней. Теперь есть и то и другое: кнопки ходят в биллинг, а тот через
+провижининг — в движок.
 
-The buttons are styled as live controls on purpose, so the card shows its
-eventual shape. They must never report success they did not achieve: a customer
-who believes a reboot happened will wait for a server that never went down, and
-one who believes a delete happened will be billed for a server they think is
-gone.
+- питание, перезагрузка, пароль, удаление и восстановление — 2026-08-11, удаление
+  подтверждается вторым нажатием и остаётся единственным необратимым действием;
+- консоль — 2026-08-12;
+- смена IP — 2026-08-18, окно подтверждения вместо второго нажатия: подтверждают
+  конкретный адрес, а не намерение;
+- адрес, состояние машины, загрузка CPU и скорость сети приезжают из движка
+  вместе со списком подписок; движок опрашивает гипервизор раз в две минуты.
 
-**To finish:** with provisioning in place, wire power/reboot/delete to real
-endpoints (delete needs a confirmation step — it is the only irreversible one),
-read the IP from the subscription, and take load and network from whatever
-monitoring lands alongside. `isRunning` in `SubscriptionListItem` is currently
-inferred from `status === 'active' && provisioning_status === 'succeeded'`
-because there is no power state to read; replace it with the real one.
+`powerIsOn` больше не выводится из статуса подписки: читается `power_intent` —
+желание клиента, отдельное от состояния услуги. Вывод остался только как запасной
+путь на случай, когда биллинг блок `server` не прислал вовсе, и это правильный
+запасной путь: он и означает «машины ещё нет».
+
+**Что осталось открытым:** истории нет — карточка показывает мгновенные значения
+на момент последнего опроса, а не график. Появится, когда появится мониторинг; он
+пока не заведён ни на одной машине сегмента (см. `provisioning-engine/TODO.md`).
 
 ## A customer cannot name their own servers
 
