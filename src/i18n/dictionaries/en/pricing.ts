@@ -45,8 +45,8 @@ export const pricing = {
     // never the primary itself, and never on a payment surface, where the
     // roubles figure already leads and needs no introduction.
     secondaryLabel: 'billed',
-    renewalNoteMonthly: 'Renews automatically every month.',
-    renewalNoteAnnual: 'Renews automatically every year.',
+    renewalNoteMonthly: 'Renews automatically every month. Cancel any time from your dashboard.',
+    renewalNoteAnnual: 'Renews automatically every year. Cancel any time from your dashboard.',
     termsPrefix: 'I accept the',
     termsLink: 'terms of service',
     proceedToPayment: 'Proceed to payment',
@@ -81,6 +81,8 @@ export const pricing = {
     title: 'Billing questions',
     items: [
       { question: 'Can I pay with a foreign card?', answer: 'Yes, we accept international Visa and Mastercard.' },
+      { question: "What happens if my balance runs out?", answer: "We'll notify you 3 days ahead and only pause the server after a written notice." },
+      { question: 'Do you offer refunds?', answer: 'Yes, within 7 days of your first payment on any plan.' },
     ],
   },
 } as const satisfies DeepWiden<typeof ruPricing>;

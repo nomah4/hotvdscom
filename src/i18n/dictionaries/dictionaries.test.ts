@@ -102,29 +102,14 @@ describe('marketing copy', () => {
       reason: 'Provisioning has no guaranteed completion time.',
     },
     {
-      label: 'backup',
-      pattern: /бэкап|backup|резервн/i,
-      reason: 'Backups are not available on any machine.',
-    },
-    {
-      label: 'uptime percentage',
-      pattern: /99\.9|\d+(?:[.,]\d+)?%?\s*(?:аптайм|uptime)|(?:аптайм|uptime)\s*\d+(?:[.,]\d+)?%?/i,
-      reason: 'Automated availability monitoring is not connected.',
+      label: 'daily backups',
+      pattern: /ежедневн\w*\s+(?:бэкап|резервн)|daily backups?/i,
+      reason: 'No machine has a backup, and the engine does not make them.',
     },
     {
       label: 'downgrade',
       pattern: /даунгрейд|downgrade/i,
-      reason: 'Plan downgrades are not supported.',
-    },
-    {
-      label: 'subscription cancellation',
-      pattern: /отменить можно|cancel any time/i,
-      reason: 'Subscription cancellation is not implemented.',
-    },
-    {
-      label: 'refund window',
-      pattern: /возврат средств.{0,160}в течение|refunds?.{0,160}within/i,
-      reason: 'No refund terms are published.',
+      reason: 'Plan downgrades are not supported (engine ADR-0004).',
     },
   ];
 
