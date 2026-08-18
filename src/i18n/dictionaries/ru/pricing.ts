@@ -68,11 +68,10 @@ export const pricing = {
   features: {
     title: 'Что входит в каждый тариф',
     items: [
-      { name: 'Ежедневные бэкапы', tiers: [false, true, true, true, true] },
       { name: 'DDoS-защита', tiers: [true, true, true, true, true] },
       { name: 'IPv6', tiers: [true, true, true, true, true] },
       { name: 'Приоритетная поддержка', tiers: [false, false, true, true, true] },
-      { name: 'Выделенный IP', tiers: [false, true, true, true, true] },
+      { name: 'Выделенный IP', tiers: [true, true, true, true, true] },
     ],
   },
   faq: {

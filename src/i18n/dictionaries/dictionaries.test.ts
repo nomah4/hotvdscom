@@ -95,9 +95,35 @@ describe('marketing copy', () => {
     { label: 'GPU', pattern: /\bgpu\b|nvidia|cuda|видеокарт/i },
   ];
 
+  const FACTUAL_CONSTRAINTS = [
+    {
+      label: 'deployment-time',
+      pattern: /5 минут|5 minutes|5-minute/i,
+      reason: 'Provisioning has no guaranteed completion time.',
+    },
+    {
+      label: 'daily backups',
+      pattern: /ежедневн\w*\s+(?:бэкап|резервн)|daily backups?/i,
+      reason: 'No machine has a backup, and the engine does not make them.',
+    },
+    {
+      label: 'downgrade',
+      pattern: /даунгрейд|downgrade/i,
+      reason: 'Plan downgrades are not supported (engine ADR-0004).',
+    },
+  ];
+
   it.each(FORBIDDEN)('makes no $label promise anywhere in the dictionaries', ({ pattern }) => {
     const copy = JSON.stringify(dictionaries);
 
     expect(copy).not.toMatch(pattern);
+  });
+
+  it.each(FACTUAL_CONSTRAINTS)('makes no $label promise anywhere in the dictionaries', ({ pattern, reason }) => {
+    for (const lang of ['ru', 'en'] as const) {
+      const copy = JSON.stringify(dictionaries[lang]);
+
+      expect(copy, `${lang}: ${reason}`).not.toMatch(pattern);
+    }
   });
 });

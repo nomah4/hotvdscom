@@ -148,7 +148,6 @@ const fallbackOsOptions = [
   { value: 'debian-13', label: 'Debian 13' },
   { value: 'debian-12', label: 'Debian 12' },
   { value: 'centos-stream-9', label: 'CentOS Stream 9' },
-  { value: 'windows-2022', label: 'Windows Server 2022' },
 ];
 
 function rangeFromSchema(

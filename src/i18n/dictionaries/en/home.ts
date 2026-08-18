@@ -3,19 +3,19 @@ import type { DeepWiden } from '../../deepWiden';
 
 export const home = {
   meta: {
-    title: 'hotvds — NVMe VDS Hosting, Live in 5 Minutes',
+    title: 'hotvds — NVMe VDS Hosting',
     description:
-      'Powerful NVMe VDS from $10/mo: 99.98% uptime, DDoS protection, and 24/7 support. Your server deploys within 5 minutes of payment.',
+      'Powerful NVMe VDS from $10/mo: 99.98% uptime, DDoS protection, and 24/7 support. Your server deploys automatically after payment.',
   },
   hero: {
     eyebrow: 'A new generation of VDS',
-    title: 'VDS hosting that launches in 5 minutes',
+    title: 'NVMe VDS hosting',
     subtitle:
       'Powerful NVMe-backed servers with a real 99.98% uptime and support that actually answers. Spin up your project today — zero paperwork.',
     ctaPrimary: 'Launch a server',
     ctaSecondary: 'View pricing',
     trustBadge: '99.98% uptime',
-    trustNote: '5-minute setup',
+    trustNote: 'automatic setup',
     trustPrice: 'from $10/mo',
   },
   valueProps: {
@@ -25,7 +25,7 @@ export const home = {
       { title: 'NVMe speed', text: 'NVMe disks with plenty of headroom in IOPS for databases and high-load projects.' },
       { title: 'DDoS protection', text: 'Network-level filtering keeps your server reachable at all times.' },
       { title: '24/7 support', text: 'Real engineers respond in minutes, not hours.' },
-      { title: 'Instant deploy', text: 'Your server spins up automatically 5 minutes after payment.' },
+      { title: 'Automatic deployment', text: 'Your server deploys automatically after payment.' },
     ],
   },
   tariffTeaser: {
@@ -49,9 +49,9 @@ export const home = {
   faq: {
     title: 'Frequently asked questions',
     items: [
-      { question: 'How fast does the server activate?', answer: 'The server deploys automatically within 5 minutes of payment.' },
-      { question: 'Can I change my plan later?', answer: 'Yes, upgrades and downgrades are available anytime from the dashboard.' },
-      { question: 'Do you offer backups?', answer: 'Daily backups are included in every plan except the base tier.' },
+      { question: 'How fast does the server activate?', answer: 'Your server deploys automatically after payment.' },
+      { question: 'Can I change my plan later?', answer: 'Contact support and we will help you pick the right plan.' },
+      { question: 'Do you offer backups?', answer: 'Backups are not included in the plans.' },
       { question: 'What payment methods do you accept?', answer: 'Bank cards, instant bank transfer, and cryptocurrency.' },
     ],
   },

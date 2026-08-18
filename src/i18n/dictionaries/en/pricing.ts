@@ -71,11 +71,10 @@ export const pricing = {
   features: {
     title: "What's included in every plan",
     items: [
-      { name: 'Daily backups', tiers: [false, true, true, true, true] },
       { name: 'DDoS protection', tiers: [true, true, true, true, true] },
       { name: 'IPv6', tiers: [true, true, true, true, true] },
       { name: 'Priority support', tiers: [false, false, true, true, true] },
-      { name: 'Dedicated IP', tiers: [false, true, true, true, true] },
+      { name: 'Dedicated IP', tiers: [true, true, true, true, true] },
     ],
   },
   faq: {
