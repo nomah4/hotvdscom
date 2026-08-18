@@ -104,6 +104,15 @@ export const dashboard = {
       reboot: 'Reboot',
       // The machine's screen — what is left when both the network and sshd are gone.
       console: 'Console',
+      changeIp: 'Change IP',
+      // The button stays and goes flat rather than disappearing: a button that
+      // vanished reads as a fault, and the date answers the only question this
+      // raises.
+      changeIpBlocked: 'The address can be changed once a week. Next change from {date}.',
+      ipChanged: 'New address: {ip}. The machine is rebooting — it comes up in a minute.',
+      // The engine could not reboot it, or the machine is off. Staying silent
+      // would leave the customer waiting for an address only they can bring up.
+      ipChangedNoReboot: 'New address: {ip}. It comes up after a reboot — please reboot the machine yourself.',
       delete: 'Delete server',
       // Deletion takes a second press: it is the only action on this card the
       // customer cannot undo by themselves.
@@ -145,6 +154,32 @@ export const dashboard = {
     previewFailed: 'Could not get the amount from billing. Please try again in a moment.',
     cancel: 'Cancel',
     confirm: 'Pay and renew',
+  },
+  // Confirming an address change. What is confirmed is the address itself, not
+  // the intent: DNS records, allowlists and other people's firewalls still point
+  // at the old one.
+  changeIp: {
+    title: 'Change IP address',
+    currentIp: 'Current address',
+    nextIp: 'New address',
+    picking: 'picking…',
+    rebootWarning: 'The machine will reboot — the new address comes up on the next boot.',
+    limitNote: 'The address can be changed once a week.',
+    offerExpires: 'This address is held for you until {time}.',
+    offerFailed: 'Could not pick an address. Please try again in a moment.',
+    // The address on screen is no longer the one held: pressing again is
+    // pointless, the dialog has to be reopened.
+    offerExpired: 'That address is no longer held for you. Close this and start the change again.',
+    // Built by hand before the engine existed: the address lives inside the
+    // guest and cannot be changed from outside. Support does it instead.
+    manualMachine: 'This server was set up by hand and its address is configured inside the system. Contact support — we will change it for you.',
+    rateLimited: 'The address was already changed this week. The next change will be available later.',
+    // The location's pool is empty. Not the customer's fault and not fixed by
+    // retrying — saying so plainly beats a generic failure.
+    poolExhausted: 'This location has no free addresses right now. Contact support — we will extend the block.',
+    cancel: 'Cancel',
+    confirm: 'Change address',
+    changing: 'Changing the address…',
   },
   billing: {
     title: 'Balance',

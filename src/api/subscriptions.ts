@@ -75,6 +75,15 @@ export interface SubscriptionServer {
    */
   machine?: SubscriptionMachine | null;
   hostname?: string | null;
+  /**
+   * С какого момента клиент снова вправе сменить адрес сам.
+   *
+   * `null` — прямо сейчас; отсутствие ключа — биллинг ещё не отдаёт этот блок,
+   * и тогда кнопки нет вовсе (см. `canChangeIp` в SubscriptionListItem).
+   * Приходит вместе со списком, чтобы карточка знала о лимите до нажатия:
+   * отказ в ответ на подтверждённое действие читается как поломка.
+   */
+  ip_change_allowed_at?: string | null;
 }
 
 /**
@@ -340,6 +349,69 @@ export function withLanguage(url: string, lang: string): string {
     // вкладку в никуда, а не туда, куда велел кто-то посторонний.
     return '';
   }
+}
+
+/** Адрес, который движок придержал для этой машины до подтверждения. */
+export interface IpChangeOffer {
+  /** Текущий адрес — тот же, что на карточке; окно показывает оба. */
+  current_ip?: string | null;
+  next_ip: string;
+  /** Момент, после которого предложение мертво и адрес вернётся в пул. */
+  expires_at?: string | null;
+}
+
+/** Что стало с машиной после смены адреса. */
+export interface IpChangeResult {
+  public_ip?: string | null;
+  /**
+   * Перезагрузил ли движок машину сам.
+   *
+   * Адрес поднимается только на новой загрузке. `false` — машина выключена или
+   * перезагрузить её не вышло, и сделать это придётся клиенту; промолчать
+   * значило бы оставить его ждать адрес, который никто не поднимет.
+   */
+  rebooted?: boolean;
+}
+
+/**
+ * Спросить, на какой адрес сменится машина.
+ *
+ * POST, хотя по смыслу это вопрос: движок придерживает названный адрес на
+ * четверть часа, чтобы окно подтверждения и сама смена говорили об одном и том
+ * же адресе.
+ */
+export function requestIpChangeOffer(
+  accessToken: string,
+  subscriptionId: string,
+): Promise<IpChangeOffer> {
+  return postServerAction(
+    accessToken,
+    subscriptionId,
+    'ip-offer',
+    {},
+    'Could not pick a new address',
+  );
+}
+
+/**
+ * Сменить адрес на тот, который клиент видел в окне.
+ *
+ * Адрес отправляется обратно намеренно: движок сверяет его со своим
+ * предложением и отказывает, если оно истекло. Без этого клиент подтверждал бы
+ * один адрес, а получал другой.
+ */
+export function changeServerIp(
+  accessToken: string,
+  subscriptionId: string,
+  address: string,
+): Promise<IpChangeResult> {
+  return postServerAction(
+    accessToken,
+    subscriptionId,
+    'ip-change',
+    { address },
+    'Could not change the address',
+  );
 }
 
 /**

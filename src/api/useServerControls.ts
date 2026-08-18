@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useLang } from '../i18n/LanguageContext';
 import {
+  changeServerIp,
   deleteServer,
   fetchServerCredentials,
   rebootServer,
@@ -9,6 +10,7 @@ import {
   restoreServer,
   setServerPower,
   withLanguage,
+  type IpChangeResult,
   type ServerCredentials,
 } from './subscriptions';
 
@@ -22,7 +24,8 @@ export type PendingControl =
   | 'delete'
   | 'restore'
   | 'credentials'
-  | 'console';
+  | 'console'
+  | 'ip';
 
 export interface UseServerControlsResult {
   pending: PendingControl | null;
@@ -36,6 +39,14 @@ export interface UseServerControlsResult {
   remove: () => Promise<void>;
   restore: () => Promise<void>;
   openConsole: () => Promise<void>;
+  /**
+   * Сменить адрес на подтверждённый клиентом.
+   *
+   * Возвращает ответ движка, а не `void`, в отличие от остальных действий: окну
+   * подтверждения нужно знать, перезагрузилась ли машина, — от этого зависит,
+   * что клиенту делать дальше. `null` — не вышло, причина в `error`.
+   */
+  changeIp: (address: string) => Promise<IpChangeResult | null>;
   revealCredentials: () => Promise<void>;
   hideCredentials: () => void;
   clearError: () => void;
@@ -152,6 +163,30 @@ export function useServerControls(
     }
   }, [accessToken, lang, subscriptionId]);
 
+  const changeIp = useCallback(
+    async (address: string): Promise<IpChangeResult | null> => {
+      if (!accessToken) {
+        setError('not_signed_in');
+        return null;
+      }
+      setPending('ip');
+      setError(null);
+      try {
+        const result = await changeServerIp(accessToken, subscriptionId, address);
+        // Список перечитывается сразу: на карточке стоит старый адрес, и он
+        // теперь ведёт в никуда.
+        onChanged?.();
+        return result;
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'ip_change_failed');
+        return null;
+      } finally {
+        setPending(null);
+      }
+    },
+    [accessToken, onChanged, subscriptionId],
+  );
+
   /**
    * Reveal the password, treating "there isn't one" as a normal outcome.
    *
@@ -199,6 +234,7 @@ export function useServerControls(
     remove,
     restore,
     openConsole,
+    changeIp,
     revealCredentials,
     hideCredentials,
     clearError,
