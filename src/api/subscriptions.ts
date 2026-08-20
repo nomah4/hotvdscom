@@ -445,21 +445,6 @@ interface UseSubscriptionsResult {
 }
 
 /**
- * Отозванная и отменённая услуга в кабинете не показывается.
- *
- * Биллинг отдаёт список как есть, и это правильно: история принадлежит ему, а
- * кабинет — это «мои серверы». За отозванной подпиской нет ни машины, ни прав
- * на неё; карточка с кнопками, ни одна из которых не сработает, читается как
- * поломка, а не как запись в истории.
- *
- * `expired` при этом остаётся: истёкшую услугу клиент продлевает, и убрать её
- * с глаз значило бы спрятать ту самую кнопку, ради которой он пришёл.
- */
-function isShownInDashboard(subscription: Subscription): boolean {
-  return subscription.status !== 'revoked' && subscription.status !== 'cancelled';
-}
-
-/**
  * Live subscription list for the signed-in user. Re-fetches when the access
  * token changes (sign-in / token refresh). With no token it resolves to an empty
  * list rather than erroring — the dashboard only mounts behind RequireAuth, but
@@ -491,7 +476,9 @@ export function useSubscriptions(): UseSubscriptionsResult {
     fetchSubscriptions(accessToken)
       .then((page) => {
         if (!active) return;
-        setSubscriptions(page.rows.filter(isShownInDashboard));
+        // The page owns presentation. Keep terminal rows here so paid services
+        // that were revoked or cancelled remain visible in account history.
+        setSubscriptions(page.rows);
         setCanRename(page.canRename);
       })
       .catch((err: unknown) => {
