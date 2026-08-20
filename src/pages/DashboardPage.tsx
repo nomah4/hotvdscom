@@ -64,6 +64,33 @@ const ServerList = styled.div`
   gap: 12px;
 `;
 
+const HistorySection = styled.details`
+  margin-top: 28px;
+`;
+
+const HistorySummary = styled.summary`
+  cursor: pointer;
+  color: ${({ theme }) => theme.colors.neutral[600]};
+
+  h2 {
+    display: inline;
+    margin-left: 8px;
+  }
+`;
+
+const ACTIVE_STATUSES = new Set<Subscription['status']>([
+  'active',
+  'pending_activation',
+  'past_due',
+]);
+
+export function splitDashboardSubscriptions(subscriptions: Subscription[]) {
+  return {
+    active: subscriptions.filter((subscription) => ACTIVE_STATUSES.has(subscription.status)),
+    history: subscriptions.filter((subscription) => !ACTIVE_STATUSES.has(subscription.status)),
+  };
+}
+
 // Shared frame for the loading / error / empty states, so the list area keeps
 // the same footprint whether or not there are servers to show.
 const Message = styled.div`
@@ -100,6 +127,8 @@ export function DashboardPage() {
   // chip opens this instead of charging immediately — see RenewalConfirmModal for
   // why that step exists rather than the click going straight to the gateway.
   const [renewTarget, setRenewTarget] = useState<Subscription | null>(null);
+  const { active: activeSubscriptions, history: historySubscriptions } =
+    splitDashboardSubscriptions(subscriptions);
 
   const closeRenewal = () => {
     setRenewTarget(null);
@@ -177,7 +206,7 @@ export function DashboardPage() {
             <Message>{t.subscriptions.loading}</Message>
           ) : error ? (
             <ErrorMessage>{t.subscriptions.error}</ErrorMessage>
-          ) : subscriptions.length === 0 ? (
+          ) : activeSubscriptions.length === 0 ? (
             <Message>
               {t.subscriptions.empty}
               <Button as={Link} to={localizePath(lang, routePaths.pricing)} $size="sm">
@@ -185,7 +214,7 @@ export function DashboardPage() {
               </Button>
             </Message>
           ) : (
-            subscriptions.map((subscription) => {
+            activeSubscriptions.map((subscription) => {
               const match = subscription.package_code
                 ? findByPackageCode(tariffs, subscription.package_code)
                 : null;
@@ -211,6 +240,41 @@ export function DashboardPage() {
             })
           )}
         </ServerList>
+
+        {!isLoading && !error && historySubscriptions.length > 0 && (
+          <HistorySection>
+            <HistorySummary>
+              <SectionTitle>{t.subscriptions.historyTitle}</SectionTitle>
+            </HistorySummary>
+            <ServerList style={{ marginTop: 16 }}>
+              {historySubscriptions.map((subscription) => {
+                const match = subscription.package_code
+                  ? findByPackageCode(tariffs, subscription.package_code)
+                  : null;
+                const isTerminal =
+                  subscription.status === 'revoked' || subscription.status === 'cancelled';
+                return (
+                  <SubscriptionListItem
+                    key={subscription.subscription_id}
+                    subscription={subscription}
+                    tariff={match?.tariff}
+                    period={match?.period}
+                    onRenew={isTerminal ? undefined : setRenewTarget}
+                    isRenewing={renewingId === subscription.subscription_id}
+                    onServerChanged={isTerminal ? undefined : refetch}
+                    onRename={isTerminal || !canRename ? undefined : rename}
+                    readOnly={isTerminal}
+                    renewError={
+                      renewTarget === null && errorSubscriptionId === subscription.subscription_id
+                        ? renewError
+                        : null
+                    }
+                  />
+                );
+              })}
+            </ServerList>
+          </HistorySection>
+        )}
       </div>
 
       {renewTarget && (

@@ -48,6 +48,7 @@ export const dashboard = {
   },
   subscriptions: {
     title: 'My servers',
+    historyTitle: 'History',
     statusLabels: {
       pending_activation: 'Activating',
       active: 'Active',
