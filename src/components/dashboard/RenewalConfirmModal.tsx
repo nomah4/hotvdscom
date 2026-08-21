@@ -230,7 +230,20 @@ export function RenewalConfirmModal({
   // an address, and a stricter pattern here would reject valid ones. This only
   // catches an obviously unusable value before it costs a round trip.
   const emailLooksValid = trimmedEmail.includes('@') && !trimmedEmail.includes(' ');
-  const canConfirm = preview !== null && emailLooksValid && !isSubmitting;
+  /**
+   * Продление невозможно — так сказал сам биллинг.
+   *
+   * Флаг приезжал в ответе с самого начала и не читался: витрина решала за
+   * сервер по статусу подписки. Теперь правило одно и живёт на сервере
+   * (PAYABLE_SUBSCRIPTION_STATUSES), а здесь оно только читается — если оно
+   * снова изменится, кабинет не начнёт предлагать оплату, которая кончится
+   * отказом после нажатия.
+   */
+  // Именно `=== false`, а не отрицание: отсутствие поля — это старый биллинг,
+  // а не запрет. Гасить оплату из-за незнакомого ответа значило бы ломать
+  // рабочий путь ради несуществующего.
+  const notRenewable = preview?.renewable === false;
+  const canConfirm = preview !== null && !notRenewable && emailLooksValid && !isSubmitting;
 
   const validUntil = subscription.valid_until
     ? new Date(subscription.valid_until).toLocaleDateString(lang, {
@@ -300,6 +313,7 @@ export function RenewalConfirmModal({
         <Note>{t.renewal.emailHint}</Note>
 
         {previewError && <ErrorNote>{t.renewal.previewFailed}</ErrorNote>}
+        {notRenewable && <ErrorNote>{t.subscriptions.notRenewable}</ErrorNote>}
         {submitError && <ErrorNote>{submitError}</ErrorNote>}
 
         <Actions>

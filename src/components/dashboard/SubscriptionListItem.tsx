@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import styled from 'styled-components';
-import type { InstanceStatus } from '../../data/instances';
 import type { Subscription, SubscriptionStatus } from '../../api/subscriptions';
 import type { Tariff } from '../../data/tariffs';
 import { datacenters } from '../../data/datacenters';
-import { StatusDot } from '../ui/StatusDot';
+import { StatusDot, type StatusTone } from '../ui/StatusDot';
 import { SpecBadge } from '../ui/SpecBadge';
 import { useServerControls } from '../../api/useServerControls';
 import { ChangeIpModal } from './ChangeIpModal';
@@ -152,23 +151,35 @@ const CornerCell = styled.div`
   gap: 4px;
 `;
 
-// The one date that decides whether the customer still has a server — and, since
-// the separate Renew button is gone, the control that extends it. Indigo rather
-// than the accent colour: it is a fact first and a button second, and painting it
-// like a CTA would make every card shout.
-const ValidUntilChip = styled.button<{ $clickable: boolean }>`
+/**
+ * The one date that decides whether the customer still has a server.
+ *
+ * While the service runs it is also the control that extends it: indigo rather
+ * than the accent colour, because it is a fact first and a button second, and
+ * painting it like a CTA would make every card shout.
+ *
+ * Once the date has passed it stops being a button and turns red. Two reasons
+ * for the split. A date in the past is no longer a promise to click on — it is
+ * the reason the server is down. And an overdue service needs a control that
+ * says what it does: "Valid until: Aug 21" is a poor label for the button that
+ * takes money, so PayButton stands next to it and carries the verb.
+ */
+const ValidUntilChip = styled.button<{ $clickable: boolean; $overdue: boolean }>`
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
   padding: 4px 10px;
   border-radius: ${({ theme }) => theme.radii.md};
-  background: ${({ theme }) => theme.colors.indigo[50]};
-  border: 1px solid ${({ theme }) => theme.colors.indigo[100]};
+  background: ${({ theme, $overdue }) =>
+    $overdue ? 'rgba(229, 72, 77, 0.08)' : theme.colors.indigo[50]};
+  border: 1px solid
+    ${({ theme, $overdue }) => ($overdue ? 'rgba(229, 72, 77, 0.35)' : theme.colors.indigo[100])};
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.indigo[600]};
+  color: ${({ theme, $overdue }) =>
+    $overdue ? theme.colors.semantic.error : theme.colors.indigo[600]};
   white-space: nowrap;
-  /* Rendered as a plain span when renewal is not on offer, so the hover
-     affordance never appears on something that cannot be clicked. */
+  /* Rendered as a plain span when the date is not the renew control, so the
+     hover affordance never appears on something that cannot be clicked. */
   cursor: ${({ $clickable }) => ($clickable ? 'pointer' : 'default')};
 
   ${({ $clickable, theme }) =>
@@ -186,10 +197,55 @@ const ValidUntilChip = styled.button<{ $clickable: boolean }>`
   }
 `;
 
-const ValidUntilValue = styled.span`
+const ValidUntilValue = styled.span<{ $overdue: boolean }>`
   font-family: ${({ theme }) => theme.fonts.mono};
   font-weight: ${({ theme }) => theme.fontWeights.semibold};
-  color: ${({ theme }) => theme.colors.indigo[900]};
+  color: ${({ theme, $overdue }) =>
+    $overdue ? theme.colors.semantic.error : theme.colors.indigo[900]};
+`;
+
+// Дата и кнопка оплаты стоят в одну строку: это одна мысль — «срок вышел,
+// вот как его продлить». Разнести их по строкам значило бы заставить читать
+// угол карточки дважды.
+const ValidUntilRow = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+`;
+
+/**
+ * Единственная на карточке кнопка, которая берёт деньги, — и выглядит так.
+ *
+ * Не `ControlButton`: те управляют машиной и намеренно сделаны тихими, чтобы
+ * ряд из пяти кнопок не спорил сам с собой. Здесь наоборот: услуга не работает,
+ * пока по ней не заплатят, и это единственное действие на карточке, ради
+ * которого её открыли.
+ */
+const PayButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: ${({ theme }) => theme.radii.md};
+  border: 1px solid ${({ theme }) => theme.colors.semantic.error};
+  background: ${({ theme }) => theme.colors.semantic.error};
+  color: #fff;
+  font-family: ${({ theme }) => theme.fonts.heading};
+  font-size: ${({ theme }) => theme.fontSizes.small};
+  font-weight: ${({ theme }) => theme.fontWeights.semibold};
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    filter: brightness(0.94);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
 `;
 
 const CornerLine = styled.span`
@@ -364,15 +420,20 @@ const ProvisioningNote = styled.div`
   color: ${({ theme }) => theme.colors.semantic.warning};
 `;
 
-// Subscription lifecycle → the three visual tones StatusDot already paints.
-// Billing has six states; the dashboard only needs "healthy / needs attention /
-// gone", so several states collapse onto one dot colour while the text label
-// (statusLabels) keeps the exact state.
-const STATUS_TONE: Record<SubscriptionStatus, InstanceStatus> = {
+// Subscription lifecycle → the visual tones StatusDot paints. Billing has six
+// states; the dashboard needs "healthy / working on it / owes money / gone", so
+// several states share a colour while the text label (statusLabels) keeps the
+// exact state.
+//
+// `expired` and `past_due` are red rather than grey: grey said "this server is
+// switched off", which is true but not the point. What is true and *is* the
+// point is that the service ran out and the customer can pay to get it back —
+// and red is the only tone on the card that asks for something.
+const STATUS_TONE: Record<SubscriptionStatus, StatusTone> = {
   active: 'online',
   pending_activation: 'degraded',
-  past_due: 'degraded',
-  expired: 'stopped',
+  past_due: 'critical',
+  expired: 'critical',
   cancelled: 'stopped',
   revoked: 'stopped',
 };
@@ -544,15 +605,37 @@ export function SubscriptionListItem({
   );
 
   /**
-   * Active subscriptions only: Billing answers `subscription_not_renewable` for
-   * every other state, so offering renewal there would be a promise the server
-   * breaks. Works for Custom VDS as well as fixed plans — Billing prices a
-   * configurable renewal from the configuration this subscription recorded.
+   * Услуга кончилась и её ждёт оплата.
    *
-   * Gates both entry points, so the clickable date and the button can never
-   * disagree about whether renewal is on offer.
+   * `past_due` здесь же: для клиента это то же самое — деньги не дошли, сервер
+   * не работает. В самом биллинге этот статус сейчас никем не выставляется, но
+   * правило от этого не меняется, а расходиться с ним, когда выставят, ни к
+   * чему.
    */
-  const canRenew = Boolean(onRenew) && subscription.status === 'active';
+  const isOverdue = subscription.status === 'expired' || subscription.status === 'past_due';
+
+  /**
+   * Whether the customer may pay for this service at all.
+   *
+   * Mirrors Billing's PAYABLE_SUBSCRIPTION_STATUSES: live services and ones that
+   * have run out. `cancelled`/`revoked` answer `subscription_not_renewable`, so
+   * offering payment there would be a promise the server breaks. Those do reach
+   * this card — they sit in the dashboard's History section — which is exactly
+   * why the check is here and not only in the page that renders the list.
+   *
+   * Works for Custom VDS as well as fixed plans — Billing prices a configurable
+   * renewal from the configuration this subscription recorded.
+   */
+  const canPay = Boolean(onRenew) && (subscription.status === 'active' || isOverdue);
+
+  /**
+   * Дата — кнопка продления только пока услуга жива.
+   *
+   * После срока это уже не обещание, по которому кликают, а причина, по которой
+   * сервер лежит; действие переезжает на отдельную кнопку, у которой в подписи
+   * стоит глагол.
+   */
+  const dateIsTheControl = canPay && !isOverdue;
 
   const { title, planName: planUnderTitle } = resolveSubscriptionTitle(subscription, tariff, {
     customPlan: t.subscriptions.customPlan,
@@ -656,29 +739,47 @@ export function SubscriptionListItem({
           it extends — the two are one thought, and separating them left the
           button in a row of unrelated power controls. */}
       <CornerCell>
-        {/* The date is the renew control — there is no separate button. The
-            chip therefore has to advertise itself: `title` on hover, a pointer
-            cursor, and an accent border that only appears when it is actually
-            clickable. Without those it is a date that silently charges money,
-            which is worse than an extra button. While the purchase is opening it
-            switches to the "renewing" label, so the one control still reports
-            its own progress. */}
-        <ValidUntilChip
-          as={canRenew ? 'button' : 'span'}
-          type={canRenew ? 'button' : undefined}
-          $clickable={canRenew}
-          onClick={canRenew ? () => onRenew!(subscription) : undefined}
-          disabled={canRenew ? isRenewing : undefined}
-          title={canRenew ? t.subscriptions.renewHint : undefined}
-        >
-          {canRenew && isRenewing ? (
-            t.subscriptions.renewing
-          ) : (
-            <>
-              {t.subscriptions.validUntil}: <ValidUntilValue>{validUntil}</ValidUntilValue>
-            </>
+        {/* While the service runs, the date IS the renew control — there is no
+            separate button, so the chip has to advertise itself: `title` on
+            hover, a pointer cursor, and an accent border that only appears when
+            it is actually clickable. Without those it is a date that silently
+            charges money, which is worse than an extra button. While the
+            purchase is opening it switches to the "renewing" label, so the one
+            control still reports its own progress.
+
+            Once the service has run out the date goes red and stops being a
+            button, and Pay appears beside it. */}
+        <ValidUntilRow>
+          <ValidUntilChip
+            as={dateIsTheControl ? 'button' : 'span'}
+            type={dateIsTheControl ? 'button' : undefined}
+            $clickable={dateIsTheControl}
+            $overdue={isOverdue}
+            onClick={dateIsTheControl ? () => onRenew!(subscription) : undefined}
+            disabled={dateIsTheControl ? isRenewing : undefined}
+            title={dateIsTheControl ? t.subscriptions.renewHint : undefined}
+          >
+            {dateIsTheControl && isRenewing ? (
+              t.subscriptions.renewing
+            ) : (
+              <>
+                {t.subscriptions.validUntil}:{' '}
+                <ValidUntilValue $overdue={isOverdue}>{validUntil}</ValidUntilValue>
+              </>
+            )}
+          </ValidUntilChip>
+
+          {canPay && isOverdue && (
+            <PayButton
+              type="button"
+              onClick={() => onRenew!(subscription)}
+              disabled={isRenewing}
+              title={t.subscriptions.payHint}
+            >
+              {isRenewing ? t.subscriptions.renewing : t.subscriptions.payNow}
+            </PayButton>
           )}
-        </ValidUntilChip>
+        </ValidUntilRow>
 
         {configuration?.os && (
           <CornerLine>

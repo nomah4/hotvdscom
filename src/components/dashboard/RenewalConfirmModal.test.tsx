@@ -12,6 +12,7 @@ vi.mock('../../api/checkout', () => ({
 const { fetchRenewalPreview } = await import('../../api/checkout');
 const { RenewalConfirmModal } = await import('./RenewalConfirmModal');
 const { renderWithProviders } = await import('../../test/renderWithProviders');
+const { dictionaries } = await import('../../i18n/dictionaries');
 
 const subscription = {
   subscription_id: 'sub-1',
@@ -44,6 +45,7 @@ describe('RenewalConfirmModal', () => {
     vi.mocked(fetchRenewalPreview).mockResolvedValue({
       amount_minor: 180000,
       currency: 'RUB',
+      renewable: true,
     } as never);
   });
 
@@ -55,6 +57,25 @@ describe('RenewalConfirmModal', () => {
     renderModal();
     await waitFor(() => expect(screen.getByText(/1,800/)).toBeInTheDocument());
     expect(fetchRenewalPreview).toHaveBeenCalledWith('token', 'sub-1', 'RUB');
+  });
+
+  /**
+   * Правило о том, что можно продлить, живёт в биллинге. Кабинет его читает, а
+   * не повторяет: иначе расхождение стоило бы клиенту 422 после нажатия.
+   */
+  it('does not offer to charge for something Billing would refuse', async () => {
+    vi.mocked(fetchRenewalPreview).mockResolvedValue({
+      amount_minor: 180000,
+      currency: 'RUB',
+      renewable: false,
+    } as never);
+
+    renderModal();
+
+    await waitFor(() =>
+      expect(screen.getByText(dictionaries.en.dashboard.subscriptions.notRenewable)).toBeInTheDocument(),
+    );
+    expect(screen.getByRole('button', { name: /pay and renew/i })).toBeDisabled();
   });
 
   it('prefills the receipt email from the signed-in profile', async () => {
