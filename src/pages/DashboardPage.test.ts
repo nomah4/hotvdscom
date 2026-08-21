@@ -26,12 +26,19 @@ describe('splitDashboardSubscriptions', () => {
     expect(splitDashboardSubscriptions(rows)).toEqual({ active: rows, history: [] });
   });
 
-  it('keeps expired, revoked, and cancelled services in History', () => {
-    const rows: Subscription[] = [
-      subscription('expired'),
-      subscription('revoked'),
-      subscription('cancelled'),
-    ];
+  /**
+   * Истёкшая услуга остаётся на виду, потому что её оплачивают. Свёрнутая
+   * «История» — последнее место, где станут искать кнопку «Оплатить», а
+   * спрятать туда услугу, которая ждёт денег, значит спрятать сам счёт.
+   */
+  it('keeps an expired service in My servers, where it can be paid for', () => {
+    const expired = subscription('expired');
+
+    expect(splitDashboardSubscriptions([expired])).toEqual({ active: [expired], history: [] });
+  });
+
+  it('keeps revoked and cancelled services in History', () => {
+    const rows: Subscription[] = [subscription('revoked'), subscription('cancelled')];
 
     expect(splitDashboardSubscriptions(rows)).toEqual({ active: [], history: rows });
   });

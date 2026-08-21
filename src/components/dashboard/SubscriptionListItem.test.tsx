@@ -107,8 +107,7 @@ describe('SubscriptionListItem', () => {
 
     it('offers no way to pay while Billing would refuse', () => {
       // pending_activation answers subscription_not_renewable, so an affordance
-      // here would be a promise the server breaks. (cancelled/revoked never
-      // reach a card at all — the dashboard filters them out.)
+      // here would be a promise the server breaks.
       renderWithProviders(
         <SubscriptionListItem
           subscription={subscription({ status: 'pending_activation' })}

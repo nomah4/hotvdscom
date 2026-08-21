@@ -619,8 +619,9 @@ export function SubscriptionListItem({
    *
    * Mirrors Billing's PAYABLE_SUBSCRIPTION_STATUSES: live services and ones that
    * have run out. `cancelled`/`revoked` answer `subscription_not_renewable`, so
-   * offering payment there would be a promise the server breaks — and neither
-   * ever reaches this card anyway (see isShownInDashboard).
+   * offering payment there would be a promise the server breaks. Those do reach
+   * this card — they sit in the dashboard's History section — which is exactly
+   * why the check is here and not only in the page that renders the list.
    *
    * Works for Custom VDS as well as fixed plans — Billing prices a configurable
    * renewal from the configuration this subscription recorded.
