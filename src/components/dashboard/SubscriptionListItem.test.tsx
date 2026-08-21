@@ -73,11 +73,17 @@ function subscription(overrides: Partial<Subscription> = {}): Subscription {
 
 const t = dictionaries.ru.dashboard.subscriptions;
 
+// theme.colors.semantic.error, как его отдаёт jsdom.
+const ERROR_RED = 'rgb(229, 72, 77)';
+
+const colourOf = (element: HTMLElement) => getComputedStyle(element).color;
+
 describe('SubscriptionListItem', () => {
   /**
-   * The valid-until chip is the only way to start a renewal, so it carries the
-   * whole money path: it must fire, must advertise itself, and must disappear as
-   * a control the moment Billing would refuse.
+   * The valid-until chip carries the whole money path: while the service runs it
+   * IS the renew control, and once it has run out it hands the verb to a Pay
+   * button beside it. Either way the card must never offer a payment Billing
+   * would refuse.
    */
   describe('renewal', () => {
     it('renews when the valid-until chip is clicked', () => {
@@ -99,17 +105,98 @@ describe('SubscriptionListItem', () => {
       );
     });
 
-    it('offers neither entrance once the subscription is not active', () => {
-      // Billing answers subscription_not_renewable for every other state, so a
-      // renew affordance here would be a promise the server breaks.
+    it('offers no way to pay while Billing would refuse', () => {
+      // pending_activation answers subscription_not_renewable, so an affordance
+      // here would be a promise the server breaks. (cancelled/revoked never
+      // reach a card at all — the dashboard filters them out.)
       renderWithProviders(
-        <SubscriptionListItem subscription={subscription({ status: 'expired' })} onRenew={vi.fn()} />,
+        <SubscriptionListItem
+          subscription={subscription({ status: 'pending_activation' })}
+          onRenew={vi.fn()}
+        />,
       );
 
-      // The chip is the only renew control, so "not on offer" means it stops
-      // being a button — while still showing the date as plain text.
       expect(screen.queryByRole('button', { name: new RegExp(t.validUntil) })).toBeNull();
+      expect(screen.queryByRole('button', { name: t.payNow })).toBeNull();
       expect(screen.getByText(new RegExp(t.validUntil))).toBeInTheDocument();
+    });
+
+    /**
+     * Истёкшая услуга — единственная причина, по которой клиент приходит в
+     * кабинет с деньгами. До этого дата переставала быть кнопкой, и заплатить
+     * за свой сервер было негде.
+     */
+    describe('once the service has run out', () => {
+      it('offers a button that says what it does', () => {
+        const onRenew = vi.fn();
+        renderWithProviders(
+          <SubscriptionListItem subscription={subscription({ status: 'expired' })} onRenew={onRenew} />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: t.payNow }));
+
+        expect(onRenew).toHaveBeenCalledTimes(1);
+      });
+
+      it('stops pretending the past date is a control', () => {
+        // «Действует до» в прошедшем времени — не обещание, по которому кликают,
+        // а причина, по которой сервер лежит. Глагол теперь на соседней кнопке.
+        renderWithProviders(
+          <SubscriptionListItem subscription={subscription({ status: 'expired' })} onRenew={vi.fn()} />,
+        );
+
+        expect(screen.queryByRole('button', { name: new RegExp(t.validUntil) })).toBeNull();
+        expect(screen.getByText(new RegExp(t.validUntil))).toBeInTheDocument();
+      });
+
+      it('treats a past-due service the same way', () => {
+        // Для клиента это одно и то же: деньги не дошли, сервер не работает.
+        renderWithProviders(
+          <SubscriptionListItem subscription={subscription({ status: 'past_due' })} onRenew={vi.fn()} />,
+        );
+
+        expect(screen.getByRole('button', { name: t.payNow })).toBeInTheDocument();
+      });
+
+      it('goes flat while the payment is opening, like the chip does', () => {
+        renderWithProviders(
+          <SubscriptionListItem
+            subscription={subscription({ status: 'expired' })}
+            onRenew={vi.fn()}
+            isRenewing
+          />,
+        );
+
+        expect(screen.getByRole('button', { name: t.renewing })).toBeDisabled();
+      });
+
+      it('does not offer payment the dashboard cannot start', () => {
+        // Без onRenew платить некуда — кнопка, которая ничего не делает, хуже
+        // её отсутствия.
+        renderWithProviders(<SubscriptionListItem subscription={subscription({ status: 'expired' })} />);
+
+        expect(screen.queryByRole('button', { name: t.payNow })).toBeNull();
+      });
+    });
+  });
+
+  describe('status', () => {
+    /**
+     * Серая точка у слова «Истёк» сообщала ровно то же, что у слова
+     * «Остановлен», хотя в первом случае от клиента ждут денег.
+     */
+    it('burns red once the service has run out', () => {
+      renderWithProviders(<SubscriptionListItem subscription={subscription({ status: 'expired' })} />);
+
+      expect(colourOf(screen.getByText(t.statusLabels.expired))).toBe(ERROR_RED);
+      // И дата рядом — тем же цветом: это одна новость, а не две.
+      expect(colourOf(screen.getByText(new RegExp(t.validUntil)))).toBe(ERROR_RED);
+    });
+
+    it('leaves a live service alone', () => {
+      renderWithProviders(<SubscriptionListItem subscription={subscription()} />);
+
+      expect(colourOf(screen.getByText(t.statusLabels.active))).not.toBe(ERROR_RED);
     });
   });
 

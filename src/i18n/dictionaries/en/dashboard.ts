@@ -67,6 +67,14 @@ export const dashboard = {
     renewHint: 'Click to renew this service',
     renewing: 'Opening payment…',
     renewError: 'Could not start the renewal. Please try again.',
+    // A verb, not a date. On a live service the expiry date is itself the renew
+    // control, but "Valid until: Aug 21" is a poor label for the button that
+    // takes money for a server that has already stopped.
+    payNow: 'Pay',
+    payHint: 'The service has expired. Pay to bring the server back',
+    // Billing's answer rather than a guess made here: when renewal is not
+    // possible, the confirm button must not lead to a refusal after the click.
+    notRenewable: 'This service cannot be renewed. Please contact support.',
     unknownPlan: 'Unknown plan',
     serviceId: 'Service ID',
     customPlan: 'Custom VDS',
