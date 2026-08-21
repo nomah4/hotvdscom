@@ -470,6 +470,8 @@ interface SubscriptionListItemProps {
    * тогда появляется карандаш. Без него карточка выглядит ровно как раньше.
    */
   onRename?: (subscription: Subscription, displayName: string) => Promise<void>;
+  /** History rows without a live service keep their identifying details only. */
+  readOnly?: boolean;
 }
 
 export function SubscriptionListItem({
@@ -481,6 +483,7 @@ export function SubscriptionListItem({
   renewError = null,
   onServerChanged,
   onRename,
+  readOnly = false,
 }: SubscriptionListItemProps) {
   const t = useTranslation('dashboard');
   const { lang } = useLang();
@@ -841,7 +844,7 @@ export function SubscriptionListItem({
 
       {/* Bottom row: actions left to right by how often they are wanted, with
           the irreversible one pushed to the far corner away from the rest. */}
-      <ActionRow>
+      {!readOnly && <ActionRow>
         {!hasServer ? (
           // Nothing to control until the engine has built the machine. Saying so
           // beats offering buttons that can only fail.
@@ -957,7 +960,7 @@ export function SubscriptionListItem({
             )}
           </>
         )}
-      </ActionRow>
+      </ActionRow>}
 
       {controls.credentials && (
         <CredentialsBox>
