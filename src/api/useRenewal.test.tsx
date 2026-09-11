@@ -115,6 +115,54 @@ describe('useRenewal', () => {
     expect(fetchPaymentMethods).toHaveBeenCalledWith('token', 180000, 'RUB');
   });
 
+  /**
+   * A renewal the balance covers never reaches a gateway: Billing marks it paid
+   * and returns no `payment_url`. Leaving the page in that case would send the
+   * customer away from the very card whose date just changed — and throwing
+   * `no_payment_url`, which is what the code did before the balance existed,
+   * would tell them a completed payment had failed.
+   */
+  it('settles a renewal paid from the balance without leaving the page', async () => {
+    vi.mocked(createRenewal).mockResolvedValue({
+      renewal_id: 'ren-1',
+      invoice_id: 'inv-1',
+      status: 'paid',
+      payment_url: null,
+      paid_from_balance: true,
+    } as never);
+    const onPaidFromBalance = vi.fn();
+
+    const { result } = renderHook(() => useRenewal({ onPaidFromBalance }), { wrapper });
+    await act(async () => {
+      await result.current.renew(subscription, 'customer@example.com');
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.paidFromBalance).toBe('sub-1');
+    expect(result.current.renewingId).toBeNull();
+    expect(window.location.assign).not.toHaveBeenCalled();
+    // The hook cannot re-read the list — the page owns it — so without this the
+    // card would keep showing the old expiry date after a real payment.
+    expect(onPaidFromBalance).toHaveBeenCalledWith(subscription);
+  });
+
+  it('still fails when an unpaid renewal has no payment_url', async () => {
+    vi.mocked(createRenewal).mockResolvedValue({
+      renewal_id: 'ren-2',
+      invoice_id: 'inv-2',
+      status: 'pending_payment',
+      payment_url: null,
+    } as never);
+
+    const { result } = renderHook(() => useRenewal(), { wrapper });
+    await act(async () => {
+      await result.current.renew(subscription, 'customer@example.com');
+    });
+
+    expect(result.current.error).toBe('no_payment_url');
+    expect(result.current.paidFromBalance).toBeNull();
+  });
+
   it('reports the failure against the subscription that failed', async () => {
     vi.mocked(createRenewal).mockRejectedValue(new Error('renewal_boom'));
     const { result } = renderHook(() => useRenewal(), { wrapper });

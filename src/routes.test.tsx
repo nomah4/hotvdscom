@@ -93,6 +93,28 @@ describe('routing', () => {
     );
   });
 
+  it('mounts the balance page at its own route', async () => {
+    // `dashboard/balance` sits under the same /:lang parent as `dashboard`. A
+    // missing route or a mistyped slug would let the splat answer instead, and
+    // the sidebar's Balance entry would quietly lead to a not-found page.
+    renderAt('/ru/dashboard/balance');
+
+    expect(await screen.findByRole('heading', { level: 1 })).not.toHaveTextContent(
+      dictionaries.ru.common.notFound.title,
+    );
+  });
+
+  it('mounts the balance return page rather than letting the balance route swallow it', async () => {
+    // The deeper path must win over `dashboard/balance` itself — otherwise the
+    // gateway returns a paying customer to a page that never reads their
+    // top-up back.
+    renderAt('/ru/dashboard/balance/return');
+
+    expect(await screen.findByRole('heading', { level: 1 })).not.toHaveTextContent(
+      dictionaries.ru.common.notFound.title,
+    );
+  });
+
   it('does not let the not-found splat swallow a more specific route', async () => {
     // Splats score lowest in react-router's ranking, so the authenticated routes
     // declared outside the marketing layout still win. Worth asserting rather

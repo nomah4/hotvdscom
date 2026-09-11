@@ -6,15 +6,16 @@ import { Section } from '../components/layout/Section';
 import { TermsModal } from '../components/legal/TermsModal';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../auth/AuthContext';
-import { useLang, useTranslation } from '../i18n/LanguageContext';
+import { interpolate, useLang, useTranslation } from '../i18n/LanguageContext';
 import { localizePath, routePaths } from '../i18n/paths';
 import { findByPackageCode, useTariffs } from '../api/catalogue';
 import { createQuote } from '../api/checkout';
 import type { CustomVdsConfiguration, Quote } from '../api/checkout';
 import { customVdsIntentKey, useCheckout } from '../api/useCheckout';
+import { useBalance } from '../api/balance';
 import { normalizeCurrency } from '../api/config';
 import { datacenters } from '../data/datacenters';
-import { displayPrice } from '../utils/money';
+import { displayPrice, formatMoneyMinor } from '../utils/money';
 
 const Panel = styled.div`
   max-width: 520px;
@@ -122,6 +123,24 @@ const Note = styled.p`
   color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
+// Sits directly above the total, which is where the customer is deciding how
+// this gets paid for. Green when the balance covers it, muted when it does not:
+// one is good news, the other is an errand.
+const BalanceHint = styled.p`
+  font-size: ${({ theme }) => theme.fontSizes.small};
+  color: ${({ theme }) => theme.colors.mint[700]};
+`;
+
+const BalanceShortfall = styled.p`
+  font-size: ${({ theme }) => theme.fontSizes.small};
+  color: ${({ theme }) => theme.colors.neutral[600]};
+
+  a {
+    color: ${({ theme }) => theme.colors.indigo[600]};
+    text-decoration: underline;
+  }
+`;
+
 const TermsRow = styled.div`
   display: flex;
   align-items: flex-start;
@@ -218,6 +237,9 @@ export function CheckoutPage() {
   const { isAuthenticated, user, login, isLoading: authLoading } = useAuth();
   const { tariffs, isLoading, error } = useTariffs(checkoutCurrency);
   const { confirm, confirmQuote, isSubmitting, error: checkoutError } = useCheckout();
+  // `null` while signed out and when Billing has the feature off, which is the
+  // same thing to this page: say nothing about a balance that does not exist.
+  const { balance } = useBalance();
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -327,6 +349,15 @@ export function CheckoutPage() {
         `${match!.tariff.ssd} ${lang === 'ru' ? 'ГБ NVMe' : 'GB NVMe'}`,
         `${match!.tariff.traffic} ${lang === 'ru' ? 'трафика' : 'traffic'}`,
       ];
+  // Minor units — the same figure Billing will price the invoice at, so the
+  // comparison below is against what actually gets charged.
+  const totalMinor = Math.round(total * 100);
+  // Only meaningful while signed in and with the feature on; `useBalance` gives
+  // null for both of the other cases, and then nothing about balance is shown.
+  const balanceCoversOrder = balance !== null && balance.amount_minor >= totalMinor;
+  const balanceShortfallMinor =
+    balance !== null && !balanceCoversOrder ? totalMinor - balance.amount_minor : null;
+
   const trimmedReceiptEmail = receiptEmail.trim();
   const receiptEmailLooksValid =
     trimmedReceiptEmail.includes('@') && !trimmedReceiptEmail.includes(' ');
@@ -360,6 +391,26 @@ export function CheckoutPage() {
               </EmailField>
             )}
             <Divider />
+            {isAuthenticated && balance !== null && (
+              balanceCoversOrder ? (
+                <BalanceHint>
+                  {interpolate(t.checkout.balanceCovers, {
+                    balance: formatMoneyMinor(balance.amount_minor, balance.currency, lang),
+                  })}
+                </BalanceHint>
+              ) : (
+                <BalanceShortfall>
+                  <Link
+                    to={`${localizePath(lang, routePaths.balance)}?amount=${balanceShortfallMinor}`}
+                  >
+                    {interpolate(t.checkout.balanceShortfall, {
+                      amount: formatMoneyMinor(balanceShortfallMinor ?? 0, balance.currency, lang),
+                    })}
+                  </Link>{' '}
+                  {t.checkout.balanceShortfallNote}
+                </BalanceShortfall>
+              )
+            )}
             <TotalRow>
               <span>{t.checkout.totalLabel}</span>
               <TotalAmountBlock>
@@ -409,7 +460,11 @@ export function CheckoutPage() {
                     }
                   }}
                 >
-                  {isSubmitting ? t.checkout.starting : t.checkout.proceedToPayment}
+                  {isSubmitting
+                    ? t.checkout.starting
+                    : balanceCoversOrder
+                      ? t.checkout.payFromBalance
+                      : t.checkout.proceedToPayment}
                 </Button>
                 {backToPricing}
               </Actions>

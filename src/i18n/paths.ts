@@ -24,6 +24,13 @@ export const routePaths = {
   // machine; this page is the way in and the place that says what support
   // covers.
   support: 'dashboard/support',
+  // Account balance: money already paid in, and the page that puts more there.
+  // Inside the cabinet rather than at checkout because it is not part of buying
+  // one thing — it is the account's own money.
+  balance: 'dashboard/balance',
+  // Where the gateway returns a customer who was topping up. Separate from
+  // checkoutReturn because the thing to read back is a top-up, not an invoice.
+  balanceReturn: 'dashboard/balance/return',
   // Order confirmation. Nothing is charged and no invoice exists until the
   // customer confirms here.
   checkout: 'checkout',

@@ -7,6 +7,14 @@ vi.mock('../auth/AuthContext', () => ({
   useAuth: () => ({ accessToken: 'token', user: { profile: { email: 'customer@example.com' } } }),
 }));
 
+// The paid-from-balance path navigates instead of leaving for a gateway, so the
+// navigation itself is what has to be observed.
+const navigate = vi.fn();
+vi.mock('react-router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('react-router')>()),
+  useNavigate: () => navigate,
+}));
+
 vi.mock('./checkout', () => ({
   createInvoice: vi.fn(),
   createInvoiceFromQuote: vi.fn(),
@@ -61,6 +69,7 @@ describe('useCheckout — idempotency key lifetime', () => {
   beforeEach(() => {
     sessionStorage.clear();
     vi.mocked(createInvoice).mockReset();
+    navigate.mockReset();
     // jsdom refuses real navigation; the call itself is not what is under test.
     Object.defineProperty(window, 'location', {
       configurable: true,
@@ -162,6 +171,70 @@ describe('useCheckout — idempotency key lifetime', () => {
     // Only the keys — the pending-invoice record is what the return page reads
     // to show an outcome, and it is not an idempotency key.
     expect(sessionStorage.getItem('hotvds.pendingInvoiceId')).not.toBeNull();
+  });
+
+  /**
+   * Billing settles an order from the balance when it covers the price: the
+   * invoice comes back already `paid` with `payment_url: null`.
+   *
+   * Before the balance existed that combination could only mean a broken
+   * purchase, and the code threw `no_payment_url` — which would now tell a
+   * customer whose money has already moved that their payment failed.
+   */
+  it('does not treat a purchase paid from the balance as a failure', async () => {
+    vi.mocked(createInvoice).mockResolvedValue({
+      invoice_id: 'inv_1',
+      status: 'paid',
+      payment_url: null,
+      paid_from_balance: true,
+    } as never);
+
+    const { result } = renderHook(() => useCheckout(), { wrapper });
+    await act(async () => {
+      await result.current.confirm(tariff, 'monthly');
+    });
+
+    expect(result.current.error).toBeNull();
+    // Sent to the return page, which polls the invoice and shows the paid
+    // outcome — the same screen a card payment lands on.
+    expect(navigate).toHaveBeenCalledWith(expect.stringContaining('/ru/checkout/return?invoice=inv_1'));
+    expect(window.location.assign).not.toHaveBeenCalled();
+    // The return page reads this to know which invoice it is reporting on.
+    expect(sessionStorage.getItem('hotvds.pendingInvoiceId')).toContain('inv_1');
+  });
+
+  it('reads a paid invoice with no payment_url as paid from balance even without the flag', async () => {
+    // An older Billing does not send `paid_from_balance` at all.
+    vi.mocked(createInvoice).mockResolvedValue({
+      invoice_id: 'inv_2',
+      status: 'paid',
+      payment_url: null,
+    } as never);
+
+    const { result } = renderHook(() => useCheckout(), { wrapper });
+    await act(async () => {
+      await result.current.confirm(tariff, 'monthly');
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(navigate).toHaveBeenCalled();
+  });
+
+  /** The old failure must survive: an unpaid invoice with nowhere to pay is
+   * still broken, and silently "succeeding" would be worse than the error. */
+  it('still fails when an unpaid invoice has no payment_url', async () => {
+    vi.mocked(createInvoice).mockResolvedValue({
+      invoice_id: 'inv_3',
+      status: 'pending_payment',
+      payment_url: null,
+    } as never);
+
+    const { result } = renderHook(() => useCheckout(), { wrapper });
+    await act(async () => {
+      await result.current.confirm(tariff, 'monthly');
+    });
+
+    expect(result.current.error).toBe('no_payment_url');
   });
 
   it('reuses the key within one attempt', () => {

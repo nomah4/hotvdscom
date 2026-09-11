@@ -7,6 +7,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { AdminPage } from './pages/AdminPage';
 import { NewServerPage } from './pages/NewServerPage';
 import { SupportPage } from './pages/SupportPage';
+import { BalancePage } from './pages/BalancePage';
+import { BalanceReturnPage } from './pages/BalanceReturnPage';
 import { CallbackPage } from './pages/CallbackPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { CheckoutReturnPage } from './pages/CheckoutReturnPage';
@@ -78,6 +80,28 @@ export function AppRoutes() {
           element={
             <RequireAuth>
               <NewServerPage />
+            </RequireAuth>
+          }
+        />
+        {/* Account balance. Behind RequireAuth because it reads and spends this
+            customer's own money — every balance call is scoped to the token. */}
+        <Route
+          path={routePaths.balance}
+          element={
+            <RequireAuth>
+              <BalancePage />
+            </RequireAuth>
+          }
+        />
+        {/* Gateway return for a top-up. Declared after `balance` but react-router
+            ranks by specificity, not order, so the deeper path still wins.
+            RequireAuth for the same reason as checkoutReturn: reading the
+            top-up back needs the customer's own token. */}
+        <Route
+          path={routePaths.balanceReturn}
+          element={
+            <RequireAuth>
+              <BalanceReturnPage />
             </RequireAuth>
           }
         />

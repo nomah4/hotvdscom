@@ -39,6 +39,7 @@ Known gaps live in `TODO.md`; security findings in `SECURITY-TODO.md` (branch `s
 | `/:lang/dashboard` | The customer's own servers, from Billing. Requires a session; no marketing chrome |
 | `/:lang/dashboard/new` | Order another server without leaving the account — same configurator and `/checkout` as `/pricing` |
 | `/:lang/dashboard/support` | Technical support. Opens the Chatwoot chat once it is configured |
+| `/:lang/dashboard/balance`, `/:lang/dashboard/balance/return` | Account balance: top up, pay for several servers at once, ledger, and the gateway return for a top-up. Renders "not connected yet" when Billing answers 404 |
 | `/:lang/admin` | Staff view of storefront sign-ups. Gated by the `hotvds_admin` role |
 | `/:lang/checkout`, `/:lang/checkout/return` | Order confirmation and payment-gateway return. No layout of their own |
 | `/callback` | ZITADEL OIDC redirect. Deliberately outside `/:lang` — the registered redirect URI has no locale |

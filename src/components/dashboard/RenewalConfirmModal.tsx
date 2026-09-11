@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../auth/AuthContext';
-import { useLang, useTranslation } from '../../i18n/LanguageContext';
+import { interpolate, useLang, useTranslation } from '../../i18n/LanguageContext';
 import { fetchRenewalPreview, type RenewalPreview } from '../../api/checkout';
 import { DEFAULT_CURRENCY } from '../../api/config';
 import type { Subscription } from '../../api/subscriptions';
-import { displayPrice } from '../../utils/money';
+import { useBalance } from '../../api/balance';
+import { displayPrice, formatMoneyMinor } from '../../utils/money';
 
 const Backdrop = styled.div`
   position: fixed;
@@ -125,6 +126,12 @@ const Note = styled.p`
   color: ${({ theme }) => theme.colors.neutral[500]};
 `;
 
+// Good news, not a warning: the renewal is covered and no card is needed.
+const OkNote = styled.p`
+  font-size: ${({ theme }) => theme.fontSizes.small};
+  color: ${({ theme }) => theme.colors.mint[700]};
+`;
+
 const ErrorNote = styled.p`
   font-size: ${({ theme }) => theme.fontSizes.small};
   color: ${({ theme }) => theme.colors.semantic.error};
@@ -187,6 +194,9 @@ export function RenewalConfirmModal({
   const { lang } = useLang();
   const { accessToken, user } = useAuth();
 
+  // `null` when Billing has the balance feature off — then this modal reads
+  // exactly as it did before the feature existed.
+  const { balance } = useBalance();
   const [preview, setPreview] = useState<RenewalPreview | null>(null);
   const [previewError, setPreviewError] = useState(false);
   const [email, setEmail] = useState(user?.profile?.email ?? '');
@@ -243,6 +253,11 @@ export function RenewalConfirmModal({
   // а не запрет. Гасить оплату из-за незнакомого ответа значило бы ломать
   // рабочий путь ради несуществующего.
   const notRenewable = preview?.renewable === false;
+  // Billing decides the payment source itself, all-or-nothing: balance >= price
+  // settles from the balance, anything less goes to the card. This only says in
+  // advance what it is about to do, so the customer is not surprised either way.
+  const balanceCoversRenewal =
+    balance !== null && preview !== null && balance.amount_minor >= preview.amount_minor;
   const canConfirm = preview !== null && !notRenewable && emailLooksValid && !isSubmitting;
 
   const validUntil = subscription.valid_until
@@ -312,6 +327,14 @@ export function RenewalConfirmModal({
         </Field>
         <Note>{t.renewal.emailHint}</Note>
 
+        {balanceCoversRenewal && balance && (
+          <OkNote>
+            {interpolate(t.renewal.fromBalance, {
+              amount: formatMoneyMinor(balance.amount_minor, balance.currency, lang),
+            })}
+          </OkNote>
+        )}
+
         {previewError && <ErrorNote>{t.renewal.previewFailed}</ErrorNote>}
         {notRenewable && <ErrorNote>{t.subscriptions.notRenewable}</ErrorNote>}
         {submitError && <ErrorNote>{submitError}</ErrorNote>}
@@ -321,7 +344,11 @@ export function RenewalConfirmModal({
             {t.renewal.cancel}
           </Button>
           <Button type="button" $fullWidth disabled={!canConfirm} onClick={() => onConfirm(trimmedEmail)}>
-            {isSubmitting ? t.subscriptions.renewing : t.renewal.confirm}
+            {isSubmitting
+              ? t.subscriptions.renewing
+              : balanceCoversRenewal
+                ? t.renewal.confirmFromBalance
+                : t.renewal.confirm}
           </Button>
         </Actions>
       </Card>
