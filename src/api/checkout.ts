@@ -16,6 +16,18 @@ export interface Invoice {
   payment_url: string | null;
   method_code: string | null;
   subscription_id: string | null;
+  /**
+   * Billing settled this invoice from the account balance instead of a card.
+   *
+   * When true the invoice is already `paid` and `payment_url` is `null` — that
+   * combination is a success, not the `no_payment_url` failure it looks like.
+   * Billing decides it itself (balance >= price, all or nothing); the
+   * storefront never chooses the payment source.
+   *
+   * Optional: an older Billing does not send the key at all, and absence means
+   * "card path", the same as `false`.
+   */
+  paid_from_balance?: boolean;
 }
 
 export interface CustomVdsConfiguration {
@@ -181,6 +193,9 @@ export interface Renewal {
   currency: string | null;
   expires_at: string | null;
   payment_url: string | null;
+  /** See `Invoice.paid_from_balance` — the renewal is already paid and there is
+   * no gateway to send the customer to. */
+  paid_from_balance?: boolean;
 }
 
 export interface RenewalPreview {

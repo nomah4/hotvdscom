@@ -21,8 +21,8 @@ describe('Sidebar', () => {
     const t = dictionaries[lang].dashboard.sidebar;
 
     // Entries with no `to` render as a disabled button rather than a link —
-    // Billing and Settings are in that state. Asserting the *link* role is what
-    // separates "wired up" from "rendered but inert".
+    // Settings is in that state. Asserting the *link* role is what separates
+    // "wired up" from "rendered but inert".
     expect(screen.getByRole('link', { name: new RegExp(t.newServer) })).toHaveAttribute(
       'href',
       `/${lang}/${routePaths.newServer}`,
@@ -37,6 +37,32 @@ describe('Sidebar', () => {
       'href',
       `/${lang}/${routePaths.support}`,
     );
+  });
+
+  it.each(langs)('[%s] links Balance at its own route', (lang) => {
+    // It rendered as a disabled button until Billing grew a balance endpoint.
+    // A link is what separates "the page exists" from "the entry is still inert".
+    renderWithProviders(<Sidebar />, { lang });
+    const t = dictionaries[lang].dashboard.sidebar;
+
+    expect(screen.getByRole('link', { name: new RegExp(t.balance) })).toHaveAttribute(
+      'href',
+      `/${lang}/${routePaths.balance}`,
+    );
+  });
+
+  it('places Balance between New server and Support', () => {
+    // Where a customer looks for it: next to the thing it pays for.
+    const { container } = renderWithProviders(<Sidebar />, { lang: 'ru' });
+    const t = dictionaries.ru.dashboard.sidebar;
+    const labels = Array.from(container.querySelectorAll('aside > *')).map((el) => el.textContent ?? '');
+
+    const newServer = labels.findIndex((text) => text.includes(t.newServer));
+    const balance = labels.findIndex((text) => text.includes(t.balance));
+    const support = labels.findIndex((text) => text.includes(t.support));
+
+    expect(balance).toBe(newServer + 1);
+    expect(support).toBe(balance + 1);
   });
 
   it('places New server directly after Instances', () => {

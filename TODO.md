@@ -351,36 +351,39 @@ idempotency middleware is global; whether `GET /api/v1/subscriptions/{id}`
 exists and needs the field too. The 64-character cap is a reasoned convention,
 not a measurement.
 
-## Account balance is not connected
+## Account balance: shipped, but nginx has not been told about the two new routes
 
-The dashboard shows a **Balance** tile with a dash and "not connected yet"
-(`src/pages/DashboardPage.tsx`). It is a placeholder because there is nothing to
-read: the storefront can reach `/invoices`, `/invoices/from-quote`,
-`/payment-methods`, `/public/packages`, `/public/quotes`, `/subscriptions`,
-`/subscriptions/{id}/renewals` and `/subscriptions/{id}/renewal-preview`, and
-none of them carry an account balance.
+Done 2026-09-11. Billing grew a balance API and the storefront now uses it:
+`src/api/balance.ts` (`fetchBalance` / `createTopUp` / `fetchTopUp` / `useBalance`
+/ `planBulkPayment`), a real figure in the dashboard tile, a balance page at
+`dashboard/balance` with top-up presets, a free amount, "pay for several
+servers" and the ledger, a return page at `dashboard/balance/return`, a checkout
+hint, and the paid-from-balance branch in `confirm` / `confirmQuote` / `renew`.
+`BillingWidget.tsx` and its invented `$48.20` are deleted — nothing rendered it.
 
-**To finish:** confirm whether Billing exposes a balance endpoint. If it does,
-add a fetch alongside `src/api/subscriptions.ts`, render the amount with the
-existing `formatMoneyMinor`, and drop `t.stats.balanceUnavailable`. If it does
-not, the tile should not ship a number — decide whether balance is a Billing
-feature worth building or whether the tile comes out.
+The whole feature is dark until an operator turns it on: every balance call can
+answer `404 {"error":{"code":"not_found"}}`, and `fetchBalance` reads that as
+"feature off" (resolves `null`), never as an error. The tile then keeps its dash
+and its "not connected yet" note, exactly as before.
 
-Do not fill this from `BillingWidget` (below). A plausible figure here is a
-claim about the customer's own money.
+**Open, and it needs a human with access to the host —**
+`deploy/nginx/snippets-hotvds-spa-routes.conf` still lists the old route set, so
+`/ru/dashboard/balance` and `/ru/dashboard/balance/return` render correctly in a
+browser and answer **404 to crawlers**. `src/nginxRoutes.test.ts` fails on
+exactly this, which is what that test is for. The config is not deployed from
+this repo (see `deploy/nginx/README.md`), so it was deliberately left untouched
+here. The fix is two segments in the one sorted alternation:
 
-## `BillingWidget` is dead code with invented figures
+```
+location ~ ^/(callback/?|(ru|en)(/(about|admin|api|blog|checkout|checkout/return|contacts|dashboard|dashboard/balance|dashboard/balance/return|dashboard/new|dashboard/support|datacenters|knowledge-base|partners|pricing|status|terms))?/?)?$ {
+```
 
-`src/components/dashboard/BillingWidget.tsx` renders a hardcoded `$48.20`
-balance and a `1 авг · $28.00` next invoice — the latter in Russian regardless
-of the selected language. It came from the design-prototype commit (`89e8bef`)
-and was deliberately unmounted in `57b8705` ("Phase 5a: Dashboard reads real
-subscriptions") precisely so invented balance figures would not sit next to real
-data. The file was left behind rather than deleted, so nothing renders it today.
-
-**To finish:** delete the component, or keep it only if the balance work above
-gives it real numbers to show. It is harmless while unreferenced and wrong the
-moment someone reuses it.
+**Not verified against a live Billing** — the whole module is written to the
+contract, not to an observed response: whether the 404 envelope is exactly
+`{"error":{"code":"not_found"}}` on every balance route, whether `POST
+/balance/top-ups` accepts an empty `intent` list, and whether a renewal settled
+from the balance really comes back with `paid_from_balance: true` rather than
+only `status: "paid"` and a null `payment_url` (both are handled).
 
 ## Repeat purchase: the storefront half is fixed — but see the section above
 

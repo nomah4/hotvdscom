@@ -38,8 +38,8 @@ const Item = styled.button<{ $active?: boolean }>`
 `;
 
 // An entry with no `to` has no page behind it yet. It stays rendered but
-// visibly inert rather than silently doing nothing when clicked — Billing and
-// Settings are in that state, tracked separately from this component.
+// visibly inert rather than silently doing nothing when clicked — Settings is
+// in that state, tracked separately from this component.
 const InertItem = styled(Item)`
   opacity: 0.45;
   cursor: not-allowed;
@@ -55,7 +55,10 @@ export function Sidebar() {
     { label: t.sidebar.instances, icon: '🖥️', to: localizePath(lang, routePaths.dashboard) },
     // Next to the server list, because that is what it adds to.
     { label: t.sidebar.newServer, icon: '➕', to: localizePath(lang, routePaths.newServer) },
-    { label: t.sidebar.billing, icon: '💳' },
+    // Between the two on purpose: it is where the money for a new server comes
+    // from, and where a customer sent here by "top up to pay from your balance"
+    // lands. Inert until 2026-09-11, when Billing grew a balance endpoint.
+    { label: t.sidebar.balance, icon: '💳', to: localizePath(lang, routePaths.balance) },
     { label: t.sidebar.support, icon: '💬', to: localizePath(lang, routePaths.support) },
     { label: t.sidebar.settings, icon: '⚙️' },
   ];

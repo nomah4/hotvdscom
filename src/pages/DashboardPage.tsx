@@ -7,6 +7,8 @@ import { SubscriptionListItem } from '../components/dashboard/SubscriptionListIt
 import { Button } from '../components/ui/Button';
 import { useLang, useTranslation } from '../i18n/LanguageContext';
 import { renameSubscription, useSubscriptions, type Subscription } from '../api/subscriptions';
+import { useBalance } from '../api/balance';
+import { formatMoneyMinor } from '../utils/money';
 import { resolvePlanName, resolveSubscriptionTitle } from '../components/dashboard/subscriptionTitle';
 import { useAuth } from '../auth/AuthContext';
 import { useRenewal } from '../api/useCheckout';
@@ -52,6 +54,18 @@ const StatValue = styled.span`
 const StatNote = styled.span`
   font-size: ${({ theme }) => theme.fontSizes.h6};
   color: ${({ theme }) => theme.colors.neutral[500]};
+`;
+
+// A minus sign is easy to miss on a figure this size, and the one number on
+// this page it must never be missed on is a debt.
+const BalanceValue = styled(StatValue)<{ $negative: boolean }>`
+  color: ${({ theme, $negative }) => ($negative ? theme.colors.semantic.error : theme.colors.indigo[900])};
+`;
+
+const PaidNote = styled.p`
+  margin-top: 8px;
+  font-size: ${({ theme }) => theme.fontSizes.small};
+  color: ${({ theme }) => theme.colors.mint[700]};
 `;
 
 const SectionTitle = styled.h2`
@@ -134,12 +148,24 @@ export function DashboardPage() {
   // specs. A failure here must not blank the dashboard, so its error is ignored —
   // subscriptions still render, just with the raw code and no spec badges.
   const { tariffs } = useTariffs();
-  const { renew, renewingId, error: renewError, errorSubscriptionId, clearError } = useRenewal();
-
   // Which server the customer is confirming a renewal for. Clicking the expiry
   // chip opens this instead of charging immediately — see RenewalConfirmModal for
   // why that step exists rather than the click going straight to the gateway.
+  // Declared above `useRenewal` because its paid-from-balance callback closes it.
   const [renewTarget, setRenewTarget] = useState<Subscription | null>(null);
+  const { balance, isLoading: balanceLoading, refetch: refetchBalance } = useBalance();
+  // A renewal the balance paid for never leaves the page, so nothing else would
+  // update: re-read both lists and close the modal, or the card keeps showing
+  // the old expiry date after money has genuinely moved.
+  const { renew, renewingId, error: renewError, errorSubscriptionId, clearError, paidFromBalance } =
+    useRenewal({
+      onPaidFromBalance: () => {
+        setRenewTarget(null);
+        refetch();
+        refetchBalance();
+      },
+    });
+
   const { active: activeSubscriptions, history: historySubscriptions } =
     splitDashboardSubscriptions(subscriptions);
 
@@ -199,21 +225,37 @@ export function DashboardPage() {
           <StatLabel>{t.stats.totalServices}</StatLabel>
           <StatValue>{subscriptions.length}</StatValue>
         </StatCard>
-        {/* Placeholder on purpose. Billing exposes no balance endpoint — the
-            storefront can reach invoices, subscriptions, packages, quotes,
-            payment methods and renewals, and none of them carry an account
-            balance. A plausible figure here would be a claim about the
-            customer's money, so the tile states that it is not connected rather
-            than inventing one. Tracked in TODO.md. */}
+        {/* Three states, and the difference between them is a statement about
+            the customer's money. A figure only ever appears when Billing sent
+            one: `null` means the feature is off on this install (Billing answers
+            404), which keeps the dash and says so, and while the request is in
+            flight the tile shows a dash with no claim attached either way. */}
         <StatCard>
           <StatLabel>{t.stats.balance}</StatLabel>
-          <StatValue>—</StatValue>
-          <StatNote>{t.stats.balanceUnavailable}</StatNote>
+          {balance ? (
+            <>
+              <BalanceValue $negative={balance.amount_minor < 0}>
+                {formatMoneyMinor(balance.amount_minor, balance.currency, lang)}
+              </BalanceValue>
+              <StatNote as={Link} to={localizePath(lang, routePaths.balance)}>
+                {t.stats.balanceTopUp}
+              </StatNote>
+            </>
+          ) : (
+            <>
+              <StatValue>—</StatValue>
+              {!balanceLoading && <StatNote>{t.stats.balanceUnavailable}</StatNote>}
+            </>
+          )}
         </StatCard>
       </StatRow>
 
       <div>
         <SectionTitle>{t.subscriptions.title}</SectionTitle>
+        {/* The one outcome with no page of its own: paying from the balance
+            never leaves the dashboard, so without this line money moves and
+            nothing on screen says so. */}
+        {paidFromBalance && <PaidNote>{t.renewal.paidFromBalance}</PaidNote>}
         <ServerList style={{ marginTop: 16 }}>
           {isLoading ? (
             <Message>{t.subscriptions.loading}</Message>

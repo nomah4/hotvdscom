@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../auth/AuthContext';
 import { useLang } from '../i18n/LanguageContext';
@@ -11,7 +11,7 @@ import {
   fetchPaymentMethods,
   fetchRenewalPreview,
 } from './checkout';
-import type { CustomVdsConfiguration, Quote } from './checkout';
+import type { CustomVdsConfiguration, Invoice, Quote, Renewal } from './checkout';
 import type { Subscription } from './subscriptions';
 import { DEFAULT_CURRENCY } from './config';
 
@@ -154,6 +154,21 @@ export function purgeStaleCheckoutKeys(): void {
   }
 }
 
+/**
+ * Did Billing settle this from the account balance rather than a gateway?
+ *
+ * `paid_from_balance` is the authority, but it is optional — an older Billing
+ * does not send the key — so a settled invoice with nowhere to pay is read the
+ * same way. Getting this wrong in the other direction is what the check exists
+ * to prevent: before the balance feature, `payment_url === null` could only
+ * mean a broken purchase, and the code threw `no_payment_url`. Throwing that at
+ * a customer whose money has already moved tells them their payment failed.
+ */
+export function isPaidFromBalance(settled: Pick<Invoice, 'status' | 'payment_url' | 'paid_from_balance'> | Renewal): boolean {
+  if (settled.paid_from_balance === true) return true;
+  return settled.status === 'paid' && settled.payment_url === null;
+}
+
 export function customVdsIntentKey(packageCode: string, configuration: CustomVdsConfiguration, currency: string): string {
   return [
     'custom',
@@ -228,6 +243,7 @@ interface UseCheckoutResult {
 export function useCheckout(): UseCheckoutResult {
   const { accessToken, user } = useAuth();
   const { lang } = useLang();
+  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -287,6 +303,19 @@ export function useCheckout(): UseCheckoutResult {
         // no invoice record to find it by.
         clearOrderIdempotencyKey(idempotencyScope);
 
+        // The balance covered it: Billing has already marked the invoice paid
+        // and there is no gateway to visit. Go straight to the return page,
+        // which polls the invoice and will show the paid outcome — the same
+        // screen a card payment lands on, so there is one place that says
+        // "bought", not two.
+        if (isPaidFromBalance(invoice)) {
+          rememberPendingInvoice(invoice.invoice_id, idempotencyScope);
+          navigate(
+            `${localizePath(lang, routePaths.checkoutReturn)}?invoice=${encodeURIComponent(invoice.invoice_id)}`,
+          );
+          return;
+        }
+
         if (!invoice.payment_url) {
           throw new Error('no_payment_url');
         }
@@ -299,7 +328,7 @@ export function useCheckout(): UseCheckoutResult {
         setIsSubmitting(false);
       }
     },
-    [accessToken, user, lang],
+    [accessToken, user, lang, navigate],
   );
 
   const confirmQuote = useCallback(
@@ -342,6 +371,15 @@ export function useCheckout(): UseCheckoutResult {
         // See confirm(): retired as soon as Billing accepts, before the throw.
         clearOrderIdempotencyKey(idempotencyScope);
 
+        // See confirm(): paid from the balance, so there is no gateway step.
+        if (isPaidFromBalance(invoice)) {
+          rememberPendingInvoice(invoice.invoice_id, idempotencyScope);
+          navigate(
+            `${localizePath(lang, routePaths.checkoutReturn)}?invoice=${encodeURIComponent(invoice.invoice_id)}`,
+          );
+          return;
+        }
+
         if (!invoice.payment_url) {
           throw new Error('no_payment_url');
         }
@@ -352,7 +390,7 @@ export function useCheckout(): UseCheckoutResult {
         setIsSubmitting(false);
       }
     },
-    [accessToken, user, lang],
+    [accessToken, user, lang, navigate],
   );
 
   return {
@@ -372,10 +410,27 @@ interface UseRenewalResult {
   /** Which subscription `error` belongs to, so a list of servers can show the
    * failure on the card that actually failed. */
   errorSubscriptionId: string | null;
+  /**
+   * The subscription the balance just paid for, or `null`.
+   *
+   * There is no gateway round trip in that case and therefore no return page to
+   * announce the outcome, so the page that owns the list has to say something
+   * itself — otherwise money moves and the screen does not change.
+   */
+  paidFromBalance: string | null;
   /** `customerEmail` is where the fiscal receipt goes. Taken from the confirm
    * step, where it is prefilled from the verified profile and editable. */
   renew: (subscription: Subscription, customerEmail: string) => Promise<void>;
   clearError: () => void;
+}
+
+interface UseRenewalOptions {
+  /**
+   * Called when the renewal settled from the balance without leaving the page.
+   * The hook cannot re-read the subscription list — the page owns it — and the
+   * card would otherwise keep showing the old expiry date after a real payment.
+   */
+  onPaidFromBalance?: (subscription: Subscription) => void;
 }
 
 /**
@@ -396,12 +451,17 @@ interface UseRenewalResult {
  * no money data, and a configurable package has no catalogue price — its amount
  * is a pricing rule applied to the configuration the customer actually bought.
  */
-export function useRenewal(): UseRenewalResult {
+export function useRenewal(options: UseRenewalOptions = {}): UseRenewalResult {
   const { accessToken } = useAuth();
   const { lang } = useLang();
   const [renewingId, setRenewingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errorSubscriptionId, setErrorSubscriptionId] = useState<string | null>(null);
+  const [paidFromBalance, setPaidFromBalance] = useState<string | null>(null);
+  // Read through a ref so a caller passing an inline arrow does not rebuild
+  // `renew` on every render — the modal holds on to it across a submit.
+  const onPaidFromBalance = useRef(options.onPaidFromBalance);
+  onPaidFromBalance.current = options.onPaidFromBalance;
 
   const renew = useCallback(
     async (subscription: Subscription, customerEmail: string) => {
@@ -424,6 +484,7 @@ export function useRenewal(): UseRenewalResult {
       setRenewingId(subscription.subscription_id);
       setError(null);
       setErrorSubscriptionId(null);
+      setPaidFromBalance(null);
       try {
         // Ask Billing what this renewal costs before anything else: the
         // payment-method lookup is amount-scoped, so a guessed total risks
@@ -464,6 +525,18 @@ export function useRenewal(): UseRenewalResult {
         // has to remember.
         clearOrderIdempotencyKey(idempotencyScope);
 
+        // Paid from the balance: the term is already extended, so sending the
+        // customer anywhere would be sending them away from the thing that just
+        // changed. The page re-reads the list and the card shows the new date.
+        // Deliberately different from `confirm()`, which does navigate: a first
+        // purchase has no card on screen to update, a renewal does.
+        if (isPaidFromBalance(renewal)) {
+          setRenewingId(null);
+          setPaidFromBalance(subscription.subscription_id);
+          onPaidFromBalance.current?.(subscription);
+          return;
+        }
+
         if (!renewal.payment_url || !renewal.invoice_id) {
           throw new Error('no_payment_url');
         }
@@ -482,6 +555,7 @@ export function useRenewal(): UseRenewalResult {
     renewingId,
     error,
     errorSubscriptionId,
+    paidFromBalance,
     renew,
     clearError: useCallback(() => {
       setError(null);
