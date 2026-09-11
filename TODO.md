@@ -366,17 +366,13 @@ answer `404 {"error":{"code":"not_found"}}`, and `fetchBalance` reads that as
 "feature off" (resolves `null`), never as an error. The tile then keeps its dash
 and its "not connected yet" note, exactly as before.
 
-**Open, and it needs a human with access to the host —**
-`deploy/nginx/snippets-hotvds-spa-routes.conf` still lists the old route set, so
-`/ru/dashboard/balance` and `/ru/dashboard/balance/return` render correctly in a
-browser and answer **404 to crawlers**. `src/nginxRoutes.test.ts` fails on
-exactly this, which is what that test is for. The config is not deployed from
-this repo (see `deploy/nginx/README.md`), so it was deliberately left untouched
-here. The fix is two segments in the one sorted alternation:
-
-```
-location ~ ^/(callback/?|(ru|en)(/(about|admin|api|blog|checkout|checkout/return|contacts|dashboard|dashboard/balance|dashboard/balance/return|dashboard/new|dashboard/support|datacenters|knowledge-base|partners|pricing|status|terms))?/?)?$ {
-```
+**Open, and it needs a human with access to the host —** the repo copy of
+`deploy/nginx/snippets-hotvds-spa-routes.conf` now lists `dashboard/balance` and
+`dashboard/balance/return` (so `src/nginxRoutes.test.ts` passes), but that file
+is not deployed from this repo (see `deploy/nginx/README.md`). Until someone
+copies it to `/etc/nginx/snippets/hotvds-spa-routes.conf` on the gateway and
+reloads nginx, the two pages render correctly in a browser and answer **404 to
+crawlers**.
 
 **Not verified against a live Billing** — the whole module is written to the
 contract, not to an observed response: whether the 404 envelope is exactly
