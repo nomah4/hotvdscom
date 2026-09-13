@@ -282,6 +282,33 @@ export const dashboard = {
       toDashboard: 'To dashboard',
     },
   },
+  // The "Telegram notifications" dashboard card. Not shown at all while
+  // Billing answers 404 to /telegram/link — a switched-off feature, not a
+  // fault.
+  telegram: {
+    title: 'Telegram notifications',
+    error: 'Could not load Telegram settings',
+    notLinked: {
+      body: 'Get reminders about renewals, expiry notices, balance top-ups and server readiness straight in Telegram. Email keeps coming too.',
+      connect: 'Connect Telegram',
+      // Linking finishes outside the site: the customer presses Start in
+      // Telegram, and this page only learns about it by asking Billing again.
+      waiting: 'Open Telegram and press Start — waiting for confirmation…',
+      // For anyone whose pop-up was blocked — the same link as plain text.
+      openLink: 'Open in Telegram',
+      timedOut: 'We did not see a confirmation.',
+      tryAgain: 'Try again',
+      failed: 'Could not start the connection. Please try again.',
+    },
+    linked: {
+      connectedAs: 'Connected as @{username}',
+      connectedNoUsername: 'Connected',
+      disconnect: 'Disconnect',
+      disconnectConfirm: 'Confirm disconnect',
+      disconnectCancel: 'Cancel',
+      disconnectFailed: 'Could not disconnect Telegram. Please try again.',
+    },
+  },
   admin: {
     title: 'Who came to hosting',
     subtitle: 'People with access to hotvds, as recorded by webtalk.',
