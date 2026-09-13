@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { BILLING_API_BASE, toApiError } from './config';
+import { BILLING_API_BASE, PROJECT_CODE, TENANT_ID, toApiError } from './config';
 
 /**
  * Telegram notifications — an opt-in channel next to email, dark on this
@@ -60,6 +60,19 @@ function authHeaders(accessToken: string): Record<string, string> {
 }
 
 /**
+ * Every Telegram endpoint is scoped like the balance ones: Billing resolves a
+ * missing tenant/project to ITS installation defaults, which on production is
+ * not this storefront's project — a link stored there is invisible to the
+ * subscriptions it was meant for. Found on 2026-09-13, the first live link.
+ */
+function telegramUrl(path: string): string {
+  const url = new URL(`${BILLING_API_BASE}${path}`);
+  url.searchParams.set('tenant_id', TENANT_ID);
+  url.searchParams.set('project_code', PROJECT_CODE);
+  return url.toString();
+}
+
+/**
  * The signed-in customer's Telegram link, or `null` when Billing has the
  * feature off.
  *
@@ -68,7 +81,7 @@ function authHeaders(accessToken: string): Record<string, string> {
  * customer to `deep_link`.
  */
 export async function fetchTelegramLink(accessToken: string): Promise<TelegramLink | null> {
-  const response = await fetch(`${BILLING_API_BASE}/api/v1/telegram/link`, {
+  const response = await fetch(telegramUrl('/api/v1/telegram/link'), {
     headers: authHeaders(accessToken),
   });
   // Feature off — see the module comment. Not distinguishable from a genuine
@@ -89,7 +102,7 @@ export async function fetchTelegramLink(accessToken: string): Promise<TelegramLi
  * link that Billing will refuse to finish.
  */
 export async function createTelegramLinkToken(accessToken: string): Promise<TelegramLinkToken> {
-  const response = await fetch(`${BILLING_API_BASE}/api/v1/telegram/link-token`, {
+  const response = await fetch(telegramUrl('/api/v1/telegram/link-token'), {
     method: 'POST',
     headers: authHeaders(accessToken),
   });
@@ -100,7 +113,7 @@ export async function createTelegramLinkToken(accessToken: string): Promise<Tele
 }
 
 export async function unlinkTelegram(accessToken: string): Promise<void> {
-  const response = await fetch(`${BILLING_API_BASE}/api/v1/telegram/link`, {
+  const response = await fetch(telegramUrl('/api/v1/telegram/link'), {
     method: 'DELETE',
     headers: authHeaders(accessToken),
   });
