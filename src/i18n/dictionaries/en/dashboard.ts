@@ -309,6 +309,36 @@ export const dashboard = {
       disconnectFailed: 'Could not disconnect Telegram. Please try again.',
     },
   },
+  // The "SSH keys" card. Keys live in the Billing profile and go into every
+  // new server — not into existing ones: cloud-init applies keys on first
+  // boot only.
+  sshKeys: {
+    title: 'SSH keys',
+    body: 'Keys in this list are added to every new server, so you can sign in without a password. The server password keeps working too.',
+    existingNote: 'Servers you already have do not pick a new key up by themselves: add it to ~/.ssh/authorized_keys there.',
+    error: 'Could not load SSH keys',
+    empty: 'No keys yet.',
+    add: 'Add key',
+    nameLabel: 'Name',
+    namePlaceholder: 'For example, “Work laptop”',
+    keyLabel: 'Public key',
+    keyPlaceholder: 'ssh-ed25519 AAAA… — the contents of ~/.ssh/id_ed25519.pub',
+    save: 'Save',
+    cancel: 'Cancel',
+    delete: 'Delete',
+    deleteConfirm: 'Confirm delete',
+    deleteFailed: 'Could not delete the key. Please try again.',
+    limitReached: 'Limit reached — {max} keys.',
+    errors: {
+      ssh_key_is_private: 'This is a private key — it must never be sent anywhere. Paste the public one, from the .pub file.',
+      ssh_key_invalid: 'This does not look like an OpenSSH public key. Paste one line from the .pub file.',
+      ssh_key_too_weak: 'RSA keys shorter than 2048 bits are too weak. Consider generating an ed25519 key.',
+      ssh_key_exists: 'This key is already in the list.',
+      ssh_key_limit: 'Your profile already holds the maximum number of keys.',
+      validation_error: 'Paste a public key.',
+      failed: 'Could not add the key. Please try again.',
+    },
+  },
   admin: {
     title: 'Who came to hosting',
     subtitle: 'People with access to hotvds, as recorded by webtalk.',

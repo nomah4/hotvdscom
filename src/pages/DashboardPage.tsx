@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { DashboardShell } from '../components/dashboard/DashboardShell';
 import { RenewalConfirmModal } from '../components/dashboard/RenewalConfirmModal';
 import { SubscriptionListItem } from '../components/dashboard/SubscriptionListItem';
+import { SshKeysCard } from '../components/dashboard/SshKeysCard';
 import { TelegramCard } from '../components/dashboard/TelegramCard';
 import { Button } from '../components/ui/Button';
 import { useLang, useTranslation } from '../i18n/LanguageContext';
@@ -255,6 +256,8 @@ export function DashboardPage() {
           when Billing has the feature off, so it is always safe to mount
           here unconditionally — see TelegramCard's own doc comment. */}
       <TelegramCard />
+
+      <SshKeysCard />
 
       <div>
         <SectionTitle>{t.subscriptions.title}</SectionTitle>
