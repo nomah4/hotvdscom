@@ -15,6 +15,7 @@ import { formatMoneyMinor } from '../utils/money';
 import { resolvePlanName, resolveSubscriptionTitle } from '../components/dashboard/subscriptionTitle';
 import { useAuth } from '../auth/AuthContext';
 import { useRenewal, useUpgrade } from '../api/useCheckout';
+import { renewalErrorMessage } from '../components/dashboard/renewalErrors';
 import { findByPackageCode, useTariffs } from '../api/catalogue';
 import { localizePath, routePaths } from '../i18n/paths';
 import { media } from '../theme/breakpoints';
@@ -377,7 +378,7 @@ export function DashboardPage() {
           isSubmitting={renewingId === renewTarget.subscription_id}
           submitError={
             errorSubscriptionId === renewTarget.subscription_id
-              ? t.subscriptions.renewError
+              ? renewalErrorMessage(renewError, t.subscriptions)
               : null
           }
           onClose={closeRenewal}
@@ -392,8 +393,8 @@ export function DashboardPage() {
           isSubmitting={upgradingId === upgradeTarget.subscription_id}
           submitError={upgradeErrorId === upgradeTarget.subscription_id ? upgradeError : null}
           onClose={closeUpgrade}
-          onConfirm={(customerEmail, resources) =>
-            void upgrade(upgradeTarget, resources, customerEmail)
+          onConfirm={(customerEmail, resources, displayedAmountMinor) =>
+            void upgrade(upgradeTarget, resources, customerEmail, displayedAmountMinor)
           }
         />
       )}

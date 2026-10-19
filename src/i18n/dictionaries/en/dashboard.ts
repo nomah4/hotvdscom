@@ -69,6 +69,7 @@ export const dashboard = {
     renewHint: 'Click to renew this service',
     renewing: 'Opening payment…',
     renewError: 'Could not start the renewal. Please try again.',
+    renewUpgradeInProgress: 'An upgrade of this server is being paid for or applied. Renew after it finishes.',
     // A verb, not a date. On a live service the expiry date is itself the renew
     // control, but "Valid until: Aug 21" is a poor label for the button that
     // takes money for a server that has already stopped.
@@ -202,8 +203,13 @@ export const dashboard = {
       generic: 'The upgrade could not be started. Please try again.',
       notReady: 'The server is not ready yet: you can upgrade it once it is running.',
       renewalInProgress: 'There is an unpaid renewal. Pay it or wait for it to expire.',
-      upgradeInProgress: 'There is an unpaid upgrade. Pay it or wait for it to expire.',
-      openDiffers: 'This server already has an unpaid upgrade with different values. Pay it or wait for it to expire.',
+      upgradeInProgress:
+        'You already have an unpaid upgrade for this server. Finish that payment, or try again after it expires (the payment link is valid for a limited time).',
+      openDiffers:
+        'You already have an unpaid upgrade for this server. Finish that payment, or try again after it expires (the payment link is valid for a limited time).',
+      noPaymentMethods: 'No payment method is available right now. Please try again later.',
+      notSignedIn: 'Your session has ended. Please sign in again.',
+      priceChanged: 'The price changed while the window was open. Please check the new amount.',
       notActive: 'Only an active, paid service can be upgraded.',
       notAnUpgrade: 'Choose more resources than you have now.',
       outOfRange: 'The selected value is outside the allowed range.',

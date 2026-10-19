@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { useState } from 'react';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 
 vi.mock('../../auth/AuthContext', () => ({
@@ -124,6 +125,7 @@ describe('UpgradeModal', () => {
       'sub-1',
       { cpu: 2, ram_gb: 16, ssd_gb: 40 },
       'RUB',
+      { cpu: 2, ram_gb: 8, ssd_gb: 40 },
     );
   });
 
@@ -145,11 +147,11 @@ describe('UpgradeModal', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: t.confirm }));
 
-    expect(onConfirm).toHaveBeenCalledWith('accounting@example.com', {
-      cpu: 2,
-      ram_gb: 16,
-      ssd_gb: 40,
-    });
+    expect(onConfirm).toHaveBeenCalledWith(
+      'accounting@example.com',
+      { cpu: 2, ram_gb: 16, ssd_gb: 40 },
+      38800,
+    );
   });
 
   /** Нельзя брать деньги за сумму, которую клиент не видел. */
@@ -248,5 +250,52 @@ describe('UpgradeModal', () => {
     const text = container.textContent ?? '';
     expect(text.indexOf('388')).toBeGreaterThan(-1);
     expect(text.indexOf('388')).toBeLessThan(text.indexOf('$'));
+  });
+
+  it.each([
+    ['subscription_closing', 'notActive'],
+    ['no_payment_methods', 'noPaymentMethods'],
+    ['not_signed_in', 'notSignedIn'],
+    ['price_changed', 'priceChanged'],
+    ['upgrade_in_progress', 'upgradeInProgress'],
+  ] as const)('translates %s', (code, key) => {
+    renderModal({ submitError: code });
+    expect(screen.getByText(t.errors[key])).toBeInTheDocument();
+  });
+
+  it('no longer tells the customer to simply wait for an unpaid upgrade to expire', () => {
+    expect(t.errors.upgradeInProgress).toMatch(/Finish that payment/);
+    expect(t.errors.openDiffers).toBe(t.errors.upgradeInProgress);
+  });
+
+  it('re-quotes the amount when the hook reports price_changed', async () => {
+    function Harness() {
+      const [error, setError] = useState<string | null>(null);
+      return (
+        <>
+          <button type="button" onClick={() => setError('price_changed')}>
+            fail
+          </button>
+          <UpgradeModal
+            subscription={subscription}
+            planName="Custom VDS"
+            onClose={vi.fn()}
+            onConfirm={vi.fn()}
+            isSubmitting={false}
+            submitError={error}
+          />
+        </>
+      );
+    }
+    renderWithProviders(<Harness />, { lang: 'en' });
+    moveRam(16);
+    await waitFor(() => expect(screen.getByText(/388/)).toBeInTheDocument());
+    const before = vi.mocked(fetchUpgradePreview).mock.calls.length;
+
+    fireEvent.click(screen.getByText('fail'));
+
+    await waitFor(() =>
+      expect(vi.mocked(fetchUpgradePreview).mock.calls.length).toBeGreaterThan(before),
+    );
   });
 });

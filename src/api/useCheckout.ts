@@ -67,6 +67,13 @@ export function readPendingInvoice(): string | null {
   return readPendingRecord()?.invoiceId ?? null;
 }
 
+/** True when the invoice stashed before the redirect belongs to an upgrade
+ * (`upgrade:<subscription>:<cpu>-<ram>-<ssd>` scope). Read it before
+ * `clearPendingInvoice`, which drops the record. */
+export function pendingInvoiceIsUpgrade(): boolean {
+  return (readPendingRecord()?.idempotencyScope ?? '').startsWith('upgrade:');
+}
+
 /** Called once a purchase has settled. Retires the idempotency key too, so the
  * next genuine purchase of the same plan opens a new invoice rather than
  * replaying the finished one. */
@@ -586,6 +593,8 @@ interface UseUpgradeResult {
     subscription: Subscription,
     resources: UpgradeResources,
     customerEmail: string,
+    /** The amount the window showed the customer (`preview.amount_minor`). */
+    displayedAmountMinor: number,
   ) => Promise<void>;
   clearError: () => void;
 }
@@ -593,6 +602,12 @@ interface UseUpgradeResult {
 interface UseUpgradeOptions {
   /** Оплата с баланса не уводит со страницы, а карточка иначе осталась бы со старыми цифрами. */
   onPaidFromBalance?: (subscription: Subscription) => void;
+}
+
+function currentResourcesOf(subscription: Subscription): UpgradeResources | null {
+  const c = subscription.configuration;
+  if (c?.cpu === undefined || c.ram_gb === undefined || c.ssd_gb === undefined) return null;
+  return { cpu: c.cpu, ram_gb: c.ram_gb, ssd_gb: c.ssd_gb };
 }
 
 function sameResources(a: UpgradeResources, b: UpgradeResources): boolean {
@@ -626,7 +641,12 @@ export function useUpgrade(options: UseUpgradeOptions = {}): UseUpgradeResult {
   onPaidFromBalance.current = options.onPaidFromBalance;
 
   const upgrade = useCallback(
-    async (subscription: Subscription, resources: UpgradeResources, customerEmail: string) => {
+    async (
+      subscription: Subscription,
+      resources: UpgradeResources,
+      customerEmail: string,
+      displayedAmountMinor: number,
+    ) => {
       const subscriptionId = subscription.subscription_id;
       if (!accessToken) {
         setError('not_signed_in');
@@ -641,6 +661,7 @@ export function useUpgrade(options: UseUpgradeOptions = {}): UseUpgradeResult {
         return;
       }
 
+      const current = currentResourcesOf(subscription);
       setUpgradingId(subscriptionId);
       setError(null);
       setErrorSubscriptionId(null);
@@ -653,7 +674,14 @@ export function useUpgrade(options: UseUpgradeOptions = {}): UseUpgradeResult {
           subscriptionId,
           resources,
           DEFAULT_CURRENCY,
+          current,
         );
+        // The customer agreed to the amount on screen. A dearer price now means
+        // the window is stale (the balance may have been enough for the old one
+        // and not for this): stop, and let the window re-quote.
+        if (preview.amount_minor > displayedAmountMinor) {
+          throw new Error('price_changed');
+        }
         const methods = await fetchPaymentMethods(accessToken, preview.amount_minor, preview.currency);
         if (methods.length === 0) {
           throw new Error('no_payment_methods');
@@ -668,6 +696,7 @@ export function useUpgrade(options: UseUpgradeOptions = {}): UseUpgradeResult {
           accessToken,
           subscriptionId,
           resources,
+          current,
           methodCode: methods[0].method_code,
           returnUrl,
           customerEmail: customerEmail.trim(),
@@ -686,6 +715,12 @@ export function useUpgrade(options: UseUpgradeOptions = {}): UseUpgradeResult {
           setPaidFromBalance(subscriptionId);
           onPaidFromBalance.current?.(subscription);
           return;
+        }
+
+        // Billing priced the invoice itself, and it came out dearer than what the
+        // customer agreed to: do not send them to a gateway for that.
+        if (created.amount_minor !== null && created.amount_minor > displayedAmountMinor) {
+          throw new Error('price_changed');
         }
 
         if (!created.payment_url || !created.invoice_id) {
