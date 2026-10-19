@@ -20,8 +20,15 @@ export function upgradeErrorMessage(raw: string, text: UpgradeText): string {
     case 'upgrade_open_differs':
       return text.errors.openDiffers;
     case 'subscription_not_active':
+    case 'subscription_closing':
     case 'package_not_configurable':
       return text.errors.notActive;
+    case 'no_payment_methods':
+      return text.errors.noPaymentMethods;
+    case 'not_signed_in':
+      return text.errors.notSignedIn;
+    case 'price_changed':
+      return text.errors.priceChanged;
     case 'not_an_upgrade':
     case 'downgrade_not_supported':
       return text.errors.notAnUpgrade;

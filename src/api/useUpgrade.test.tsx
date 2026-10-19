@@ -35,6 +35,7 @@ const subscription = {
   package_code: 'VDS_CUSTOM_MONTHLY',
   valid_until: '2026-11-15T23:59:59Z',
   upgradable: true,
+  configuration: { cpu: 2, ram_gb: 8, ssd_gb: 40 },
 } as never;
 
 const RESOURCES = { cpu: 2, ram_gb: 16, ssd_gb: 40 };
@@ -65,10 +66,14 @@ describe('useUpgrade', () => {
     const { result } = renderHook(() => useUpgrade(), { wrapper });
 
     await act(async () => {
-      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com');
+      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com', 38800);
     });
 
-    expect(fetchUpgradePreview).toHaveBeenCalledWith('token', 'sub-1', RESOURCES, 'RUB');
+    expect(fetchUpgradePreview).toHaveBeenCalledWith('token', 'sub-1', RESOURCES, 'RUB', {
+      cpu: 2,
+      ram_gb: 8,
+      ssd_gb: 40,
+    });
     expect(fetchPaymentMethods).toHaveBeenCalledWith('token', 38800, 'RUB');
     expect(window.location.assign).toHaveBeenCalledWith('https://pay.local/inv-1');
     expect(result.current.error).toBeNull();
@@ -79,12 +84,13 @@ describe('useUpgrade', () => {
     const { result } = renderHook(() => useUpgrade(), { wrapper });
 
     await act(async () => {
-      await result.current.upgrade(subscription, RESOURCES, '  accounting@example.com  ');
+      await result.current.upgrade(subscription, RESOURCES, '  accounting@example.com  ', 38800);
     });
 
     expect(vi.mocked(createUpgrade).mock.calls[0][0]).toMatchObject({
       subscriptionId: 'sub-1',
       resources: RESOURCES,
+      current: { cpu: 2, ram_gb: 8, ssd_gb: 40 },
       customerEmail: 'accounting@example.com',
       methodCode: 'card',
     });
@@ -94,7 +100,7 @@ describe('useUpgrade', () => {
     const { result } = renderHook(() => useUpgrade(), { wrapper });
 
     await act(async () => {
-      await result.current.upgrade(subscription, RESOURCES, '   ');
+      await result.current.upgrade(subscription, RESOURCES, '   ', 38800);
     });
 
     expect(result.current.error).toBe('missing_email');
@@ -118,7 +124,7 @@ describe('useUpgrade', () => {
     const { result } = renderHook(() => useUpgrade(), { wrapper });
 
     await act(async () => {
-      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com');
+      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com', 38800);
     });
 
     expect(result.current.error).toBe('upgrade_open_differs');
@@ -138,7 +144,7 @@ describe('useUpgrade', () => {
     const { result } = renderHook(() => useUpgrade({ onPaidFromBalance }), { wrapper });
 
     await act(async () => {
-      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com');
+      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com', 38800);
     });
 
     expect(window.location.assign).not.toHaveBeenCalled();
@@ -154,7 +160,7 @@ describe('useUpgrade', () => {
     const { result } = renderHook(() => useUpgrade(), { wrapper });
 
     await act(async () => {
-      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com');
+      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com', 38800);
     });
 
     expect(result.current.error).toMatch(/^provisioning_not_ready/);
@@ -168,7 +174,7 @@ describe('useUpgrade', () => {
     const { result } = renderHook(() => useUpgrade(), { wrapper });
 
     await act(async () => {
-      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com');
+      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com', 38800);
     });
 
     expect(result.current.error).toBe('no_payment_methods');
@@ -184,10 +190,10 @@ describe('useUpgrade', () => {
     const { result } = renderHook(() => useUpgrade(), { wrapper });
 
     await act(async () => {
-      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com');
+      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com', 38800);
     });
     await act(async () => {
-      await result.current.upgrade(subscription, { cpu: 2, ram_gb: 24, ssd_gb: 40 }, 'customer@example.com');
+      await result.current.upgrade(subscription, { cpu: 2, ram_gb: 24, ssd_gb: 40 }, 'customer@example.com', 38800);
     });
 
     const keys = vi.mocked(createUpgrade).mock.calls.map((call) => call[0].idempotencyKey);
@@ -200,10 +206,10 @@ describe('useUpgrade', () => {
     const { result } = renderHook(() => useUpgrade(), { wrapper });
 
     await act(async () => {
-      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com');
+      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com', 38800);
     });
     await act(async () => {
-      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com');
+      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com', 38800);
     });
 
     const keys = vi.mocked(createUpgrade).mock.calls.map((call) => call[0].idempotencyKey);
@@ -215,13 +221,91 @@ describe('useUpgrade', () => {
     const { result } = renderHook(() => useUpgrade(), { wrapper });
 
     await act(async () => {
-      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com');
+      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com', 38800);
     });
     await act(async () => {
-      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com');
+      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com', 38800);
     });
 
     const keys = vi.mocked(createUpgrade).mock.calls.map((call) => call[0].idempotencyKey);
     expect(keys[0]).not.toBe(keys[1]);
+  });
+
+  /** Window showed 388 RUB; if Billing now wants more, nothing is created or opened. */
+  it('aborts with price_changed when the fresh preview is dearer than the displayed amount', async () => {
+    vi.mocked(fetchUpgradePreview).mockResolvedValue({ amount_minor: 45000, currency: 'RUB' } as never);
+    const { result } = renderHook(() => useUpgrade(), { wrapper });
+
+    await act(async () => {
+      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com', 38800);
+    });
+
+    expect(result.current.error).toBe('price_changed');
+    expect(result.current.errorSubscriptionId).toBe('sub-1');
+    expect(fetchPaymentMethods).not.toHaveBeenCalled();
+    expect(createUpgrade).not.toHaveBeenCalled();
+    expect(window.location.assign).not.toHaveBeenCalled();
+  });
+
+  it('proceeds when the fresh preview is cheaper than the displayed amount', async () => {
+    vi.mocked(fetchUpgradePreview).mockResolvedValue({ amount_minor: 30000, currency: 'RUB' } as never);
+    const { result } = renderHook(() => useUpgrade(), { wrapper });
+
+    await act(async () => {
+      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com', 38800);
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(window.location.assign).toHaveBeenCalledWith('https://pay.local/inv-1');
+  });
+
+  it('does not redirect when the invoice came out dearer than the displayed amount', async () => {
+    vi.mocked(createUpgrade).mockResolvedValue({
+      upgrade_id: 'up-1',
+      invoice_id: 'inv-1',
+      status: 'pending_payment',
+      amount_minor: 45000,
+      payment_url: 'https://pay.local/inv-1',
+      configuration: RESOURCES,
+    } as never);
+    const { result } = renderHook(() => useUpgrade(), { wrapper });
+
+    await act(async () => {
+      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com', 38800);
+    });
+
+    expect(result.current.error).toBe('price_changed');
+    expect(window.location.assign).not.toHaveBeenCalled();
+  });
+
+  it('still reports a balance payment even if the invoice amount is above the displayed one', async () => {
+    vi.mocked(createUpgrade).mockResolvedValue({
+      upgrade_id: 'up-1',
+      invoice_id: 'inv-1',
+      status: 'paid',
+      amount_minor: 45000,
+      payment_url: null,
+      paid_from_balance: true,
+      configuration: RESOURCES,
+    } as never);
+    const { result } = renderHook(() => useUpgrade(), { wrapper });
+
+    await act(async () => {
+      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com', 38800);
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.paidFromBalance).toBe('sub-1');
+  });
+
+  it('remembers the invoice under an upgrade scope for the return page', async () => {
+    const { result } = renderHook(() => useUpgrade(), { wrapper });
+
+    await act(async () => {
+      await result.current.upgrade(subscription, RESOURCES, 'customer@example.com', 38800);
+    });
+
+    const { pendingInvoiceIsUpgrade } = await import('./useCheckout');
+    expect(pendingInvoiceIsUpgrade()).toBe(true);
   });
 });

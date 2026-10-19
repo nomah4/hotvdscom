@@ -168,7 +168,7 @@ interface UpgradeModalProps {
   /** Имя, которое клиент дал серверу; строка не рисуется, если его нет. */
   serverTitle?: string | null;
   onClose: () => void;
-  onConfirm: (customerEmail: string, resources: UpgradeResources) => void;
+  onConfirm: (customerEmail: string, resources: UpgradeResources, displayedAmountMinor: number) => void;
   isSubmitting: boolean;
   /** Отказ попытки оплаты как есть (код биллинга или код хука); окно переводит его само. */
   submitError: string | null;
@@ -211,6 +211,9 @@ export function UpgradeModal({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [email, setEmail] = useState(user?.profile?.email ?? '');
+  // Bumped when the hook reports the price moved while the window was open, so
+  // the amount on screen is re-quoted instead of staying the one that was refused.
+  const [quoteNonce, setQuoteNonce] = useState(0);
 
   const changed =
     current !== null &&
@@ -227,6 +230,10 @@ export function UpgradeModal({
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [onClose, isSubmitting]);
 
+  useEffect(() => {
+    if (submitError === 'price_changed') setQuoteNonce((n) => n + 1);
+  }, [submitError]);
+
   // Доплата — у биллинга. Дребезг убран: ползунок отдаёт десятки значений в
   // секунду, и каждое было бы запросом.
   useEffect(() => {
@@ -239,7 +246,7 @@ export function UpgradeModal({
     let active = true;
     setPreviewLoading(true);
     const timer = window.setTimeout(() => {
-      fetchUpgradePreview(accessToken, subscription.subscription_id, resources, DEFAULT_CURRENCY)
+      fetchUpgradePreview(accessToken, subscription.subscription_id, resources, DEFAULT_CURRENCY, current)
         .then((result) => {
           if (active) setPreview(result);
         })
@@ -254,7 +261,7 @@ export function UpgradeModal({
       active = false;
       window.clearTimeout(timer);
     };
-  }, [accessToken, subscription.subscription_id, resources, changed]);
+  }, [accessToken, subscription.subscription_id, resources, changed, current, quoteNonce]);
 
   const trimmedEmail = email.trim();
   const emailLooksValid = trimmedEmail.includes('@') && !trimmedEmail.includes(' ');
@@ -396,7 +403,7 @@ export function UpgradeModal({
             $fullWidth
             disabled={!canConfirm}
             onClick={() => {
-              if (resources) onConfirm(trimmedEmail, resources);
+              if (resources && preview) onConfirm(trimmedEmail, resources, preview.amount_minor);
             }}
           >
             {isSubmitting

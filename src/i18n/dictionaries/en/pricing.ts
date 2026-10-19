@@ -63,6 +63,9 @@ export const pricing = {
     failedTitle: 'Payment did not go through',
     failedBody: "You haven't been charged. You can try again from any plan.",
     backToPricing: 'Back to pricing',
+    backToDashboard: 'Back to dashboard',
+    upgradePaidBody:
+      'Payment received. The server will be restarted to apply the new resources — this takes a few minutes. We will email you when it is done. If you added disk space, extend the partition inside the server.',
     toDashboard: 'Go to dashboard',
     customPlanName: 'Custom VDS',
     balanceCovers: 'This order will be paid from your balance ({balance} available). No card needed.',

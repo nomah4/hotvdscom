@@ -15,7 +15,7 @@ import { BILLING_API_BASE, PROJECT_CODE, TENANT_ID, toApiError } from './config'
  */
 
 /**
- * The five event codes Billing can notify on. Not offered to the customer as
+ * The event codes Billing can notify on. Not offered to the customer as
  * a choice here — which events actually fire is an operator decision made in
  * Billing's own admin settings, not per account — so nothing in this file
  * writes them. Kept only because `events` still arrives on the link object
@@ -27,6 +27,8 @@ export const TELEGRAM_EVENT_CODES = [
   'balance_top_up_captured',
   'payment_success_activation_pending',
   'vip_active',
+  'subscription_upgrade_completed',
+  'subscription_upgrade_failed',
 ] as const;
 
 export type TelegramEventCode = (typeof TELEGRAM_EVENT_CODES)[number];

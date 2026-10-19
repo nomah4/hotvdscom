@@ -314,6 +314,26 @@ export interface UpgradeResources {
   ssd_gb: number;
 }
 
+/**
+ * Only the dimensions that differ from what the subscription has now.
+ *
+ * Billing treats every key it receives as a request to change that dimension, so
+ * sending an unchanged one asks it to re-validate a value the customer never
+ * touched (and to refuse it if the catalogue range has moved since the server
+ * was bought). Without `current` everything is sent, as before.
+ */
+export function changedResources(
+  resources: UpgradeResources,
+  current?: UpgradeResources | null,
+): Partial<UpgradeResources> {
+  if (!current) return { ...resources };
+  const out: Partial<UpgradeResources> = {};
+  if (resources.cpu !== current.cpu) out.cpu = resources.cpu;
+  if (resources.ram_gb !== current.ram_gb) out.ram_gb = resources.ram_gb;
+  if (resources.ssd_gb !== current.ssd_gb) out.ssd_gb = resources.ssd_gb;
+  return out;
+}
+
 export interface UpgradePreview {
   subscription_id: string;
   /** Доплата сейчас: разница цен за оставшуюся часть оплаченного срока. */
@@ -343,12 +363,13 @@ export async function fetchUpgradePreview(
   subscriptionId: string,
   resources: UpgradeResources,
   currency: string = DEFAULT_CURRENCY,
+  current?: UpgradeResources | null,
 ): Promise<UpgradePreview> {
   const url = new URL(`${BILLING_API_BASE}/api/v1/subscriptions/${subscriptionId}/upgrade-preview`);
   url.searchParams.set('currency', currency);
-  url.searchParams.set('cpu', String(resources.cpu));
-  url.searchParams.set('ram_gb', String(resources.ram_gb));
-  url.searchParams.set('ssd_gb', String(resources.ssd_gb));
+  for (const [key, value] of Object.entries(changedResources(resources, current))) {
+    url.searchParams.set(key, String(value));
+  }
 
   const response = await fetch(url.toString(), { headers: authHeaders(accessToken) });
   if (!response.ok) {
@@ -376,6 +397,8 @@ export interface CreateUpgradeInput {
   accessToken: string;
   subscriptionId: string;
   resources: UpgradeResources;
+  /** What the subscription has now; only the dimensions that differ are sent. */
+  current?: UpgradeResources | null;
   methodCode: string;
   returnUrl: string;
   /** Куда отправить чек: на фискализирующем шлюзе без адреса платёж отклоняется. */
@@ -412,7 +435,7 @@ export async function createUpgrade(input: CreateUpgradeInput): Promise<Upgrade>
         method_code: input.methodCode,
         return_url: input.returnUrl,
         customer_email: input.customerEmail,
-        configuration: input.resources,
+        configuration: changedResources(input.resources, input.current),
         // external_user_id опущен намеренно, как у продления: при Bearer биллинг
         // берёт личность из токена и отвергает расходящееся значение.
       }),

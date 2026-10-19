@@ -8,7 +8,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useLang, useTranslation } from '../i18n/LanguageContext';
 import { localizePath, routePaths } from '../i18n/paths';
 import { fetchInvoice, type Invoice } from '../api/checkout';
-import { clearPendingInvoice, readPendingInvoice } from '../api/useCheckout';
+import { clearPendingInvoice, pendingInvoiceIsUpgrade, readPendingInvoice } from '../api/useCheckout';
 
 const Panel = styled.div`
   max-width: 480px;
@@ -74,6 +74,9 @@ export function CheckoutReturnPage() {
   // successful purchase. Found 2026-07-21 in a real end-to-end payment test.
   const [invoiceId] = useState(() => params.get('invoice_id') ?? params.get('invoice') ?? readPendingInvoice());
 
+  // Same reason as invoiceId: the poll clears the stash, so read it up front.
+  const [isUpgrade] = useState(() => pendingInvoiceIsUpgrade());
+
   const [outcome, setOutcome] = useState<Outcome>('checking');
   const pollCount = useRef(0);
 
@@ -116,7 +119,10 @@ export function CheckoutReturnPage() {
 
   const copy = {
     checking: { title: t.checkout.checking, body: '' },
-    paid: { title: t.checkout.paidTitle, body: t.checkout.paidBody },
+    paid: {
+      title: t.checkout.paidTitle,
+      body: isUpgrade ? t.checkout.upgradePaidBody : t.checkout.paidBody,
+    },
     pending: { title: t.checkout.pendingTitle, body: t.checkout.pendingBody },
     failed: { title: t.checkout.failedTitle, body: t.checkout.failedBody },
   }[outcome];
@@ -134,8 +140,12 @@ export function CheckoutReturnPage() {
                   {t.checkout.toDashboard}
                 </Button>
               ) : (
-                <Button as={Link} to={localizePath(lang, routePaths.pricing)} $variant="secondary">
-                  {t.checkout.backToPricing}
+                <Button
+                  as={Link}
+                  to={localizePath(lang, isUpgrade ? routePaths.dashboard : routePaths.pricing)}
+                  $variant="secondary"
+                >
+                  {isUpgrade ? t.checkout.backToDashboard : t.checkout.backToPricing}
                 </Button>
               )}
             </Actions>

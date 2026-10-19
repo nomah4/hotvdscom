@@ -8,6 +8,7 @@ import { SpecBadge } from '../ui/SpecBadge';
 import { useServerControls } from '../../api/useServerControls';
 import { ChangeIpModal } from './ChangeIpModal';
 import { resolveSubscriptionTitle } from './subscriptionTitle';
+import { renewalErrorMessage } from './renewalErrors';
 import { formatMoneyMinor } from '../../utils/money';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
 
@@ -1016,7 +1017,7 @@ export function SubscriptionListItem({
         </ControlNotice>
       )}
       {provisioningNote && <ProvisioningNote>{provisioningNote}</ProvisioningNote>}
-      {renewError && <RenewError>{t.subscriptions.renewError}</RenewError>}
+      {renewError && <RenewError>{renewalErrorMessage(renewError, t.subscriptions)}</RenewError>}
 
       {changingIp && (
         <ChangeIpModal
