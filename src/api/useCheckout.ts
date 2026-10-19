@@ -8,10 +8,19 @@ import {
   createInvoice,
   createInvoiceFromQuote,
   createRenewal,
+  createUpgrade,
   fetchPaymentMethods,
   fetchRenewalPreview,
+  fetchUpgradePreview,
 } from './checkout';
-import type { CustomVdsConfiguration, Invoice, Quote, Renewal } from './checkout';
+import type {
+  CustomVdsConfiguration,
+  Invoice,
+  Quote,
+  Renewal,
+  Upgrade,
+  UpgradeResources,
+} from './checkout';
 import type { Subscription } from './subscriptions';
 import { DEFAULT_CURRENCY } from './config';
 
@@ -164,7 +173,9 @@ export function purgeStaleCheckoutKeys(): void {
  * mean a broken purchase, and the code threw `no_payment_url`. Throwing that at
  * a customer whose money has already moved tells them their payment failed.
  */
-export function isPaidFromBalance(settled: Pick<Invoice, 'status' | 'payment_url' | 'paid_from_balance'> | Renewal): boolean {
+export function isPaidFromBalance(
+  settled: Pick<Invoice, 'status' | 'payment_url' | 'paid_from_balance'> | Renewal | Upgrade,
+): boolean {
   if (settled.paid_from_balance === true) return true;
   return settled.status === 'paid' && settled.payment_url === null;
 }
@@ -557,6 +568,146 @@ export function useRenewal(options: UseRenewalOptions = {}): UseRenewalResult {
     errorSubscriptionId,
     paidFromBalance,
     renew,
+    clearError: useCallback(() => {
+      setError(null);
+      setErrorSubscriptionId(null);
+    }, []),
+  };
+}
+
+interface UseUpgradeResult {
+  /** Подписка, по которой сейчас открывается оплата: занята только её кнопка. */
+  upgradingId: string | null;
+  error: string | null;
+  errorSubscriptionId: string | null;
+  /** Подписка, апгрейд которой только что оплачен с баланса (шлюза нет). */
+  paidFromBalance: string | null;
+  upgrade: (
+    subscription: Subscription,
+    resources: UpgradeResources,
+    customerEmail: string,
+  ) => Promise<void>;
+  clearError: () => void;
+}
+
+interface UseUpgradeOptions {
+  /** Оплата с баланса не уводит со страницы, а карточка иначе осталась бы со старыми цифрами. */
+  onPaidFromBalance?: (subscription: Subscription) => void;
+}
+
+function sameResources(a: UpgradeResources, b: UpgradeResources): boolean {
+  return a.cpu === b.cpu && a.ram_gb === b.ram_gb && a.ssd_gb === b.ssd_gb;
+}
+
+/**
+ * Увеличение ресурсов одного сервера из кабинета.
+ *
+ * Устроено как `useRenewal`, и по тем же причинам: клиент уже владеет этим
+ * сервером, поэтому отдельной страницы подтверждения нет — подтверждение есть
+ * в самом окне, где он видит доплату. Сумму и право на апгрейд решает биллинг;
+ * отсюда уходит только желаемая конфигурация.
+ *
+ * Ключ идемпотентности привязан к подписке **и** к выбранным цифрам. Привязать
+ * только к подписке нельзя: после неудачной попытки клиент мог передвинуть
+ * ползунок, и тот же ключ с другим телом биллинг отверг бы как конфликт.
+ *
+ * Если у подписки уже висит неоплаченный апгрейд с другими цифрами, биллинг
+ * вернёт его, а не откроет второй. Платить его молча нельзя — клиент выбирал
+ * не это, — поэтому такой ответ превращается в ошибку `upgrade_open_differs`.
+ */
+export function useUpgrade(options: UseUpgradeOptions = {}): UseUpgradeResult {
+  const { accessToken } = useAuth();
+  const { lang } = useLang();
+  const [upgradingId, setUpgradingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [errorSubscriptionId, setErrorSubscriptionId] = useState<string | null>(null);
+  const [paidFromBalance, setPaidFromBalance] = useState<string | null>(null);
+  const onPaidFromBalance = useRef(options.onPaidFromBalance);
+  onPaidFromBalance.current = options.onPaidFromBalance;
+
+  const upgrade = useCallback(
+    async (subscription: Subscription, resources: UpgradeResources, customerEmail: string) => {
+      const subscriptionId = subscription.subscription_id;
+      if (!accessToken) {
+        setError('not_signed_in');
+        setErrorSubscriptionId(subscriptionId);
+        return;
+      }
+      // Как у продления: пустой адрес на фискализирующем шлюзе кончается 502, а
+      // клиенту это ничего не говорит.
+      if (!customerEmail.trim()) {
+        setError('missing_email');
+        setErrorSubscriptionId(subscriptionId);
+        return;
+      }
+
+      setUpgradingId(subscriptionId);
+      setError(null);
+      setErrorSubscriptionId(null);
+      setPaidFromBalance(null);
+      try {
+        // Сумма нужна заранее: подбор способа оплаты зависит от неё. Счёт биллинг
+        // выставит по собственному расчёту, этот ответ его не задаёт.
+        const preview = await fetchUpgradePreview(
+          accessToken,
+          subscriptionId,
+          resources,
+          DEFAULT_CURRENCY,
+        );
+        const methods = await fetchPaymentMethods(accessToken, preview.amount_minor, preview.currency);
+        if (methods.length === 0) {
+          throw new Error('no_payment_methods');
+        }
+
+        const returnUrl = new URL(
+          localizePath(lang, routePaths.checkoutReturn),
+          window.location.origin,
+        ).toString();
+        const idempotencyScope = `upgrade:${subscriptionId}:${resources.cpu}-${resources.ram_gb}-${resources.ssd_gb}`;
+        const created = await createUpgrade({
+          accessToken,
+          subscriptionId,
+          resources,
+          methodCode: methods[0].method_code,
+          returnUrl,
+          customerEmail: customerEmail.trim(),
+          currency: preview.currency,
+          idempotencyKey: orderIdempotencyKey(idempotencyScope),
+        });
+        // Принято: ключ отжил своё и не должен пережить попытку (см. useRenewal).
+        clearOrderIdempotencyKey(idempotencyScope);
+
+        if (!sameResources(created.configuration, resources)) {
+          throw new Error('upgrade_open_differs');
+        }
+
+        if (isPaidFromBalance(created)) {
+          setUpgradingId(null);
+          setPaidFromBalance(subscriptionId);
+          onPaidFromBalance.current?.(subscription);
+          return;
+        }
+
+        if (!created.payment_url || !created.invoice_id) {
+          throw new Error('no_payment_url');
+        }
+        rememberPendingInvoice(created.invoice_id, idempotencyScope);
+        window.location.assign(created.payment_url);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'upgrade_failed');
+        setErrorSubscriptionId(subscriptionId);
+        setUpgradingId(null);
+      }
+    },
+    [accessToken, lang],
+  );
+
+  return {
+    upgradingId,
+    error,
+    errorSubscriptionId,
+    paidFromBalance,
+    upgrade,
     clearError: useCallback(() => {
       setError(null);
       setErrorSubscriptionId(null);

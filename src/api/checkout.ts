@@ -307,6 +307,124 @@ export async function createRenewal(input: CreateRenewalInput): Promise<Renewal>
   return (await response.json()) as Renewal;
 }
 
+/** Ресурсы, которые можно поднять у оплаченной подписки. ОС и площадка не меняются. */
+export interface UpgradeResources {
+  cpu: number;
+  ram_gb: number;
+  ssd_gb: number;
+}
+
+export interface UpgradePreview {
+  subscription_id: string;
+  /** Доплата сейчас: разница цен за оставшуюся часть оплаченного срока. */
+  amount_minor: number;
+  currency: string;
+  valid_until: string;
+  remaining_seconds: number;
+  term_seconds: number;
+  current_configuration: UpgradeResources;
+  new_configuration: UpgradeResources;
+  /** Что стоит продление сейчас и что будет стоить после апгрейда. */
+  current_renewal_amount_minor: number;
+  renewal_amount_minor: number;
+  breakdown: unknown[] | null;
+}
+
+/**
+ * Сколько стоит довести подписку до `resources`, ничего не создавая.
+ *
+ * Цена не вычисляется на витрине: доплата зависит от остатка срока и от правила
+ * цены, которое знает только биллинг. Он же решает, можно ли подписку сейчас
+ * улучшать, и отвечает 422 с кодом причины (`provisioning_not_ready`,
+ * `renewal_in_progress`, `not_an_upgrade`, …).
+ */
+export async function fetchUpgradePreview(
+  accessToken: string,
+  subscriptionId: string,
+  resources: UpgradeResources,
+  currency: string = DEFAULT_CURRENCY,
+): Promise<UpgradePreview> {
+  const url = new URL(`${BILLING_API_BASE}/api/v1/subscriptions/${subscriptionId}/upgrade-preview`);
+  url.searchParams.set('currency', currency);
+  url.searchParams.set('cpu', String(resources.cpu));
+  url.searchParams.set('ram_gb', String(resources.ram_gb));
+  url.searchParams.set('ssd_gb', String(resources.ssd_gb));
+
+  const response = await fetch(url.toString(), { headers: authHeaders(accessToken) });
+  if (!response.ok) {
+    throw await toApiError(response, 'Could not price this upgrade');
+  }
+  return (await response.json()) as UpgradePreview;
+}
+
+export interface Upgrade {
+  upgrade_id: string;
+  invoice_id: string | null;
+  status: string;
+  amount_minor: number | null;
+  currency: string | null;
+  expires_at: string | null;
+  payment_url: string | null;
+  /** См. `Invoice.paid_from_balance`: оплачено, идти на шлюз не надо. */
+  paid_from_balance?: boolean;
+  /** Конфигурация, под которую выставлен счёт. Нужна, чтобы заметить, что биллинг
+   * вернул прежнюю неоплаченную попытку, а не ту, что клиент выбрал сейчас. */
+  configuration: UpgradeResources;
+}
+
+export interface CreateUpgradeInput {
+  accessToken: string;
+  subscriptionId: string;
+  resources: UpgradeResources;
+  methodCode: string;
+  returnUrl: string;
+  /** Куда отправить чек: на фискализирующем шлюзе без адреса платёж отклоняется. */
+  customerEmail: string;
+  currency?: string;
+  idempotencyKey?: string;
+}
+
+/**
+ * Открывает счёт на доплату за апгрейд ОДНОЙ подписки.
+ *
+ * Как и продление, это не покупка нового сервера: оплата меняет конфигурацию
+ * именно этой машины. Сумму и право на апгрейд решает биллинг (владелец
+ * подписки — из токена, остаток срока и цена — из его данных), поэтому из
+ * браузера уходит только желаемая конфигурация.
+ *
+ * Если у подписки уже есть неоплаченный апгрейд, биллинг возвращает его, а не
+ * открывает второй. Сравнивать `configuration` ответа с запрошенной — дело
+ * вызывающего.
+ */
+export async function createUpgrade(input: CreateUpgradeInput): Promise<Upgrade> {
+  const response = await fetch(
+    `${BILLING_API_BASE}/api/v1/subscriptions/${input.subscriptionId}/upgrades`,
+    {
+      method: 'POST',
+      headers: {
+        ...authHeaders(input.accessToken),
+        'X-Idempotency-Key': input.idempotencyKey ?? crypto.randomUUID(),
+      },
+      body: JSON.stringify({
+        tenant_id: TENANT_ID,
+        project_code: PROJECT_CODE,
+        currency: input.currency ?? DEFAULT_CURRENCY,
+        method_code: input.methodCode,
+        return_url: input.returnUrl,
+        customer_email: input.customerEmail,
+        configuration: input.resources,
+        // external_user_id опущен намеренно, как у продления: при Bearer биллинг
+        // берёт личность из токена и отвергает расходящееся значение.
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw await toApiError(response, 'Could not start the upgrade');
+  }
+  return (await response.json()) as Upgrade;
+}
+
 /** Reads back one invoice. Billing scopes this to the token's own invoices and
  * answers 404 for anyone else's, so an id is not worth guessing. */
 export async function fetchInvoice(accessToken: string, invoiceId: string): Promise<Invoice> {

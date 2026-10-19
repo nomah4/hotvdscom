@@ -115,6 +115,7 @@ export const dashboard = {
       // The machine's screen — what is left when both the network and sshd are gone.
       console: 'Console',
       changeIp: 'Change IP',
+      upgrade: 'Upgrade resources',
       // The button stays and goes flat rather than disappearing: a button that
       // vanished reads as a fault, and the date answers the only question this
       // raises.
@@ -167,6 +168,46 @@ export const dashboard = {
     fromBalance: 'Will be paid from your balance, {amount} available.',
     confirmFromBalance: 'Pay from balance',
     paidFromBalance: 'Renewed from your balance.',
+  },
+  // Confirming a resource upgrade of a paid server. The surcharge is Billing's:
+  // the price difference for the part of the paid term that is left.
+  upgrade: {
+    title: 'Upgrade resources',
+    server: 'Server',
+    plan: 'Plan',
+    cpu: 'CPU cores',
+    ram: 'Memory, GB',
+    ssd: 'Disk, GB',
+    now: 'now {value}',
+    validUntil: 'Paid until',
+    surcharge: 'Surcharge now',
+    surchargeHint: 'Only for the paid time that is left.',
+    renewalNow: 'Renewal now',
+    renewalAfter: 'Renewal after the upgrade',
+    pickMore: 'Raise at least one value. Resources cannot be reduced.',
+    amountLoading: 'calculating…',
+    amountUnavailable: 'unavailable',
+    rebootWarning: 'The server will reboot and be unavailable for a couple of minutes.',
+    diskNote: 'The disk grows at the virtual machine level. You need to extend the partition and filesystem inside the system yourself.',
+    emailLabel: 'Email for the receipt',
+    emailHint: 'The payment receipt goes to this address. Prefilled from your account — change it if you need the receipt somewhere else.',
+    cancel: 'Cancel',
+    confirm: 'Pay and upgrade',
+    fromBalance: 'Will be paid from your balance, {amount} available.',
+    confirmFromBalance: 'Pay from balance',
+    paidFromBalance: 'Paid from your balance. Resources are being raised and the server will reboot.',
+    // Billing's refusal codes. The customer can fix each one, and a generic
+    // "try again" would send them to press the same button.
+    errors: {
+      generic: 'The upgrade could not be started. Please try again.',
+      notReady: 'The server is not ready yet: you can upgrade it once it is running.',
+      renewalInProgress: 'There is an unpaid renewal. Pay it or wait for it to expire.',
+      upgradeInProgress: 'There is an unpaid upgrade. Pay it or wait for it to expire.',
+      openDiffers: 'This server already has an unpaid upgrade with different values. Pay it or wait for it to expire.',
+      notActive: 'Only an active, paid service can be upgraded.',
+      notAnUpgrade: 'Choose more resources than you have now.',
+      outOfRange: 'The selected value is outside the allowed range.',
+    },
   },
   // Confirming an address change. What is confirmed is the address itself, not
   // the intent: DNS records, allowlists and other people's firewalls still point

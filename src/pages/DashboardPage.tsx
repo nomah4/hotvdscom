@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import styled from 'styled-components';
 import { DashboardShell } from '../components/dashboard/DashboardShell';
 import { RenewalConfirmModal } from '../components/dashboard/RenewalConfirmModal';
+import { UpgradeModal } from '../components/dashboard/UpgradeModal';
 import { SubscriptionListItem } from '../components/dashboard/SubscriptionListItem';
 import { SshKeysCard } from '../components/dashboard/SshKeysCard';
 import { TelegramCard } from '../components/dashboard/TelegramCard';
@@ -13,7 +14,7 @@ import { useBalance } from '../api/balance';
 import { formatMoneyMinor } from '../utils/money';
 import { resolvePlanName, resolveSubscriptionTitle } from '../components/dashboard/subscriptionTitle';
 import { useAuth } from '../auth/AuthContext';
-import { useRenewal } from '../api/useCheckout';
+import { useRenewal, useUpgrade } from '../api/useCheckout';
 import { findByPackageCode, useTariffs } from '../api/catalogue';
 import { localizePath, routePaths } from '../i18n/paths';
 import { media } from '../theme/breakpoints';
@@ -168,8 +169,33 @@ export function DashboardPage() {
       },
     });
 
+  // Какой сервер клиент сейчас увеличивает. Как и продление, не списывает по
+  // клику: сначала окно с доплатой.
+  const [upgradeTarget, setUpgradeTarget] = useState<Subscription | null>(null);
+  // Оплата с баланса не уводит со страницы: карточка иначе осталась бы со старыми
+  // цифрами и старым статусом, пока машина пересобирается.
+  const {
+    upgrade,
+    upgradingId,
+    error: upgradeError,
+    errorSubscriptionId: upgradeErrorId,
+    clearError: clearUpgradeError,
+    paidFromBalance: upgradePaidFromBalance,
+  } = useUpgrade({
+    onPaidFromBalance: () => {
+      setUpgradeTarget(null);
+      refetch();
+      refetchBalance();
+    },
+  });
+
   const { active: activeSubscriptions, history: historySubscriptions } =
     splitDashboardSubscriptions(subscriptions);
+
+  const closeUpgrade = () => {
+    setUpgradeTarget(null);
+    clearUpgradeError();
+  };
 
   const closeRenewal = () => {
     setRenewTarget(null);
@@ -265,6 +291,7 @@ export function DashboardPage() {
             never leaves the dashboard, so without this line money moves and
             nothing on screen says so. */}
         {paidFromBalance && <PaidNote>{t.renewal.paidFromBalance}</PaidNote>}
+        {upgradePaidFromBalance && <PaidNote>{t.upgrade.paidFromBalance}</PaidNote>}
         <ServerList style={{ marginTop: 16 }}>
           {isLoading ? (
             <Message>{t.subscriptions.loading}</Message>
@@ -290,6 +317,7 @@ export function DashboardPage() {
                   period={match?.period}
                   onRenew={setRenewTarget}
                   isRenewing={renewingId === subscription.subscription_id}
+                  onUpgrade={setUpgradeTarget}
                   onServerChanged={refetch}
                   onRename={canRename ? rename : undefined}
                   renewError={
@@ -354,6 +382,19 @@ export function DashboardPage() {
           }
           onClose={closeRenewal}
           onConfirm={(customerEmail) => void renew(renewTarget, customerEmail)}
+        />
+      )}
+      {upgradeTarget && (
+        <UpgradeModal
+          subscription={upgradeTarget}
+          planName={planNameFor(upgradeTarget)}
+          serverTitle={titleFor(upgradeTarget)}
+          isSubmitting={upgradingId === upgradeTarget.subscription_id}
+          submitError={upgradeErrorId === upgradeTarget.subscription_id ? upgradeError : null}
+          onClose={closeUpgrade}
+          onConfirm={(customerEmail, resources) =>
+            void upgrade(upgradeTarget, resources, customerEmail)
+          }
         />
       )}
     </DashboardShell>

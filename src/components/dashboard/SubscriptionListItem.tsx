@@ -461,6 +461,13 @@ interface SubscriptionListItemProps {
   /** Renewing this server. Omitted where renewal is not offered at all. */
   onRenew?: (subscription: Subscription) => void;
   isRenewing?: boolean;
+  /**
+   * Увеличить ресурсы этого сервера. Кнопка появляется, только если передан
+   * обработчик **и** биллинг сам назвал подписку улучшаемой (`upgradable`):
+   * правило — тип пакета, готовность машины, незавершённые платежи — живёт у
+   * него, и витрина его не повторяет.
+   */
+  onUpgrade?: (subscription: Subscription) => void;
   /** Shown on this card only — see RenewError. */
   renewError?: string | null;
   /** Re-read the subscription list after a control changes the machine. */
@@ -480,6 +487,7 @@ export function SubscriptionListItem({
   period,
   onRenew,
   isRenewing = false,
+  onUpgrade,
   renewError = null,
   onServerChanged,
   onRename,
@@ -912,6 +920,12 @@ export function SubscriptionListItem({
               >
                 <span aria-hidden>🔀</span>
                 {t.subscriptions.controls.changeIp}
+              </ControlButton>
+            )}
+            {onUpgrade && subscription.upgradable === true && (
+              <ControlButton type="button" onClick={() => onUpgrade(subscription)} disabled={busy}>
+                <span aria-hidden>⬆</span>
+                {t.subscriptions.controls.upgrade}
               </ControlButton>
             )}
             <ControlButton
