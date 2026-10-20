@@ -55,6 +55,7 @@ export const pricing = {
     planNotFoundBody: 'That plan is not in the catalogue. The link may be out of date — please pick a plan again.',
     starting: 'Opening payment…',
     failed: "Couldn't start the payment — please try again.",
+    quoteRefreshed: 'The price quote had expired, so we refreshed it. Check the total and press again.',
     checking: 'Checking payment status…',
     paidTitle: 'Payment received',
     paidBody: "Thank you! We're preparing your server — details will arrive by email.",
