@@ -314,6 +314,61 @@ describe('SubscriptionListItem', () => {
       expect(screen.queryByRole('button', { name: new RegExp(t.controls.reboot) })).toBeNull();
     });
 
+    /**
+     * Кнопка «Увеличить ресурсы» — по слову биллинга, а не по догадке витрины:
+     * правило (тип пакета, готовность машины, неоплаченные счета) живёт у него.
+     */
+    describe('upgrade', () => {
+      const upgradeButton = () =>
+        screen.queryByRole('button', { name: new RegExp(t.controls.upgrade) });
+
+      it('is offered when Billing says the subscription can be upgraded', () => {
+        const onUpgrade = vi.fn();
+        renderWithProviders(
+          <SubscriptionListItem
+            subscription={{ ...withServer(), upgradable: true }}
+            onUpgrade={onUpgrade}
+          />,
+        );
+
+        fireEvent.click(upgradeButton()!);
+        expect(onUpgrade).toHaveBeenCalledWith(expect.objectContaining({ subscription_id: 'sub_1' }));
+      });
+
+      it('is hidden when Billing says it cannot be upgraded right now', () => {
+        renderWithProviders(
+          <SubscriptionListItem
+            subscription={{ ...withServer(), upgradable: false }}
+            onUpgrade={vi.fn()}
+          />,
+        );
+        expect(upgradeButton()).toBeNull();
+      });
+
+      /** Старый биллинг ключа не присылает: отсутствие — «не умеет», не «можно». */
+      it('is hidden when Billing does not report upgradability at all', () => {
+        renderWithProviders(<SubscriptionListItem subscription={withServer()} onUpgrade={vi.fn()} />);
+        expect(upgradeButton()).toBeNull();
+      });
+
+      it('is hidden where no upgrade handler is passed, whatever Billing says', () => {
+        renderWithProviders(
+          <SubscriptionListItem subscription={{ ...withServer(), upgradable: true }} />,
+        );
+        expect(upgradeButton()).toBeNull();
+      });
+
+      it('is not offered before the machine exists', () => {
+        renderWithProviders(
+          <SubscriptionListItem
+            subscription={subscription({ server: null, upgradable: true })}
+            onUpgrade={vi.fn()}
+          />,
+        );
+        expect(upgradeButton()).toBeNull();
+      });
+    });
+
     it('offers to stop a machine the customer wants running', () => {
       renderWithProviders(<SubscriptionListItem subscription={withServer()} />);
 

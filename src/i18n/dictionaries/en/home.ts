@@ -50,7 +50,7 @@ export const home = {
     title: 'Frequently asked questions',
     items: [
       { question: 'How fast does the server activate?', answer: 'Your server deploys automatically after payment.' },
-      { question: 'Can I change my plan later?', answer: 'Contact support and we will help you pick the right plan.' },
+      { question: 'Can I change my plan later?', answer: 'You can raise the resources of a custom-configuration server yourself in your dashboard: the surcharge covers only the paid time that is left. Resources cannot be reduced. For other plans, contact support and we will help you pick the right one.' },
       { question: 'Do you offer backups?', answer: 'Backups are not included in the plans.' },
       { question: 'What payment methods do you accept?', answer: 'Bank cards, instant bank transfer, and cryptocurrency.' },
     ],

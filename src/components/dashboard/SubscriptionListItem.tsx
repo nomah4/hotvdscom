@@ -8,6 +8,7 @@ import { SpecBadge } from '../ui/SpecBadge';
 import { useServerControls } from '../../api/useServerControls';
 import { ChangeIpModal } from './ChangeIpModal';
 import { resolveSubscriptionTitle } from './subscriptionTitle';
+import { renewalErrorMessage } from './renewalErrors';
 import { formatMoneyMinor } from '../../utils/money';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
 
@@ -461,6 +462,13 @@ interface SubscriptionListItemProps {
   /** Renewing this server. Omitted where renewal is not offered at all. */
   onRenew?: (subscription: Subscription) => void;
   isRenewing?: boolean;
+  /**
+   * Увеличить ресурсы этого сервера. Кнопка появляется, только если передан
+   * обработчик **и** биллинг сам назвал подписку улучшаемой (`upgradable`):
+   * правило — тип пакета, готовность машины, незавершённые платежи — живёт у
+   * него, и витрина его не повторяет.
+   */
+  onUpgrade?: (subscription: Subscription) => void;
   /** Shown on this card only — see RenewError. */
   renewError?: string | null;
   /** Re-read the subscription list after a control changes the machine. */
@@ -480,6 +488,7 @@ export function SubscriptionListItem({
   period,
   onRenew,
   isRenewing = false,
+  onUpgrade,
   renewError = null,
   onServerChanged,
   onRename,
@@ -914,6 +923,12 @@ export function SubscriptionListItem({
                 {t.subscriptions.controls.changeIp}
               </ControlButton>
             )}
+            {onUpgrade && subscription.upgradable === true && (
+              <ControlButton type="button" onClick={() => onUpgrade(subscription)} disabled={busy}>
+                <span aria-hidden>⬆</span>
+                {t.subscriptions.controls.upgrade}
+              </ControlButton>
+            )}
             <ControlButton
               type="button"
               onClick={() =>
@@ -1002,7 +1017,7 @@ export function SubscriptionListItem({
         </ControlNotice>
       )}
       {provisioningNote && <ProvisioningNote>{provisioningNote}</ProvisioningNote>}
-      {renewError && <RenewError>{t.subscriptions.renewError}</RenewError>}
+      {renewError && <RenewError>{renewalErrorMessage(renewError, t.subscriptions)}</RenewError>}
 
       {changingIp && (
         <ChangeIpModal

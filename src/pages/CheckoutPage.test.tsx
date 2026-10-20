@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 
 vi.mock('../auth/AuthContext', () => ({
   useAuth: vi.fn(),
@@ -15,7 +15,14 @@ vi.mock('../api/useCheckout', async (importOriginal) => {
   return { ...actual, useCheckout: vi.fn() };
 });
 
+vi.mock('../api/checkout', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/checkout')>();
+  return { ...actual, createQuote: vi.fn() };
+});
+
 const { useAuth } = await import('../auth/AuthContext');
+const { createQuote } = await import('../api/checkout');
+const { dictionaries } = await import('../i18n/dictionaries');
 const { useTariffs } = await import('../api/catalogue');
 const { useCheckout } = await import('../api/useCheckout');
 const { CheckoutPage } = await import('./CheckoutPage');
@@ -98,5 +105,51 @@ describe('CheckoutPage', () => {
     expect(text).not.toContain('$');
     expect(text).not.toContain('~');
     expect(text).toContain(String(priceMonthly));
+  });
+
+  describe('custom VDS quote', () => {
+    const route = '/en/checkout?package=VDS_CUSTOM_MONTHLY&cpu=1&ram_gb=2&ssd_gb=10&os=ubuntu-24.04&datacenter=ams&currency=RUB';
+    const quote = (id: string) => ({
+      quote_id: id,
+      status: 'active' as const,
+      package_code: 'VDS_CUSTOM_MONTHLY',
+      amount_minor: 90000,
+      currency: 'RUB',
+      configuration: { cpu: 1, ram_gb: 2, ssd_gb: 10, os: 'ubuntu-24.04', datacenter: 'ams' },
+      expires_at: new Date(Date.now() + 15 * 60_000).toISOString(),
+    });
+
+    it('fetches a fresh quote when Billing refuses an expired one, instead of a dead-end failure', async () => {
+      vi.mocked(createQuote).mockReset();
+      vi.mocked(createQuote).mockResolvedValueOnce(quote('q-old') as never).mockResolvedValueOnce(quote('q-new') as never);
+      const clearError = vi.fn();
+      vi.mocked(useCheckout).mockReturnValue({
+        confirm: vi.fn(),
+        confirmQuote: vi.fn(),
+        isSubmitting: false,
+        error: 'quote_expired: Quote has expired',
+        clearError,
+      } as never);
+      renderWithProviders(<CheckoutPage />, { lang: 'en', route });
+
+      await waitFor(() => expect(vi.mocked(createQuote)).toHaveBeenCalledTimes(2));
+      expect(clearError).toHaveBeenCalled();
+    });
+
+    it('keeps the generic failure for any other checkout error', async () => {
+      vi.mocked(createQuote).mockReset();
+      vi.mocked(createQuote).mockResolvedValue(quote('q-1') as never);
+      vi.mocked(useCheckout).mockReturnValue({
+        confirm: vi.fn(),
+        confirmQuote: vi.fn(),
+        isSubmitting: false,
+        error: 'no_payment_methods',
+        clearError: vi.fn(),
+      } as never);
+      renderWithProviders(<CheckoutPage />, { lang: 'en', route });
+
+      expect(await screen.findByText(dictionaries.en.pricing.checkout.failed)).toBeInTheDocument();
+      expect(vi.mocked(createQuote)).toHaveBeenCalledTimes(1);
+    });
   });
 });
