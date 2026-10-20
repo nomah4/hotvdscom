@@ -124,7 +124,10 @@ export function CheckoutReturnPage() {
       body: isUpgrade ? t.checkout.upgradePaidBody : t.checkout.paidBody,
     },
     pending: { title: t.checkout.pendingTitle, body: t.checkout.pendingBody },
-    failed: { title: t.checkout.failedTitle, body: t.checkout.failedBody },
+    failed: {
+      title: t.checkout.failedTitle,
+      body: isUpgrade ? t.checkout.upgradeFailedBody : t.checkout.failedBody,
+    },
   }[outcome];
 
   return (

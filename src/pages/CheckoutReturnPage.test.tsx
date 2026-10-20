@@ -40,6 +40,8 @@ describe('CheckoutReturnPage', () => {
     const link = await screen.findByRole('link', { name: t.backToDashboard });
     expect(link).toHaveAttribute('href', '/en/dashboard');
     expect(screen.queryByText(t.backToPricing)).not.toBeInTheDocument();
+    expect(screen.getByText(t.upgradeFailedBody)).toBeInTheDocument();
+    expect(screen.queryByText(t.failedBody)).not.toBeInTheDocument();
   });
 
   it('keeps the purchase copy for a renewal', async () => {
@@ -56,5 +58,6 @@ describe('CheckoutReturnPage', () => {
     renderWithProviders(<CheckoutReturnPage />, { lang: 'en' });
 
     expect(await screen.findByRole('link', { name: t.backToPricing })).toBeInTheDocument();
+    expect(screen.getByText(t.failedBody)).toBeInTheDocument();
   });
 });

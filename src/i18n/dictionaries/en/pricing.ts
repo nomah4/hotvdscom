@@ -62,6 +62,7 @@ export const pricing = {
     pendingBody: 'The payment is still being processed. This page will update on its own.',
     failedTitle: 'Payment did not go through',
     failedBody: "You haven't been charged. You can try again from any plan.",
+    upgradeFailedBody: "You haven't been charged. You can retry the upgrade from your dashboard.",
     backToPricing: 'Back to pricing',
     backToDashboard: 'Back to dashboard',
     upgradePaidBody:
