@@ -225,6 +225,9 @@ function osDisplayName(value: string): string {
  * a shared or hand-edited link can change which plan is shown but never what it
  * costs.
  */
+const QUOTE_REFRESH_LEAD_MS = 60_000;
+const QUOTE_REFRESH_MIN_MS = 30_000;
+
 export function CheckoutPage() {
   const t = useTranslation('pricing');
   const { lang } = useLang();
@@ -236,7 +239,7 @@ export function CheckoutPage() {
 
   const { isAuthenticated, user, login, isLoading: authLoading } = useAuth();
   const { tariffs, isLoading, error } = useTariffs(checkoutCurrency);
-  const { confirm, confirmQuote, isSubmitting, error: checkoutError } = useCheckout();
+  const { confirm, confirmQuote, isSubmitting, error: checkoutError, clearError } = useCheckout();
   // `null` while signed out and when Billing has the feature off, which is the
   // same thing to this page: say nothing about a balance that does not exist.
   const { balance } = useBalance();
@@ -245,6 +248,11 @@ export function CheckoutPage() {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  // Bumped to ask Billing for a fresh quote. A quote is held for 15 minutes; a
+  // customer who leaves this page open longer used to get a generic failure on
+  // every press, because the page kept offering the dead quote.
+  const [quoteRefresh, setQuoteRefresh] = useState(0);
+  const [quoteRefreshed, setQuoteRefreshed] = useState(false);
   // Receipt address: prefilled from the account, editable, not persisted. A
   // customer may need the receipt to reach accounting rather than themselves.
   // Safe to edit — identity comes from the token subject, which Billing checks
@@ -300,7 +308,28 @@ export function CheckoutPage() {
     return () => {
       active = false;
     };
-  }, [customPeriod, customConfiguration, packageCode, checkoutCurrency]);
+  }, [customPeriod, customConfiguration, packageCode, checkoutCurrency, quoteRefresh]);
+
+  // Re-quote shortly before the held price lapses, so the total on screen is
+  // always one Billing will still accept. The floor keeps a skewed clock from
+  // turning this into a request loop.
+  useEffect(() => {
+    if (!quote) return;
+    const wait = Date.parse(quote.expires_at) - Date.now() - QUOTE_REFRESH_LEAD_MS;
+    const timer = setTimeout(() => setQuoteRefresh((n) => n + 1), Math.max(wait, QUOTE_REFRESH_MIN_MS));
+    return () => clearTimeout(timer);
+  }, [quote]);
+
+  // The timer can still lose (a sleeping laptop does not run it). Billing then
+  // refuses the dead quote; fetch a new one and let the customer see it and
+  // press again, instead of a failure that no retry can fix.
+  useEffect(() => {
+    if (checkoutError?.startsWith('quote_expired') || checkoutError?.startsWith('quote_not_active')) {
+      clearError();
+      setQuoteRefreshed(true);
+      setQuoteRefresh((n) => n + 1);
+    }
+  }, [checkoutError, clearError]);
 
   if (authLoading || (!customPeriod && isLoading) || (customPeriod && quoteLoading && !quote)) {
     return (
@@ -442,6 +471,7 @@ export function CheckoutPage() {
                   </TermsTrigger>
                 </span>
               </TermsRow>
+              {quoteRefreshed && !checkoutError && <ErrorText>{t.checkout.quoteRefreshed}</ErrorText>}
               {checkoutError && <ErrorText>{t.checkout.failed}</ErrorText>}
               <Actions>
                 <Button
@@ -449,6 +479,7 @@ export function CheckoutPage() {
                   $fullWidth
                   disabled={!termsAccepted || isSubmitting || !receiptEmailLooksValid}
                   onClick={() => {
+                    setQuoteRefreshed(false);
                     if (customPeriod) {
                       void confirmQuote(
                         quote!,
