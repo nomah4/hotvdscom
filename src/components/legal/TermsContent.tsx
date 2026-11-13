@@ -8,8 +8,8 @@ import { useTranslation } from '../../i18n/LanguageContext';
 const DraftBanner = styled.div`
   padding: 16px 20px;
   border-radius: ${({ theme }) => theme.radii.lg};
-  border: 1px solid ${({ theme }) => theme.colors.semantic.error};
-  color: ${({ theme }) => theme.colors.semantic.error};
+  border: 1px solid ${({ theme }) => theme.colors.semantic.errorText};
+  color: ${({ theme }) => theme.colors.semantic.errorText};
   font-size: ${({ theme }) => theme.fontSizes.small};
 `;
 

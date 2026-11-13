@@ -73,8 +73,8 @@ function subscription(overrides: Partial<Subscription> = {}): Subscription {
 
 const t = dictionaries.ru.dashboard.subscriptions;
 
-// theme.colors.semantic.error, как его отдаёт jsdom.
-const ERROR_RED = 'rgb(229, 72, 77)';
+// theme.colors.semantic.errorText, как его отдаёт jsdom.
+const ERROR_RED = 'rgb(198, 46, 51)';
 
 const colourOf = (element: HTMLElement) => getComputedStyle(element).color;
 

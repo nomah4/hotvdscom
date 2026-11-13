@@ -79,6 +79,8 @@ export const pricing = {
   },
   features: {
     title: "What's included in every plan",
+    included: 'Included',
+    notIncluded: 'Not included',
     items: [
       { name: 'DDoS protection', tiers: [true, true, true, true, true] },
       { name: 'IPv6', tiers: [true, true, true, true, true] },

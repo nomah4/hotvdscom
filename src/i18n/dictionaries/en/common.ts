@@ -7,6 +7,8 @@ export const common = {
     home: 'Home',
     pricing: 'Pricing',
     dashboard: 'Dashboard',
+    menu: 'Menu',
+    closeMenu: 'Close menu',
   },
   buttons: {
     order: 'Order a VDS',

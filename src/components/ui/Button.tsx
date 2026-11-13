@@ -26,13 +26,13 @@ const sizeStyles = {
 
 const variantStyles = {
   primary: css`
-    background: ${({ theme }) => theme.colors.accent[500]};
+    background: ${({ theme }) => theme.colors.accent[700]};
     color: ${({ theme }) => theme.colors.neutral[0]};
     box-shadow: ${({ theme }) => theme.shadows.accentGlow};
     border: 1px solid transparent;
 
     &:hover {
-      background: ${({ theme }) => theme.colors.accent[600]};
+      background: ${({ theme }) => theme.colors.accent[800]};
     }
   `,
   secondary: css`
@@ -73,6 +73,14 @@ export const Button = styled.button<ButtonProps>`
 
   &:active {
     transform: translateY(1px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: background 0.15s ease, border-color 0.15s ease;
+
+    &:active {
+      transform: none;
+    }
   }
 
   &:disabled {

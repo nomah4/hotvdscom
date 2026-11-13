@@ -1,4 +1,6 @@
-import { useEffect } from 'react';
+import { Icon } from '../components/ui/Icon';
+import { useDialogFocus } from '../components/ui/useDialogFocus';
+import { useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { Button } from '../components/ui/Button';
 import { useTranslation } from '../i18n/LanguageContext';
@@ -32,10 +34,10 @@ const Card = styled.div`
 
 const CloseButton = styled.button`
   position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 32px;
-  height: 32px;
+  top: 8px;
+  right: 8px;
+  width: 44px;
+  height: 44px;
   border-radius: ${({ theme }) => theme.radii.md};
   background: ${({ theme }) => theme.colors.neutral[100]};
   color: ${({ theme }) => theme.colors.neutral[600]};
@@ -67,6 +69,8 @@ export function AuthPromptModal() {
   const t = useTranslation('common');
 
   const isOpen = promptReturnTo !== null;
+  const cardRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(cardRef, isOpen);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -87,9 +91,9 @@ export function AuthPromptModal() {
         if (e.target === e.currentTarget) closeAuthPrompt();
       }}
     >
-      <Card role="dialog" aria-modal="true" aria-label={t.auth.signInRequired}>
+      <Card ref={cardRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t.auth.signInRequired}>
         <CloseButton type="button" aria-label="Close" onClick={closeAuthPrompt}>
-          ✕
+          <Icon name="close" />
         </CloseButton>
         <Title>{t.auth.signInRequired}</Title>
         <Hint>{t.auth.signInHint}</Hint>

@@ -13,6 +13,7 @@ export const colors = {
     500: '#FF5A1F',
     600: '#E64A12',
     700: '#C23D0D',
+    800: '#9E3009',
   },
   indigo: {
     50: '#EEF0FA',
@@ -31,7 +32,7 @@ export const colors = {
     400: '#3DDC97',
     500: '#22C486',
     600: '#1BA571',
-    700: '#16915F',
+    700: '#0F7A4D',
   },
   neutral: {
     0: '#FFFFFF',
@@ -49,6 +50,12 @@ export const colors = {
     success: '#22C486',
     warning: '#FFB020',
     error: '#E5484D',
+    // Text-safe variants (>=4.5:1 on white and background.secondary). The base
+    // error/warning stay for dots, borders and fills.
+    errorText: '#C62E33',
+    warningText: '#8A5A00',
+    // Error text on the dark indigo panels (pricing configurator).
+    errorOnDark: '#FF8A8E',
     info: '#4B4FA8',
   },
 } as const;

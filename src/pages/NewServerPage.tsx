@@ -66,7 +66,7 @@ const TariffGrid = styled.div`
 
 const StatusMessage = styled.p<{ $tone?: 'error' }>`
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme, $tone }) => ($tone === 'error' ? theme.colors.semantic.error : theme.colors.neutral[600])};
+  color: ${({ theme, $tone }) => ($tone === 'error' ? theme.colors.semantic.errorText : theme.colors.neutral[600])};
 `;
 
 /**

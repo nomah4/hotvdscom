@@ -33,7 +33,7 @@ export function AboutPage() {
       <PageContainer>
         <Wrap>
           <PageIntro title={t.about.title} lead={t.about.intro} />
-          <PlaceholderSections sections={t.about.sections} />
+          <PlaceholderSections headingAs="h2" sections={t.about.sections} />
         </Wrap>
       </PageContainer>
     </Section>

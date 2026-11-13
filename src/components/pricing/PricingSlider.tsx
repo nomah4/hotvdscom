@@ -50,7 +50,7 @@ const FieldLabel = styled.div`
 
 const FieldValue = styled.span`
   font-family: ${({ theme }) => theme.fonts.mono};
-  color: ${({ theme }) => theme.colors.accent[600]};
+  color: ${({ theme }) => theme.colors.accent[700]};
 `;
 
 const Range = styled.input`
@@ -139,7 +139,7 @@ const PeriodOption = styled.button<{ $active: boolean }>`
 const PriceStatus = styled.span<{ $tone?: 'error' }>`
   min-height: 18px;
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme, $tone }) => ($tone === 'error' ? theme.colors.semantic.error : theme.colors.indigo[200])};
+  color: ${({ theme, $tone }) => ($tone === 'error' ? theme.colors.semantic.errorOnDark : theme.colors.indigo[200])};
 `;
 
 const fallbackOsOptions = [

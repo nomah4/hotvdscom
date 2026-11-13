@@ -33,7 +33,7 @@ export function ApiPage() {
       <PageContainer>
         <Wrap>
           <PageIntro title={t.api.title} lead={t.api.intro} />
-          <PlaceholderSections sections={t.api.sections} />
+          <PlaceholderSections headingAs="h2" sections={t.api.sections} />
         </Wrap>
       </PageContainer>
     </Section>

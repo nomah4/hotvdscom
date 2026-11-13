@@ -5,7 +5,7 @@ export type BadgeTone = 'accent' | 'mint' | 'indigo' | 'neutral';
 const toneStyles = {
   accent: css`
     background: ${({ theme }) => theme.colors.accent[50]};
-    color: ${({ theme }) => theme.colors.accent[600]};
+    color: ${({ theme }) => theme.colors.accent[700]};
   `,
   mint: css`
     background: ${({ theme }) => theme.colors.mint[100]};

@@ -11,7 +11,6 @@ const Wrap = styled.div<{ $comingSoon?: boolean }>`
   background: ${({ theme, $comingSoon }) => ($comingSoon ? theme.colors.neutral[100] : theme.colors.background.primary)};
   border: 1px solid ${({ theme }) => theme.colors.neutral[200]};
   box-shadow: ${({ theme, $comingSoon }) => ($comingSoon ? 'none' : theme.shadows.sm)};
-  opacity: ${({ $comingSoon }) => ($comingSoon ? 0.65 : 1)};
 `;
 
 const Flag = styled.span<{ $comingSoon?: boolean }>`
@@ -22,12 +21,12 @@ const Flag = styled.span<{ $comingSoon?: boolean }>`
 const City = styled.span<{ $comingSoon?: boolean }>`
   font-family: ${({ theme }) => theme.fonts.heading};
   font-weight: ${({ theme }) => theme.fontWeights.bold};
-  color: ${({ theme, $comingSoon }) => ($comingSoon ? theme.colors.neutral[600] : theme.colors.indigo[900])};
+  color: ${({ theme, $comingSoon }) => ($comingSoon ? theme.colors.neutral[700] : theme.colors.indigo[900])};
 `;
 
 const Country = styled.span`
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.neutral[500]};
+  color: ${({ theme }) => theme.colors.neutral[700]};
 `;
 
 const StatusPill = styled.span<{ $live?: boolean }>`
@@ -39,7 +38,7 @@ const StatusPill = styled.span<{ $live?: boolean }>`
   padding: 3px 8px;
   border-radius: ${({ theme }) => theme.radii.pill};
   background: ${({ theme, $live }) => ($live ? theme.colors.mint[100] : theme.colors.neutral[200])};
-  color: ${({ theme, $live }) => ($live ? theme.colors.mint[700] : theme.colors.neutral[600])};
+  color: ${({ theme, $live }) => ($live ? theme.colors.mint[700] : theme.colors.neutral[700])};
   white-space: nowrap;
 `;
 

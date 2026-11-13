@@ -6,7 +6,6 @@ const Strip = styled.div`
   align-items: center;
   justify-content: center;
   gap: 32px;
-  opacity: 0.6;
 `;
 
 const LogoText = styled.span`

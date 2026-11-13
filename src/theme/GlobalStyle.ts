@@ -30,10 +30,12 @@ export const GlobalStyle = createGlobalStyle`
     font-family: ${({ theme }) => theme.fonts.heading};
     font-weight: ${({ theme }) => theme.fontWeights.extrabold};
     color: ${({ theme }) => theme.colors.indigo[600]};
+    text-wrap: balance;
   }
 
   p {
     margin: 0;
+    text-wrap: pretty;
   }
 
   ul, ol {

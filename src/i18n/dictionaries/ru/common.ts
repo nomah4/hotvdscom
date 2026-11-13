@@ -4,6 +4,8 @@ export const common = {
     home: 'Главная',
     pricing: 'Тарифы',
     dashboard: 'Личный кабинет',
+    menu: 'Меню',
+    closeMenu: 'Закрыть меню',
   },
   buttons: {
     order: 'Заказать VDS',

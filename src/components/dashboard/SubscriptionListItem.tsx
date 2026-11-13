@@ -64,8 +64,12 @@ const RenameButton = styled.button`
   padding: 0;
   cursor: pointer;
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.neutral[400]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
   transition: color 120ms;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 
   &:hover,
   &:focus-visible {
@@ -104,7 +108,7 @@ const Term = styled.span`
 const ServiceId = styled.span`
   font-family: ${({ theme }) => theme.fonts.mono};
   font-size: ${({ theme }) => theme.fontSizes.h6};
-  color: ${({ theme }) => theme.colors.neutral[400]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
   user-select: all;
 `;
 
@@ -116,7 +120,7 @@ const SpecsCell = styled.div`
 
 const AutoRenew = styled.span`
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.neutral[500]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
 // Muted bordeaux rather than semantic.error (#E5484D): destructive, but this is
@@ -177,7 +181,7 @@ const ValidUntilChip = styled.button<{ $clickable: boolean; $overdue: boolean }>
     ${({ theme, $overdue }) => ($overdue ? 'rgba(229, 72, 77, 0.35)' : theme.colors.indigo[100])};
   font-size: ${({ theme }) => theme.fontSizes.small};
   color: ${({ theme, $overdue }) =>
-    $overdue ? theme.colors.semantic.error : theme.colors.indigo[600]};
+    $overdue ? theme.colors.semantic.errorText : theme.colors.indigo[600]};
   white-space: nowrap;
   /* Rendered as a plain span when the date is not the renew control, so the
      hover affordance never appears on something that cannot be clicked. */
@@ -202,7 +206,7 @@ const ValidUntilValue = styled.span<{ $overdue: boolean }>`
   font-family: ${({ theme }) => theme.fonts.mono};
   font-weight: ${({ theme }) => theme.fontWeights.semibold};
   color: ${({ theme, $overdue }) =>
-    $overdue ? theme.colors.semantic.error : theme.colors.indigo[900]};
+    $overdue ? theme.colors.semantic.errorText : theme.colors.indigo[900]};
 `;
 
 // Дата и кнопка оплаты стоят в одну строку: это одна мысль — «срок вышел,
@@ -230,8 +234,8 @@ const PayButton = styled.button`
   gap: 6px;
   padding: 6px 14px;
   border-radius: ${({ theme }) => theme.radii.md};
-  border: 1px solid ${({ theme }) => theme.colors.semantic.error};
-  background: ${({ theme }) => theme.colors.semantic.error};
+  border: 1px solid ${({ theme }) => theme.colors.semantic.errorText};
+  background: ${({ theme }) => theme.colors.semantic.errorText};
   color: #fff;
   font-family: ${({ theme }) => theme.fonts.heading};
   font-size: ${({ theme }) => theme.fontSizes.small};
@@ -255,7 +259,7 @@ const CornerLine = styled.span`
   justify-content: flex-end;
   gap: 6px;
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.neutral[500]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
   white-space: nowrap;
 `;
 
@@ -269,8 +273,8 @@ const DeleteButton = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border-radius: ${({ theme }) => theme.radii.md};
   border: 1px solid transparent;
   background: transparent;
@@ -362,7 +366,7 @@ const CredentialsBox = styled.div`
 const ControlError = styled.div`
   flex-basis: 100%;
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.semantic.error};
+  color: ${({ theme }) => theme.colors.semantic.errorText};
 `;
 
 // Telemetry the storefront does not have. Rendered as labelled dashes rather
@@ -386,13 +390,13 @@ const TelemetryItem = styled.span`
 
 const TelemetryValue = styled.span`
   font-family: ${({ theme }) => theme.fonts.mono};
-  color: ${({ theme }) => theme.colors.neutral[500]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
 const TelemetryNote = styled.span`
   flex-basis: 100%;
   font-size: ${({ theme }) => theme.fontSizes.h6};
-  color: ${({ theme }) => theme.colors.neutral[500]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
 // Answer to pressing any control. Deliberately not "done" or "rebooting" — the
@@ -401,7 +405,7 @@ const TelemetryNote = styled.span`
 const ControlNotice = styled.div`
   flex-basis: 100%;
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.semantic.warning};
+  color: ${({ theme }) => theme.colors.semantic.warningText};
 `;
 
 // Renewal failures are shown on the card that failed, not as a page-level
@@ -410,7 +414,7 @@ const ControlNotice = styled.div`
 const RenewError = styled.div`
   flex-basis: 100%;
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.semantic.error};
+  color: ${({ theme }) => theme.colors.semantic.errorText};
 `;
 
 // A provisioning note only shows while the server is not yet built. It is a full
@@ -418,7 +422,7 @@ const RenewError = styled.div`
 const ProvisioningNote = styled.div`
   flex-basis: 100%;
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.semantic.warning};
+  color: ${({ theme }) => theme.colors.semantic.warningText};
 `;
 
 // Subscription lifecycle → the visual tones StatusDot paints. Billing has six

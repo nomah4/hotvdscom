@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { Icon } from '../ui/Icon';
+import { useDialogFocus } from '../ui/useDialogFocus';
+import { useEffect, useState, useRef } from 'react';
 import styled from 'styled-components';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../auth/AuthContext';
@@ -31,10 +33,10 @@ const Card = styled.div`
 
 const CloseButton = styled.button`
   position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 32px;
-  height: 32px;
+  top: 8px;
+  right: 8px;
+  width: 44px;
+  height: 44px;
   border-radius: ${({ theme }) => theme.radii.md};
   background: ${({ theme }) => theme.colors.neutral[100]};
   color: ${({ theme }) => theme.colors.neutral[600]};
@@ -74,7 +76,7 @@ const Value = styled.dd`
 // Старый адрес зачёркнут: строкой ниже стоит новый, и без разметки две почти
 // одинаковые строки цифр читаются как опечатка, а не как «было — стало».
 const OldValue = styled(Value)`
-  color: ${({ theme }) => theme.colors.neutral[500]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
   text-decoration: line-through;
 `;
 
@@ -96,19 +98,19 @@ const NextValue = styled(Value)`
 
 const Note = styled.p`
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.neutral[500]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
 // Перезагрузка и недельный лимит — не мелкий шрифт под кнопкой: оба меняют
 // решение, и узнать о них после нажатия поздно.
 const Warning = styled.p`
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.semantic.warning};
+  color: ${({ theme }) => theme.colors.semantic.warningText};
 `;
 
 const ErrorNote = styled.p`
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.semantic.error};
+  color: ${({ theme }) => theme.colors.semantic.errorText};
 `;
 
 const Actions = styled.div`
@@ -149,6 +151,8 @@ export function ChangeIpModal({
   submitError,
 }: ChangeIpModalProps) {
   const t = useTranslation('dashboard');
+  const cardRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(cardRef);
   const { lang } = useLang();
   const { accessToken } = useAuth();
 
@@ -214,9 +218,9 @@ export function ChangeIpModal({
         if (event.target === event.currentTarget && !isSubmitting) onClose();
       }}
     >
-      <Card role="dialog" aria-modal="true" aria-label={t.changeIp.title}>
+      <Card ref={cardRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t.changeIp.title}>
         <CloseButton type="button" aria-label={t.changeIp.cancel} onClick={onClose} disabled={isSubmitting}>
-          ✕
+          <Icon name="close" />
         </CloseButton>
 
         <Title>{t.changeIp.title}</Title>

@@ -41,7 +41,7 @@ const AdminBadge = styled.span`
   text-transform: uppercase;
   padding: 4px 8px;
   border-radius: ${({ theme }) => theme.radii.pill};
-  color: ${({ theme }) => theme.colors.accent[600]};
+  color: ${({ theme }) => theme.colors.accent[700]};
   background: ${({ theme }) => theme.colors.accent[50]};
 `;
 
@@ -50,7 +50,7 @@ const Avatar = styled.div`
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: ${({ theme }) => theme.colors.accent[500]};
+  background: ${({ theme }) => theme.colors.accent[700]};
   color: ${({ theme }) => theme.colors.neutral[0]};
   display: flex;
   align-items: center;

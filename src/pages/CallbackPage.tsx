@@ -22,13 +22,13 @@ const Message = styled.p`
 `;
 
 const ErrorMessage = styled(Message)`
-  color: ${({ theme }) => theme.colors.semantic.error};
+  color: ${({ theme }) => theme.colors.semantic.errorText};
   max-width: 42ch;
 `;
 
 const RetryLink = styled.a`
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.accent[500]};
+  color: ${({ theme }) => theme.colors.accent[700]};
 `;
 
 /**

@@ -63,7 +63,7 @@ const Amount = styled.span<{ $negative?: boolean }>`
   font-size: 2.25rem;
   font-weight: ${({ theme }) => theme.fontWeights.extrabold};
   color: ${({ theme, $negative }) =>
-    $negative ? theme.colors.semantic.error : theme.colors.indigo[900]};
+    $negative ? theme.colors.semantic.errorText : theme.colors.indigo[900]};
 `;
 
 const Note = styled.p`
@@ -72,7 +72,7 @@ const Note = styled.p`
 `;
 
 const WarnNote = styled(Note)`
-  color: ${({ theme }) => theme.colors.semantic.error};
+  color: ${({ theme }) => theme.colors.semantic.errorText};
 `;
 
 const OkNote = styled(Note)`
@@ -81,7 +81,7 @@ const OkNote = styled(Note)`
 
 const ErrorText = styled.p`
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.semantic.error};
+  color: ${({ theme }) => theme.colors.semantic.errorText};
 `;
 
 const Chips = styled.div`
@@ -168,7 +168,7 @@ const PickPrice = styled.span`
 `;
 
 const Muted = styled.span`
-  color: ${({ theme }) => theme.colors.neutral[500]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
 const Footer = styled.div`

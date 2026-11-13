@@ -31,7 +31,7 @@ export function PartnersPage() {
       <PageContainer>
         <Wrap>
           <PageIntro title={t.partners.title} lead={t.partners.intro} />
-          <PlaceholderSections sections={t.partners.sections} />
+          <PlaceholderSections headingAs="h2" sections={t.partners.sections} />
         </Wrap>
       </PageContainer>
     </Section>

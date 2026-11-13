@@ -57,13 +57,13 @@ const StatValue = styled.span`
 // statement about the customer's money, and the wrong one.
 const StatNote = styled.span`
   font-size: ${({ theme }) => theme.fontSizes.h6};
-  color: ${({ theme }) => theme.colors.neutral[500]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
 // A minus sign is easy to miss on a figure this size, and the one number on
 // this page it must never be missed on is a debt.
 const BalanceValue = styled(StatValue)<{ $negative: boolean }>`
-  color: ${({ theme, $negative }) => ($negative ? theme.colors.semantic.error : theme.colors.indigo[900])};
+  color: ${({ theme, $negative }) => ($negative ? theme.colors.semantic.errorText : theme.colors.indigo[900])};
 `;
 
 const PaidNote = styled.p`
@@ -138,8 +138,8 @@ const Message = styled.div`
 
 const ErrorMessage = styled(Message)`
   border-style: solid;
-  border-color: ${({ theme }) => theme.colors.semantic.error};
-  color: ${({ theme }) => theme.colors.semantic.error};
+  border-color: ${({ theme }) => theme.colors.semantic.errorText};
+  color: ${({ theme }) => theme.colors.semantic.errorText};
 `;
 
 export function DashboardPage() {

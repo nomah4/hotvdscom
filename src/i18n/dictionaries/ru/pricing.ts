@@ -82,6 +82,8 @@ export const pricing = {
   },
   features: {
     title: 'Что входит в каждый тариф',
+    included: 'Входит',
+    notIncluded: 'Не входит',
     items: [
       { name: 'DDoS-защита', tiers: [true, true, true, true, true] },
       { name: 'IPv6', tiers: [true, true, true, true, true] },

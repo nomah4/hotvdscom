@@ -4,6 +4,7 @@ import { Section } from '../components/layout/Section';
 import { PageContainer } from '../components/layout/PageContainer';
 import { SectionHeading } from '../components/ui/SectionHeading';
 import { Badge } from '../components/ui/Badge';
+import { Icon } from '../components/ui/Icon';
 import { Button } from '../components/ui/Button';
 import { TariffCard } from '../components/ui/TariffCard';
 import { DatacenterRow } from '../components/ui/DatacenterRow';
@@ -108,16 +109,12 @@ const ValueCard = styled.div`
   border: 1px solid ${({ theme }) => theme.colors.neutral[200]};
 `;
 
-const ValueIcon = styled.div`
-  width: 44px;
-  height: 44px;
+// Icon sits in the heading's line, not in a tile above it.
+const ValueHead = styled.div`
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: ${({ theme }) => theme.radii.md};
-  background: ${({ theme }) => theme.colors.mint[100]};
+  gap: 10px;
   color: ${({ theme }) => theme.colors.mint[700]};
-  font-size: 1.25rem;
 `;
 
 const ValueTitle = styled.h3`
@@ -167,6 +164,11 @@ const FaqList = styled.div`
   margin: 40px auto 0;
 `;
 
+// Secondary button sits on the dark CTA banner, so it needs a solid light fill.
+const CtaButton = styled(Button)`
+  background: ${({ theme }) => theme.colors.neutral[0]};
+`;
+
 const CtaBanner = styled.div`
   display: flex;
   flex-direction: column;
@@ -181,7 +183,7 @@ const CtaTitle = styled.h2`
   font-size: ${({ theme }) => theme.fontSizes.h2};
 `;
 
-const icons = ['⚡', '🛡️', '💬', '🚀'];
+const icons = ['bolt', 'shield', 'chat', 'rocket'] as const;
 
 export function HomePage() {
   const t = useTranslation('home');
@@ -200,7 +202,6 @@ export function HomePage() {
           <Hero>
             <HeroGlow />
             <HeroInner>
-              <Badge $tone="accent">{t.hero.eyebrow}</Badge>
               <HeroTitle>{t.hero.title}</HeroTitle>
               <HeroSubtitle>{t.hero.subtitle}</HeroSubtitle>
               <HeroActions>
@@ -227,8 +228,10 @@ export function HomePage() {
           <Grid>
             {t.valueProps.items.map((item, i) => (
               <ValueCard key={item.title}>
-                <ValueIcon>{icons[i]}</ValueIcon>
-                <ValueTitle>{item.title}</ValueTitle>
+                <ValueHead>
+                  <Icon name={icons[i]} size={24} />
+                  <ValueTitle>{item.title}</ValueTitle>
+                </ValueHead>
                 <ValueText>{item.text}</ValueText>
               </ValueCard>
             ))}
@@ -288,9 +291,9 @@ export function HomePage() {
         <PageContainer>
           <CtaBanner>
             <CtaTitle>{t.finalCta.title}</CtaTitle>
-            <Button as={Link} to={orderPath(lang)} $variant="secondary" $size="lg" style={{ background: '#fff' }}>
+            <CtaButton as={Link} to={orderPath(lang)} $variant="secondary" $size="lg">
               {t.finalCta.cta}
-            </Button>
+            </CtaButton>
           </CtaBanner>
         </PageContainer>
       </Section>

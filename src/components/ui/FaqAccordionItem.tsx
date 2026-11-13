@@ -29,9 +29,13 @@ const Icon = styled.span<{ $open: boolean }>`
   justify-content: center;
   border-radius: 50%;
   background: ${({ theme }) => theme.colors.accent[50]};
-  color: ${({ theme }) => theme.colors.accent[500]};
+  color: ${({ theme }) => theme.colors.accent[700]};
   transform: rotate(${({ $open }) => ($open ? '45deg' : '0deg')});
   transition: transform 0.2s ease;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
   font-size: 1rem;
 `;
 
@@ -39,6 +43,10 @@ const Answer = styled.div<{ $open: boolean }>`
   max-height: ${({ $open }) => ($open ? '240px' : '0')};
   overflow: hidden;
   transition: max-height 0.25s ease;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 `;
 
 const AnswerText = styled.p`
