@@ -1,3 +1,4 @@
+import { Icon } from '../ui/Icon';
 import styled from 'styled-components';
 import type { Tariff } from '../../data/tariffs';
 import { useTranslation } from '../../i18n/LanguageContext';
@@ -53,7 +54,8 @@ const TariffName = styled.span`
 `;
 
 const Check = styled.span<{ $on: boolean }>`
-  color: ${({ theme, $on }) => ($on ? theme.colors.mint[600] : theme.colors.neutral[300])};
+  display: inline-flex;
+  color: ${({ theme, $on }) => ($on ? theme.colors.mint[600] : theme.colors.neutral[500])};
   font-weight: ${({ theme }) => theme.fontWeights.bold};
 `;
 
@@ -89,7 +91,9 @@ export function TariffComparisonTable({ tariffs }: TariffComparisonTableProps) {
               <Td>{feature.name}</Td>
               {feature.tiers.slice(0, columns).map((on, i) => (
                 <Td key={tariffs[i].id}>
-                  <Check $on={on}>{on ? '✓' : '—'}</Check>
+                  <Check $on={on} role="img" aria-label={on ? t.features.included : t.features.notIncluded}>
+                    <Icon name={on ? 'check' : 'minus'} size={18} />
+                  </Check>
                 </Td>
               ))}
             </tr>

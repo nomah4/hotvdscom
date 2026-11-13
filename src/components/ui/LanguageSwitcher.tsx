@@ -14,9 +14,13 @@ const Option = styled.button<{ $active: boolean }>`
   font-family: ${({ theme }) => theme.fonts.heading};
   font-size: ${({ theme }) => theme.fontSizes.small};
   font-weight: ${({ theme }) => theme.fontWeights.bold};
-  color: ${({ theme, $active }) => ($active ? theme.colors.neutral[0] : theme.colors.neutral[600])};
+  color: ${({ theme, $active }) => ($active ? theme.colors.neutral[0] : theme.colors.neutral[700])};
   background: ${({ theme, $active }) => ($active ? theme.colors.indigo[600] : 'transparent')};
   transition: background 0.15s ease, color 0.15s ease;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 `;
 
 export function LanguageSwitcher() {

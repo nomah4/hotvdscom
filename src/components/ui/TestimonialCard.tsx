@@ -17,12 +17,12 @@ const Quote = styled.blockquote`
 
   &::before {
     content: '“';
-    color: ${({ theme }) => theme.colors.accent[500]};
+    color: ${({ theme }) => theme.colors.accent[700]};
   }
 
   &::after {
     content: '”';
-    color: ${({ theme }) => theme.colors.accent[500]};
+    color: ${({ theme }) => theme.colors.accent[700]};
   }
 `;
 

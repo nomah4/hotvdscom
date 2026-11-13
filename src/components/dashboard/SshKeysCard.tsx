@@ -27,7 +27,7 @@ const Note = styled.p`
 
 const ErrorText = styled.p`
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.semantic.error};
+  color: ${({ theme }) => theme.colors.semantic.errorText};
 `;
 
 const KeyList = styled.ul`
@@ -123,12 +123,12 @@ const QuietButton = styled.button`
   padding: 0;
   cursor: pointer;
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.neutral[500]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
   text-decoration: underline;
 
   &:hover,
   &:focus-visible {
-    color: ${({ theme }) => theme.colors.semantic.error};
+    color: ${({ theme }) => theme.colors.semantic.errorText};
   }
 
   &:disabled {

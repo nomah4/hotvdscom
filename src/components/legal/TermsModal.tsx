@@ -1,3 +1,5 @@
+import { Icon } from '../ui/Icon';
+import { useDialogFocus } from '../ui/useDialogFocus';
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router';
 import styled from 'styled-components';
@@ -47,8 +49,8 @@ const Title = styled.h2`
 
 const CloseButton = styled.button`
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border-radius: ${({ theme }) => theme.radii.md};
   background: ${({ theme }) => theme.colors.neutral[100]};
   color: ${({ theme }) => theme.colors.neutral[600]};
@@ -87,6 +89,8 @@ interface TermsModalProps {
  */
 export function TermsModal({ isOpen, onClose }: TermsModalProps) {
   const t = useTranslation('legal');
+  const cardRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(cardRef, isOpen);
   const { lang } = useLang();
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -113,11 +117,11 @@ export function TermsModal({ isOpen, onClose }: TermsModalProps) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <Card role="dialog" aria-modal="true" aria-label={t.terms.title}>
+      <Card ref={cardRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t.terms.title}>
         <Header>
           <Title>{t.terms.title}</Title>
           <CloseButton ref={closeRef} type="button" aria-label={t.terms.close} onClick={onClose}>
-            ✕
+          <Icon name="close" />
           </CloseButton>
         </Header>
         <Body>

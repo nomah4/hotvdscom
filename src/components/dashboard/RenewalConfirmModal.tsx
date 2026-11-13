@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { Icon } from '../ui/Icon';
+import { useDialogFocus } from '../ui/useDialogFocus';
+import { useEffect, useState, useRef } from 'react';
 import styled from 'styled-components';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../auth/AuthContext';
@@ -35,10 +37,10 @@ const Card = styled.div`
 
 const CloseButton = styled.button`
   position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 32px;
-  height: 32px;
+  top: 8px;
+  right: 8px;
+  width: 44px;
+  height: 44px;
   border-radius: ${({ theme }) => theme.radii.md};
   background: ${({ theme }) => theme.colors.neutral[100]};
   color: ${({ theme }) => theme.colors.neutral[600]};
@@ -97,7 +99,7 @@ const TotalSecondary = styled.span`
   font-family: ${({ theme }) => theme.fonts.body};
   font-size: ${({ theme }) => theme.fontSizes.small};
   font-weight: ${({ theme }) => theme.fontWeights.regular};
-  color: ${({ theme }) => theme.colors.neutral[500]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
 const Field = styled.label`
@@ -123,7 +125,7 @@ const EmailInput = styled.input`
 
 const Note = styled.p`
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.neutral[500]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
 // Good news, not a warning: the renewal is covered and no card is needed.
@@ -134,7 +136,7 @@ const OkNote = styled.p`
 
 const ErrorNote = styled.p`
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.semantic.error};
+  color: ${({ theme }) => theme.colors.semantic.errorText};
 `;
 
 const Actions = styled.div`
@@ -191,6 +193,8 @@ export function RenewalConfirmModal({
   submitError,
 }: RenewalConfirmModalProps) {
   const t = useTranslation('dashboard');
+  const cardRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(cardRef);
   const { lang } = useLang();
   const { accessToken, user } = useAuth();
 
@@ -275,9 +279,9 @@ export function RenewalConfirmModal({
         if (event.target === event.currentTarget && !isSubmitting) onClose();
       }}
     >
-      <Card role="dialog" aria-modal="true" aria-label={t.renewal.title}>
+      <Card ref={cardRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t.renewal.title}>
         <CloseButton type="button" aria-label={t.renewal.cancel} onClick={onClose} disabled={isSubmitting}>
-          ✕
+          <Icon name="close" />
         </CloseButton>
 
         <Title>{t.renewal.title}</Title>

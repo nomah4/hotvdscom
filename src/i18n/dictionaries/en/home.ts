@@ -8,7 +8,6 @@ export const home = {
       'Powerful NVMe VDS from $10/mo: 99.98% uptime, DDoS protection, and 24/7 support. Your server deploys automatically after payment.',
   },
   hero: {
-    eyebrow: 'A new generation of VDS',
     title: 'NVMe VDS hosting',
     subtitle:
       'Powerful NVMe-backed servers with a real 99.98% uptime and support that actually answers. Spin up your project today — zero paperwork.',

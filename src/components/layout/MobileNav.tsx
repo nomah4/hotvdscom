@@ -1,5 +1,8 @@
+import { Icon } from '../ui/Icon';
+import { useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { Link, NavLink } from 'react-router';
+import { useDialogFocus } from '../ui/useDialogFocus';
 import { LanguageSwitcher } from '../ui/LanguageSwitcher';
 import { Button } from '../ui/Button';
 import { useLang, useTranslation } from '../../i18n/LanguageContext';
@@ -15,8 +18,13 @@ const Overlay = styled.div<{ $open: boolean }>`
   flex-direction: column;
   padding: 24px 20px 32px;
   transform: translateX(${({ $open }) => ($open ? '0' : '100%')});
-  transition: transform 0.25s ease;
+  transition: transform 0.25s ease, visibility 0.25s;
   visibility: ${({ $open }) => ($open ? 'visible' : 'hidden')};
+
+  /* No slide: the menu still appears and disappears, just without travel. */
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 `;
 
 const TopRow = styled.div`
@@ -25,8 +33,8 @@ const TopRow = styled.div`
 `;
 
 const CloseButton = styled.button`
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: ${({ theme }) => theme.radii.md};
   background: ${({ theme }) => theme.colors.neutral[100]};
   font-size: 1.25rem;
@@ -48,7 +56,7 @@ const LinkItem = styled(NavLink)`
   border-bottom: 1px solid ${({ theme }) => theme.colors.neutral[200]};
 
   &.active {
-    color: ${({ theme }) => theme.colors.accent[500]};
+    color: ${({ theme }) => theme.colors.accent[700]};
   }
 `;
 
@@ -69,6 +77,16 @@ export function MobileNav({ open, onClose, links }: MobileNavProps) {
   const t = useTranslation('common');
   const { lang } = useLang();
   const { isAuthenticated, login, logout, openAuthPrompt } = useAuth();
+  const overlayRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(overlayRef, open);
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open, onClose]);
   const homePath = localizePath(lang, routePaths.home);
   const dashboardPath = localizePath(lang, routePaths.dashboard);
 
@@ -87,10 +105,10 @@ export function MobileNav({ open, onClose, links }: MobileNavProps) {
   };
 
   return (
-    <Overlay $open={open} aria-hidden={!open}>
+    <Overlay ref={overlayRef} $open={open} inert={!open} role="dialog" aria-modal="true" aria-label={t.nav.menu}>
       <TopRow>
-        <CloseButton aria-label="Close menu" onClick={onClose}>
-          ✕
+        <CloseButton aria-label={t.nav.closeMenu} onClick={onClose}>
+          <Icon name="close" />
         </CloseButton>
       </TopRow>
       <LinkList>

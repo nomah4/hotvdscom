@@ -35,7 +35,7 @@ export function ContactsPage() {
       <PageContainer>
         <Wrap>
           <PageIntro title={t.contacts.title} lead={t.contacts.intro} />
-          <PlaceholderSections sections={t.contacts.sections} />
+          <PlaceholderSections headingAs="h2" sections={t.contacts.sections} />
         </Wrap>
       </PageContainer>
     </Section>

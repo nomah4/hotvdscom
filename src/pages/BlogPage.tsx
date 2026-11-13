@@ -42,7 +42,7 @@ export function BlogPage() {
         <Wrap>
           <PageIntro title={t.blog.title} />
           <Empty>{t.blog.empty}</Empty>
-          <PlaceholderSections sections={t.blog.sections} />
+          <PlaceholderSections headingAs="h2" sections={t.blog.sections} />
         </Wrap>
       </PageContainer>
     </Section>

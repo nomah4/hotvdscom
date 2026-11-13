@@ -177,7 +177,7 @@ const Actions = styled.div`
 
 const ErrorText = styled.p`
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.semantic.error};
+  color: ${({ theme }) => theme.colors.semantic.errorText};
 `;
 
 const StatusMessage = styled.p`

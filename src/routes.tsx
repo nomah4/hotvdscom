@@ -1,34 +1,39 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
 import { MarketingLayout } from './components/layout/MarketingLayout';
 import { LangGate } from './components/layout/LangGate';
 import { HomePage } from './pages/HomePage';
 import { PricingPage } from './pages/PricingPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { AdminPage } from './pages/AdminPage';
-import { NewServerPage } from './pages/NewServerPage';
-import { SupportPage } from './pages/SupportPage';
-import { BalancePage } from './pages/BalancePage';
-import { BalanceReturnPage } from './pages/BalanceReturnPage';
 import { CallbackPage } from './pages/CallbackPage';
-import { CheckoutPage } from './pages/CheckoutPage';
-import { CheckoutReturnPage } from './pages/CheckoutReturnPage';
-import { TermsPage } from './pages/TermsPage';
-import { DatacentersPage } from './pages/DatacentersPage';
-import { ApiPage } from './pages/ApiPage';
-import { AboutPage } from './pages/AboutPage';
-import { BlogPage } from './pages/BlogPage';
-import { PartnersPage } from './pages/PartnersPage';
-import { ContactsPage } from './pages/ContactsPage';
-import { KnowledgeBasePage } from './pages/KnowledgeBasePage';
-import { StatusPage } from './pages/StatusPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { RequireAuth } from './auth/RequireAuth';
 import { DEFAULT_LANG, routePaths } from './i18n/paths';
+
+// Everything except the landing, pricing and sign-in callback is split out: the
+// marketing visitor should not download the cabinet, admin and billing code.
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
+const NewServerPage = lazy(() => import('./pages/NewServerPage').then((m) => ({ default: m.NewServerPage })));
+const SupportPage = lazy(() => import('./pages/SupportPage').then((m) => ({ default: m.SupportPage })));
+const BalancePage = lazy(() => import('./pages/BalancePage').then((m) => ({ default: m.BalancePage })));
+const BalanceReturnPage = lazy(() => import('./pages/BalanceReturnPage').then((m) => ({ default: m.BalanceReturnPage })));
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage').then((m) => ({ default: m.CheckoutPage })));
+const CheckoutReturnPage = lazy(() => import('./pages/CheckoutReturnPage').then((m) => ({ default: m.CheckoutReturnPage })));
+const TermsPage = lazy(() => import('./pages/TermsPage').then((m) => ({ default: m.TermsPage })));
+const DatacentersPage = lazy(() => import('./pages/DatacentersPage').then((m) => ({ default: m.DatacentersPage })));
+const ApiPage = lazy(() => import('./pages/ApiPage').then((m) => ({ default: m.ApiPage })));
+const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })));
+const BlogPage = lazy(() => import('./pages/BlogPage').then((m) => ({ default: m.BlogPage })));
+const PartnersPage = lazy(() => import('./pages/PartnersPage').then((m) => ({ default: m.PartnersPage })));
+const ContactsPage = lazy(() => import('./pages/ContactsPage').then((m) => ({ default: m.ContactsPage })));
+const KnowledgeBasePage = lazy(() => import('./pages/KnowledgeBasePage').then((m) => ({ default: m.KnowledgeBasePage })));
+const StatusPage = lazy(() => import('./pages/StatusPage').then((m) => ({ default: m.StatusPage })));
 
 export { routePaths };
 
 export function AppRoutes() {
   return (
+    <Suspense fallback={null}>
     <Routes>
       <Route path="/" element={<Navigate to={`/${DEFAULT_LANG}`} replace />} />
       {/* Deliberately NOT under /:lang — the redirect URI registered in ZITADEL has
@@ -145,5 +150,6 @@ export function AppRoutes() {
           Kept as the backstop for the shapes that slip past, e.g. a bare "/". */}
       <Route path="*" element={<Navigate to={`/${DEFAULT_LANG}`} replace />} />
     </Routes>
+    </Suspense>
   );
 }

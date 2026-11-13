@@ -20,7 +20,7 @@ const Wrap = styled.span<{ $status: StatusTone }>`
   gap: 8px;
   font-size: ${({ theme }) => theme.fontSizes.small};
   font-weight: ${({ theme }) => theme.fontWeights.medium};
-  color: ${({ theme, $status }) => ($status === 'critical' ? theme.colors.semantic.error : 'inherit')};
+  color: ${({ theme, $status }) => ($status === 'critical' ? theme.colors.semantic.errorText : 'inherit')};
 `;
 
 const Dot = styled.span<{ $status: StatusTone }>`

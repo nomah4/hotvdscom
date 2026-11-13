@@ -55,7 +55,7 @@ const ToggleOption = styled.button<{ $active: boolean }>`
   font-family: ${({ theme }) => theme.fonts.heading};
   font-size: ${({ theme }) => theme.fontSizes.small};
   font-weight: ${({ theme }) => theme.fontWeights.bold};
-  color: ${({ theme, $active }) => ($active ? theme.colors.neutral[0] : theme.colors.neutral[600])};
+  color: ${({ theme, $active }) => ($active ? theme.colors.neutral[0] : theme.colors.neutral[700])};
   background: ${({ theme, $active }) => ($active ? theme.colors.indigo[600] : 'transparent')};
 `;
 
@@ -83,7 +83,7 @@ const StatusMessage = styled.p<{ $tone?: 'error' }>`
   margin-top: 40px;
   text-align: center;
   font-size: ${({ theme }) => theme.fontSizes.body};
-  color: ${({ theme, $tone }) => ($tone === 'error' ? theme.colors.semantic.error : theme.colors.neutral[600])};
+  color: ${({ theme, $tone }) => ($tone === 'error' ? theme.colors.semantic.errorText : theme.colors.neutral[600])};
 `;
 
 export function PricingPage() {

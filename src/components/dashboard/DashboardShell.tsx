@@ -67,7 +67,7 @@ const FooterNote = styled.div`
   padding: 20px 0;
   text-align: center;
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.neutral[500]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
 export function DashboardShell({ children }: { children: ReactNode }) {

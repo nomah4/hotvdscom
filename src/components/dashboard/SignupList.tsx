@@ -36,13 +36,13 @@ const Title = styled.h2`
 const Subtitle = styled.p`
   margin-top: 4px;
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.neutral[500]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
 const Note = styled.p`
   margin-top: 16px;
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.neutral[500]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
 // Wide content must scroll inside its own container rather than pushing the
@@ -78,7 +78,7 @@ const Table = styled.table`
 const Count = styled.p`
   margin-top: 12px;
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.neutral[500]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
 type State =

@@ -21,14 +21,14 @@ const FieldLabel = styled.div`
 
 const FieldValue = styled.span`
   font-family: ${({ theme }) => theme.fonts.mono};
-  color: ${({ theme }) => theme.colors.accent[600]};
+  color: ${({ theme }) => theme.colors.accent[700]};
 `;
 
 const Current = styled.span`
   font-family: ${({ theme }) => theme.fonts.body};
   font-weight: ${({ theme }) => theme.fontWeights.regular};
   font-size: ${({ theme }) => theme.fontSizes.small};
-  color: ${({ theme }) => theme.colors.neutral[500]};
+  color: ${({ theme }) => theme.colors.neutral[600]};
 `;
 
 const Range = styled.input`

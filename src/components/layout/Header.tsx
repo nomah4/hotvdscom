@@ -79,8 +79,8 @@ const HamburgerButton = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: ${({ theme }) => theme.radii.md};
   background: ${({ theme }) => theme.colors.neutral[100]};
 
@@ -160,7 +160,7 @@ export function Header() {
                   {t.buttons.order}
                 </Button>
               </DesktopOnly>
-              <HamburgerButton aria-label="Menu" onClick={() => setMenuOpen(true)}>
+              <HamburgerButton aria-label={t.nav.menu} onClick={() => setMenuOpen(true)}>
                 ☰
               </HamburgerButton>
             </Actions>
